@@ -22,7 +22,7 @@ if [ ! -d "node_modules" ]; then
   "$NPM_DIR/npm" install
 fi
 
-# If server is already running on port 3000, just open browser
+# If server is already running on port 3001, just open browser
 if lsof -ti:3001 &>/dev/null; then
   open "http://localhost:3001"
 else
