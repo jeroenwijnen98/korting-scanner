@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as productStore from '../services/productStore.js';
+import * as priceHistory from '../services/priceHistory.js';
 import { stores } from '../stores/index.js';
 
 export const router = Router();
@@ -58,6 +59,35 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// Get product detail from store
+router.get('/product/:store/:storeProductId', async (req, res) => {
+  try {
+    const { store, storeProductId } = req.params;
+    const adapter = stores[store];
+    if (!adapter) {
+      return res.status(400).json({ error: `Unknown store: ${store}` });
+    }
+    const detail = await adapter.getProductDetail(storeProductId);
+    if (!detail) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    priceHistory.recordSnapshot(`${store}-${storeProductId}`, detail).catch(() => {});
+    res.json(detail);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get price history for a product
+router.get('/history/:productId', async (req, res) => {
+  try {
+    const history = await priceHistory.getHistory(req.params.productId);
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Check bonus status for saved products
 router.get('/bonus', async (req, res) => {
   try {
@@ -70,6 +100,9 @@ router.get('/bonus', async (req, res) => {
       const storeProducts = saved.filter(p => p.store === storeName);
       if (storeProducts.length === 0) continue;
       const bonusResults = await adapter.checkBonus(storeProducts);
+      for (const product of bonusResults) {
+        priceHistory.recordSnapshot(product.savedId || `${storeName}-${product.productId}`, product).catch(() => {});
+      }
       results.push(...bonusResults);
     }
     res.json(results);

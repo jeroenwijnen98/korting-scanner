@@ -1,5 +1,6 @@
-import { getBonus } from '../api.js';
+import { getBonus, getProductHistory } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
+import { createProductDetail } from '../components/productDetail.js';
 import { showToast } from '../components/toast.js';
 
 const panel = document.getElementById('panel-on-sale');
@@ -26,6 +27,22 @@ export async function initOnSale() {
       </div>
     `;
   }
+}
+
+async function showDetail(product, allProducts) {
+  panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
+  const productId = product.savedId || `${product.store}-${product.productId}`;
+  let history = [];
+  try {
+    history = await getProductHistory(productId);
+  } catch { /* ignore */ }
+  panel.innerHTML = '';
+  const detail = createProductDetail(product, {
+    showBonus: true,
+    history,
+    onBack: () => render(allProducts),
+  });
+  panel.appendChild(detail);
 }
 
 function render(products) {
@@ -67,6 +84,7 @@ function render(products) {
     list.className = 'card-list';
     items.forEach(product => {
       const card = createProductCard(product, { showBonus: true });
+      card.addEventListener('click', () => showDetail(product, products));
       list.appendChild(card);
     });
     section.appendChild(list);

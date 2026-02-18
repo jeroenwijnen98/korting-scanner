@@ -31,6 +31,14 @@ export function searchProducts(store, query) {
   return request(`/search?store=${encodeURIComponent(store)}&q=${encodeURIComponent(query)}`);
 }
 
+export function getProductDetail(store, storeProductId) {
+  return request(`/product/${encodeURIComponent(store)}/${encodeURIComponent(storeProductId)}`);
+}
+
+export function getProductHistory(productId) {
+  return request(`/history/${encodeURIComponent(productId)}`);
+}
+
 export function getBonus() {
   return request('/bonus');
 }

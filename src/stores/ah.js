@@ -60,6 +60,12 @@ function parseBonusMechanism(mechanism, priceBeforeBonus) {
     return total / count;
   }
 
+  // "VOOR 16.99" or "voor 16,99" — single item fixed price
+  const voorMatch = m.match(/^voor\s+(\d+(?:[.,]\d+)?)$/);
+  if (voorMatch) {
+    return parseFloat(voorMatch[1].replace(',', '.'));
+  }
+
   return null;
 }
 
@@ -100,6 +106,12 @@ class AHAdapter extends StoreAdapter {
     const data = await ahFetch(`/mobile-services/product/search/v2?query=${encodeURIComponent(query)}&page=0&size=25`);
     const products = data.products || data.cards?.flatMap(c => c.products) || [];
     return products.map(p => this.normalize(p));
+  }
+
+  async getProductDetail(storeProductId) {
+    const data = await ahFetch(`/mobile-services/product/detail/v4/fir/${storeProductId}`);
+    const product = data.productCard || data;
+    return this.normalize(product);
   }
 
   async checkBonus(savedProducts) {

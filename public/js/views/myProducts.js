@@ -1,5 +1,6 @@
-import { getProducts, addProduct, removeProduct, searchProducts } from '../api.js';
+import { getProducts, addProduct, removeProduct, searchProducts, getProductDetail, getProductHistory } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
+import { createProductDetail } from '../components/productDetail.js';
 import { createSearchResult } from '../components/searchResult.js';
 import { showToast } from '../components/toast.js';
 
@@ -127,8 +128,36 @@ function renderSaved() {
         }
       },
     });
+    card.addEventListener('click', () => showProductDetail(product));
     container.appendChild(card);
   });
+}
+
+async function showProductDetail(product) {
+  panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
+  const productId = product.id || `${product.store}-${product.storeProductId}`;
+  let history = [];
+  try {
+    history = await getProductHistory(productId);
+  } catch { /* ignore */ }
+  try {
+    const detail = await getProductDetail(product.store, product.storeProductId);
+    panel.innerHTML = '';
+    const detailEl = createProductDetail(detail, {
+      showBonus: detail.isBonus,
+      history,
+      onBack: () => initMyProducts(),
+    });
+    panel.appendChild(detailEl);
+  } catch {
+    panel.innerHTML = '';
+    const detailEl = createProductDetail(product, {
+      showBonus: false,
+      history,
+      onBack: () => initMyProducts(),
+    });
+    panel.appendChild(detailEl);
+  }
 }
 
 function renderSearchResults(results, container) {

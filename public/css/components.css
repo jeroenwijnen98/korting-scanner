@@ -68,6 +68,7 @@
   border-radius: var(--radius-lg);
   padding: 16px;
   transition: background var(--transition);
+  cursor: pointer;
 }
 
 .product-card:hover {
@@ -361,4 +362,156 @@
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+/* Product Detail View */
+.product-detail {
+  padding: 8px 0;
+}
+
+.product-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 8px 0;
+  margin-bottom: 16px;
+  transition: color var(--transition);
+}
+
+.product-detail-back:hover {
+  color: var(--text-primary);
+}
+
+.product-detail-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.product-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.product-detail-bonus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.product-detail-prices {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.product-detail-prices .price-current {
+  font-size: 1.75rem;
+}
+
+.product-detail-dates {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  margin-bottom: 20px;
+}
+
+.product-detail-unit-prices {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.product-detail-unit-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  margin-bottom: 12px;
+}
+
+.unit-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.unit-price-row + .unit-price-row {
+  border-top: 1px solid var(--border);
+}
+
+.unit-price-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.unit-price-value {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.unit-price-bonus .unit-price-value {
+  color: var(--accent);
+}
+
+.unit-price-value.strikethrough {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+/* Price History */
+.product-detail-history {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.history-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-table td {
+  padding: 8px 10px;
+  color: var(--text-secondary);
+}
+
+.history-table tbody tr + tr td {
+  border-top: 1px solid var(--border);
+}
+
+.history-row-bonus td {
+  color: var(--accent);
+}
+
+.history-row-bonus td:first-child {
+  color: var(--text-secondary);
 }

@@ -11,6 +11,10 @@ export class StoreAdapter {
     throw new Error('Not implemented');
   }
 
+  async getProductDetail(storeProductId) {
+    throw new Error('Not implemented');
+  }
+
   normalize(raw) {
     throw new Error('Not implemented');
   }
