@@ -21,7 +21,7 @@ async function getToken() {
   return tokenData.token;
 }
 
-async function ahFetch(path) {
+async function ahFetch(path, retried = false) {
   const token = await getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
@@ -30,6 +30,10 @@ async function ahFetch(path) {
       'Content-Type': 'application/json',
     },
   });
+  if (res.status === 401 && !retried) {
+    tokenData = null;
+    return ahFetch(path, true);
+  }
   if (!res.ok) throw new Error(`AH API error: ${res.status}`);
   return res.json();
 }
@@ -98,6 +102,8 @@ class AHAdapter extends StoreAdapter {
       subCategory: product.subCategory || '',
       brand: product.brand || '',
       isBonus: product.isBonus ?? false,
+      imageUrl: product.images?.[0]?.url || null,
+      isOnlineOnly: product.availability?.orderable === 'ONLINE_ONLY' || product.isExclusivelySoldOnline || false,
       store: 'ah',
     };
   }
@@ -105,7 +111,7 @@ class AHAdapter extends StoreAdapter {
   async searchProducts(query) {
     const data = await ahFetch(`/mobile-services/product/search/v2?query=${encodeURIComponent(query)}&page=0&size=25`);
     const products = data.products || data.cards?.flatMap(c => c.products) || [];
-    return products.map(p => this.normalize(p));
+    return products.map(p => this.normalize(p)).filter(p => !p.isOnlineOnly);
   }
 
   async getProductDetail(storeProductId) {
@@ -116,19 +122,20 @@ class AHAdapter extends StoreAdapter {
 
   async checkBonus(savedProducts) {
     const results = [];
+    const notFound = [];
     for (const saved of savedProducts) {
       try {
         const data = await ahFetch(`/mobile-services/product/detail/v4/fir/${saved.storeProductId}`);
         const product = data.productCard || data;
         const normalized = this.normalize(product);
-        if (normalized.isBonus) {
+        if (normalized.isBonus && !normalized.isOnlineOnly) {
           results.push({ ...normalized, savedId: saved.id });
         }
       } catch {
-        // Product may not exist anymore, skip
+        notFound.push(saved.id);
       }
     }
-    return results;
+    return { results, notFound };
   }
 }
 

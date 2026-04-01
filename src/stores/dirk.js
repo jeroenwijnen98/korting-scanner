@@ -58,6 +58,7 @@ class DirkAdapter extends StoreAdapter {
       subCategory: product.webgroup || '',
       brand: product.brand || '',
       isBonus: hasOffer,
+      imageUrl: product.imageUrl || null,
       store: 'dirk',
     };
   }
@@ -75,7 +76,7 @@ class DirkAdapter extends StoreAdapter {
     // Batch fetch product details
     const productData = await graphqlQuery(`{
       listProducts(productIds: [${ids.join(',')}]) {
-        products { productId headerText packaging brand department webgroup }
+        products { productId headerText packaging brand department webgroup imageUrl }
       }
     }`);
     const products = productData.listProducts?.products || [];
@@ -92,7 +93,7 @@ class DirkAdapter extends StoreAdapter {
 
     const data = await graphqlQuery(`{
       product(productId: ${id}) {
-        productId headerText packaging brand department webgroup
+        productId headerText packaging brand department webgroup imageUrl
       }
     }`);
     if (!data.product) return null;
@@ -103,23 +104,30 @@ class DirkAdapter extends StoreAdapter {
 
   async checkBonus(savedProducts) {
     const validProducts = savedProducts.filter(p => !isNaN(parseInt(p.storeProductId, 10)));
-    if (validProducts.length === 0) return [];
+    const invalidProducts = savedProducts.filter(p => isNaN(parseInt(p.storeProductId, 10)));
+    if (validProducts.length === 0) return { results: [], notFound: invalidProducts.map(p => p.id) };
 
     const ids = validProducts.map(p => parseInt(p.storeProductId, 10));
 
     // Batch fetch assortment to check for offers
     const assortmentMap = await fetchAssortmentBatch(ids);
 
+    // Products with no assortment entry at all are considered not found
+    const notFound = validProducts
+      .filter((p, i) => !assortmentMap.has(ids[i]))
+      .map(p => p.id);
+    notFound.push(...invalidProducts.map(p => p.id));
+
     // Find which ones are on offer
     const onOffer = validProducts.filter((_, i) => assortmentMap.get(ids[i])?.productOffer != null);
-    if (onOffer.length === 0) return [];
+    if (onOffer.length === 0) return { results: [], notFound };
 
     const offerIds = onOffer.map(p => parseInt(p.storeProductId, 10));
 
     // Batch fetch product details for those on offer
     const productData = await graphqlQuery(`{
       listProducts(productIds: [${offerIds.join(',')}]) {
-        products { productId headerText packaging brand department webgroup }
+        products { productId headerText packaging brand department webgroup imageUrl }
       }
     }`);
     const products = productData.listProducts?.products || [];
@@ -134,7 +142,7 @@ class DirkAdapter extends StoreAdapter {
         results.push({ ...this.normalizeProduct(product, assortment), savedId: saved.id });
       }
     }
-    return results;
+    return { results, notFound };
   }
 }
 

@@ -47,6 +47,7 @@ export async function add(product) {
     salesUnitSize: product.salesUnitSize || '',
     mainCategory: product.mainCategory || '',
     subCategory: product.subCategory || '',
+    imageUrl: product.imageUrl || '',
     addedAt: new Date().toISOString(),
   };
   products.push(entry);
@@ -61,4 +62,13 @@ export async function remove(id) {
   products.splice(idx, 1);
   await writeProducts(products);
   return true;
+}
+
+export async function update(id, fields) {
+  const products = await readProducts();
+  const product = products.find(p => p.id === id);
+  if (!product) return null;
+  Object.assign(product, fields);
+  await writeProducts(products);
+  return product;
 }

@@ -1,6 +1,26 @@
-export function createProductCard(product, { onRemove, showBonus = false }) {
+import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+
+export function createProductCard(product, { onRemove, showBonus = false, isUnavailable = false }) {
   const el = document.createElement('div');
   el.className = 'product-card';
+
+  // Outer body: image + content side-by-side
+  const body = document.createElement('div');
+  body.className = 'product-card-body';
+
+  // Optional image on the left
+  if (product.imageUrl) {
+    const img = document.createElement('img');
+    img.className = 'product-card-image';
+    img.src = product.imageUrl;
+    img.alt = '';
+    img.loading = 'lazy';
+    body.appendChild(img);
+  }
+
+  // Content wrapper (everything except the image)
+  const content = document.createElement('div');
+  content.className = 'product-card-content';
 
   // Header: title + remove button
   const header = document.createElement('div');
@@ -10,6 +30,14 @@ export function createProductCard(product, { onRemove, showBonus = false }) {
   titleEl.className = 'product-card-title';
   titleEl.textContent = product.title;
   header.appendChild(titleEl);
+
+  if (isUnavailable) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-unavailable';
+    badge.textContent = '!';
+    badge.title = 'Niet meer beschikbaar';
+    header.appendChild(badge);
+  }
 
   if (onRemove) {
     const removeBtn = document.createElement('button');
@@ -22,7 +50,7 @@ export function createProductCard(product, { onRemove, showBonus = false }) {
     header.appendChild(removeBtn);
   }
 
-  el.appendChild(header);
+  content.appendChild(header);
 
   // Meta: size, brand, store badge
   const meta = document.createElement('div');
@@ -31,7 +59,19 @@ export function createProductCard(product, { onRemove, showBonus = false }) {
   const storeBadge = `<span class="badge-store badge-store-${store}">${store.toUpperCase()}</span>`;
   const parts = [product.salesUnitSize, product.brand].filter(Boolean);
   meta.innerHTML = `${storeBadge} ${parts.join(' · ')}`;
-  el.appendChild(meta);
+  content.appendChild(meta);
+
+  // Unit price
+  if (product.currentPrice != null) {
+    const { volume, unit } = parseUnitSize(product.salesUnitSize);
+    const unitPriceData = calcPricePerUnit(product.currentPrice, volume, unit);
+    if (unitPriceData) {
+      const unitPriceEl = document.createElement('p');
+      unitPriceEl.className = 'product-card-unit-price';
+      unitPriceEl.textContent = `€${unitPriceData.unitPrice.toFixed(2)} per ${unitPriceData.standardUnit}`;
+      content.appendChild(unitPriceEl);
+    }
+  }
 
   // Bonus info (only in bonus view)
   if (showBonus && product.isBonus) {
@@ -60,15 +100,18 @@ export function createProductCard(product, { onRemove, showBonus = false }) {
       prices.appendChild(before);
     }
     bonusRow.appendChild(prices);
-    el.appendChild(bonusRow);
+    content.appendChild(bonusRow);
 
     if (product.bonusEndDate) {
       const dates = document.createElement('div');
       dates.className = 'product-card-dates';
       dates.textContent = `t/m ${formatDate(product.bonusEndDate)}`;
-      el.appendChild(dates);
+      content.appendChild(dates);
     }
   }
+
+  body.appendChild(content);
+  el.appendChild(body);
 
   return el;
 }

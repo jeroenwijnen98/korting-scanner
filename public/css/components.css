@@ -161,6 +161,14 @@
   color: var(--store-dirk);
 }
 
+.badge-store-kruidvat {
+  color: var(--store-kruidvat);
+}
+
+.badge-store-etos {
+  color: var(--store-etos);
+}
+
 /* Store pills (filter) */
 .store-pills {
   display: flex;
@@ -515,3 +523,35 @@
 .history-row-bonus td:first-child {
   color: var(--text-secondary);
 }
+
+/* Group section */
+.group-section { margin-bottom: 24px; }
+.group-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.group-section-name { font-size: 1rem; font-weight: 800; letter-spacing: 0.03em; }
+.group-section-count { font-size: 0.8125rem; color: var(--text-secondary); }
+
+/* Product card unit price */
+.product-card-unit-price { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 4px; }
+
+/* Product card image layout */
+.product-card-body { display: flex; gap: 12px; align-items: flex-start; }
+.product-card-content { flex: 1; min-width: 0; }
+.product-card-image { width: 48px; height: 48px; object-fit: contain; border-radius: var(--radius-sm); flex-shrink: 0; }
+
+/* Product detail image */
+.product-detail-image { width: 120px; height: 120px; object-fit: contain; border-radius: var(--radius-md); display: block; margin: 16px auto; }
+
+/* Search result thumbnail */
+.search-result-image { width: 40px; height: 40px; object-fit: contain; border-radius: var(--radius-sm); flex-shrink: 0; }
+
+/* Unavailable product badge */
+.badge-unavailable { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; background: var(--danger); color: white; font-size: 0.75rem; font-weight: 800; flex-shrink: 0; cursor: default; }
+
+/* Unavailable warning banner */
+.unavailable-banner { background: var(--danger); color: white; border-radius: var(--radius-md); padding: 10px 16px; font-size: 0.875rem; margin-bottom: 16px; line-height: 1.4; }
+
+/* Product detail group selector */
+.product-detail-group { background: var(--bg-card); border-radius: var(--radius-lg); padding: 16px; margin-top: 20px; }
+.group-selector { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.group-select, .group-new-input { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; font-size: 0.9375rem; outline: none; width: 100%; transition: border-color var(--transition); }
+.group-select:focus, .group-new-input:focus { border-color: var(--accent); }

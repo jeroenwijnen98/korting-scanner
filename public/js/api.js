@@ -39,6 +39,26 @@ export function getProductHistory(productId) {
   return request(`/history/${encodeURIComponent(productId)}`);
 }
 
-export function getBonus() {
-  return request('/bonus');
+export async function getBonus() {
+  const data = await request('/bonus');
+  // Support both old array shape and new { bonusProducts, notFound } shape
+  if (Array.isArray(data)) {
+    return { bonusProducts: data, notFound: [] };
+  }
+  return data;
+}
+
+export function updateProduct(id, data) {
+  return request(`/products/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function getGroupHistory(groupName) {
+  return request(`/group-history/${encodeURIComponent(groupName)}`);
+}
+
+export function syncProductImages() {
+  return request('/products/sync-images', { method: 'POST' });
 }

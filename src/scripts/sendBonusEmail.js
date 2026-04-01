@@ -57,8 +57,8 @@ function formatDate(dateStr) {
   }
 }
 
-function buildHtml(bonusProducts) {
-  const storeNames = { ah: 'Albert Heijn', dirk: 'Dirk' };
+function buildHtml(bonusProducts, appUrl) {
+  const storeNames = { ah: 'Albert Heijn', dirk: 'Dirk', kruidvat: 'Kruidvat', etos: 'Etos' };
   const grouped = {};
   bonusProducts.forEach(p => {
     if (!grouped[p.store]) grouped[p.store] = [];
@@ -78,14 +78,20 @@ function buildHtml(bonusProducts) {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f5f5f5; padding: 20px;">
   <div style="max-width: 800px; margin: 0 auto; background: white; border-radius: 8px; padding: 24px;">
     <h1 style="font-size: 24px; margin: 0 0 4px 0;">Korting Scanner Update</h1>
-    <p style="color: #666; margin: 0 0 24px 0;">${today}</p>`;
+    <p style="color: #666; margin: 0 0 16px 0;">${today}</p>
+    <p style="margin: 0 0 24px 0;">
+      <a href="${appUrl}" style="display:inline-block; padding: 10px 20px; background:#FF6B00; color:white; border-radius:6px; text-decoration:none; font-weight:bold;">
+        Open Dashboard
+      </a>
+    </p>`;
 
   if (bonusProducts.length === 0) {
     html += `<p style="color: #999; font-style: italic;">Geen opgeslagen producten zijn momenteel in de bonus.</p>`;
   } else {
     for (const [store, products] of Object.entries(grouped)) {
+      const storeColors = { ah: '#00A0E2', dirk: '#ED1C24', kruidvat: '#FF5500', etos: '#7B2D8B' };
       html += `
-    <h2 style="font-size: 18px; color: ${store === 'ah' ? '#00A0E2' : '#ED1C24'}; margin: 24px 0 12px 0;">${storeNames[store] || store}</h2>
+    <h2 style="font-size: 18px; color: ${storeColors[store] || '#333'}; margin: 24px 0 12px 0;">${storeNames[store] || store}</h2>
     <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
       <thead>
         <tr style="background: #f0f0f0;">
@@ -133,6 +139,7 @@ async function main() {
   const sender = process.env.EMAIL_SENDER;
   const password = process.env.EMAIL_PASSWORD;
   const recipient = process.env.EMAIL_RECIPIENT;
+  const appUrl = process.env.APP_URL || 'http://localhost:3001';
 
   if (!sender || !password || !recipient) {
     console.error('Missing email config. Set EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECIPIENT in .env');
@@ -153,7 +160,7 @@ async function main() {
     const storeProducts = saved.filter(p => p.store === storeName);
     if (storeProducts.length === 0) continue;
     try {
-      const results = await adapter.checkBonus(storeProducts);
+      const { results } = await adapter.checkBonus(storeProducts);
       for (const product of results) {
         await priceHistory.recordSnapshot(product.savedId || `${storeName}-${product.productId}`, product).catch(() => {});
       }
@@ -172,7 +179,7 @@ async function main() {
     year: 'numeric',
   });
 
-  const html = buildHtml(bonusProducts);
+  const html = buildHtml(bonusProducts, appUrl);
 
   // Send via Gmail SMTP
   const transporter = createTransport({

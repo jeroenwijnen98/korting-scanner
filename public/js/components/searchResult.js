@@ -2,6 +2,16 @@ export function createSearchResult(product, { onAdd, isSaved }) {
   const el = document.createElement('div');
   el.className = 'search-result';
 
+  // Optional thumbnail on the left
+  if (product.imageUrl) {
+    const img = document.createElement('img');
+    img.className = 'search-result-image';
+    img.src = product.imageUrl;
+    img.alt = '';
+    img.loading = 'lazy';
+    el.appendChild(img);
+  }
+
   const info = document.createElement('div');
   info.className = 'search-result-info';
 

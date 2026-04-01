@@ -1,6 +1,16 @@
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { updateProduct } from '../api.js';
+import { showToast } from './toast.js';
 
-export function createProductDetail(product, { onBack, showBonus = false, history = [] }) {
+export function createProductDetail(product, {
+  onBack,
+  showBonus = false,
+  history = [],
+  savedProduct = null,
+  existingGroups = [],
+  onProductGroupChange = null,
+  groupHistory = [],
+}) {
   const el = document.createElement('div');
   el.className = 'product-detail';
 
@@ -23,6 +33,16 @@ export function createProductDetail(product, { onBack, showBonus = false, histor
   title.textContent = product.title;
   el.appendChild(title);
 
+  // Product image
+  if (product.imageUrl) {
+    const img = document.createElement('img');
+    img.className = 'product-detail-image';
+    img.src = product.imageUrl;
+    img.alt = '';
+    img.loading = 'lazy';
+    el.appendChild(img);
+  }
+
   // Meta: store badge, brand, size
   const meta = document.createElement('div');
   meta.className = 'product-detail-meta';
@@ -31,6 +51,108 @@ export function createProductDetail(product, { onBack, showBonus = false, histor
   const parts = [product.brand, product.salesUnitSize].filter(Boolean);
   meta.innerHTML = `${storeBadge} ${parts.join(' &middot; ')}`;
   el.appendChild(meta);
+
+  // Productgroup selector (only when viewing a saved product)
+  if (savedProduct?.id) {
+    const groupSection = document.createElement('div');
+    groupSection.className = 'product-detail-group';
+
+    const groupTitle = document.createElement('h3');
+    groupTitle.className = 'section-title';
+    groupTitle.textContent = 'Productgroep';
+    groupSection.appendChild(groupTitle);
+
+    const groupSelector = document.createElement('div');
+    groupSelector.className = 'group-selector';
+
+    const select = document.createElement('select');
+    select.className = 'group-select';
+
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = 'Geen productgroep';
+    select.appendChild(noneOption);
+
+    for (const group of existingGroups) {
+      const opt = document.createElement('option');
+      opt.value = group;
+      opt.textContent = group;
+      if (group === savedProduct.productGroup) opt.selected = true;
+      select.appendChild(opt);
+    }
+
+    const newOption = document.createElement('option');
+    newOption.value = '__new__';
+    newOption.textContent = '+ Nieuwe groep...';
+    select.appendChild(newOption);
+
+    // Set initial selection to none if no group matches
+    if (!savedProduct.productGroup) {
+      select.value = '';
+    }
+
+    groupSelector.appendChild(select);
+
+    const newRow = document.createElement('div');
+    newRow.className = 'group-new-row';
+    newRow.style.display = 'none';
+
+    const newInput = document.createElement('input');
+    newInput.className = 'group-new-input';
+    newInput.type = 'text';
+    newInput.placeholder = 'Naam nieuwe groep...';
+    newRow.appendChild(newInput);
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary group-new-save';
+    saveBtn.textContent = 'Opslaan';
+    newRow.appendChild(saveBtn);
+
+    groupSelector.appendChild(newRow);
+    groupSection.appendChild(groupSelector);
+    el.appendChild(groupSection);
+
+    select.addEventListener('change', async () => {
+      const val = select.value;
+      if (val === '__new__') {
+        newRow.style.display = '';
+        newInput.focus();
+        return;
+      }
+      newRow.style.display = 'none';
+      try {
+        await updateProduct(savedProduct.id, { productGroup: val || null });
+        if (onProductGroupChange) onProductGroupChange(savedProduct.id, val || null);
+        showToast('Productgroep opgeslagen', 'success');
+      } catch (err) {
+        showToast('Fout bij opslaan productgroep', 'error');
+      }
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      const inputVal = newInput.value.trim();
+      if (!inputVal) return;
+      try {
+        await updateProduct(savedProduct.id, { productGroup: inputVal });
+        if (onProductGroupChange) onProductGroupChange(savedProduct.id, inputVal);
+        showToast('Productgroep opgeslagen', 'success');
+        // Update select to show new group as selected
+        const existingOpt = [...select.options].find(o => o.value === inputVal);
+        if (!existingOpt) {
+          const opt = document.createElement('option');
+          opt.value = inputVal;
+          opt.textContent = inputVal;
+          // Insert before __new__ option
+          select.insertBefore(opt, newOption);
+        }
+        select.value = inputVal;
+        newRow.style.display = 'none';
+        newInput.value = '';
+      } catch (err) {
+        showToast('Fout bij opslaan productgroep', 'error');
+      }
+    });
+  }
 
   // Bonus info
   if (showBonus && product.isBonus) {
@@ -152,6 +274,46 @@ export function createProductDetail(product, { onBack, showBonus = false, histor
     table.appendChild(tbody);
     histSection.appendChild(table);
     el.appendChild(histSection);
+  }
+
+  // Group history section
+  if (groupHistory.length > 0 && savedProduct?.productGroup) {
+    const groupHistSection = document.createElement('div');
+    groupHistSection.className = 'product-detail-history';
+
+    const groupHistTitle = document.createElement('div');
+    groupHistTitle.className = 'product-detail-unit-title';
+    groupHistTitle.textContent = `Productgroep: ${savedProduct.productGroup}`;
+    groupHistSection.appendChild(groupHistTitle);
+
+    const groupTable = document.createElement('table');
+    groupTable.className = 'history-table';
+    groupTable.innerHTML = `<thead><tr>
+      <th>Datum</th><th>Product</th><th>Winkel</th><th>Maat</th><th>Prijs</th><th>Actie</th><th>Per eenheid</th>
+    </tr></thead>`;
+    const groupTbody = document.createElement('tbody');
+
+    for (const entry of groupHistory) {
+      const tr = document.createElement('tr');
+      if (entry.isBonus) tr.className = 'history-row-bonus';
+
+      const { volume: gVol, unit: gUnit } = parseUnitSize(entry.salesUnitSize);
+      const gUnitInfo = calcPricePerUnit(entry.currentPrice, gVol, gUnit);
+
+      tr.innerHTML = `
+        <td>${formatDate(entry.date)}</td>
+        <td>${entry.title || '—'}</td>
+        <td>${entry.store || '—'}</td>
+        <td>${entry.salesUnitSize || '—'}</td>
+        <td>${entry.currentPrice != null ? `€${entry.currentPrice.toFixed(2)}` : '—'}</td>
+        <td>${entry.bonusMechanism || '—'}</td>
+        <td>${gUnitInfo ? `€${gUnitInfo.unitPrice.toFixed(2)} per ${gUnitInfo.standardUnit}` : '—'}</td>
+      `;
+      groupTbody.appendChild(tr);
+    }
+    groupTable.appendChild(groupTbody);
+    groupHistSection.appendChild(groupTable);
+    el.appendChild(groupHistSection);
   }
 
   return el;

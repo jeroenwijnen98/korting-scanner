@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as productStore from '../services/productStore.js';
 import * as priceHistory from '../services/priceHistory.js';
 import { stores } from '../stores/index.js';
+import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 
 export const router = Router();
 
@@ -78,6 +79,27 @@ router.get('/product/:store/:storeProductId', async (req, res) => {
   }
 });
 
+// Backfill imageUrl for saved products that are missing it
+router.post('/products/sync-images', async (req, res) => {
+  try {
+    const saved = await productStore.getAll();
+    const missing = saved.filter(p => !p.imageUrl);
+    await Promise.all(missing.map(async (p) => {
+      try {
+        const adapter = stores[p.store];
+        if (!adapter) return;
+        const detail = await adapter.getProductDetail(p.storeProductId);
+        if (detail?.imageUrl) {
+          await productStore.update(p.id, { imageUrl: detail.imageUrl });
+        }
+      } catch { /* skip on error */ }
+    }));
+    res.json(await productStore.getAll());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get price history for a product
 router.get('/history/:productId', async (req, res) => {
   try {
@@ -93,19 +115,122 @@ router.get('/bonus', async (req, res) => {
   try {
     const saved = await productStore.getAll();
     if (saved.length === 0) {
-      return res.json([]);
+      return res.json({ bonusProducts: [], notFound: [] });
     }
-    const results = [];
+    const bonusProducts = [];
+    const notFound = [];
     for (const [storeName, adapter] of Object.entries(stores)) {
       const storeProducts = saved.filter(p => p.store === storeName);
       if (storeProducts.length === 0) continue;
-      const bonusResults = await adapter.checkBonus(storeProducts);
-      for (const product of bonusResults) {
+      const { results, notFound: storeNotFound } = await adapter.checkBonus(storeProducts);
+      for (const product of results) {
         priceHistory.recordSnapshot(product.savedId || `${storeName}-${product.productId}`, product).catch(() => {});
       }
-      results.push(...bonusResults);
+      bonusProducts.push(...results);
+      notFound.push(...(storeNotFound || []));
     }
-    res.json(results);
+    res.json({ bonusProducts, notFound });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update a saved product (e.g. set productGroup)
+router.patch('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { productGroup } = req.body;
+    const updated = await productStore.update(id, { productGroup: productGroup ?? null });
+    if (!updated) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get cheapest-per-unit history for a product group
+router.get('/group-history/:groupName', async (req, res) => {
+  try {
+    const { groupName } = req.params;
+
+    // 1. Find all saved products in this group
+    const all = await productStore.getAll();
+    const groupProducts = all.filter(p => p.productGroup === groupName);
+    if (groupProducts.length === 0) {
+      return res.json([]);
+    }
+
+    // 2. Load price history for each product (oldest-first)
+    const historiesByProduct = await Promise.all(
+      groupProducts.map(async (p) => {
+        const entries = await priceHistory.getHistory(p.id); // newest-first
+        return {
+          saved: p,
+          entries: [...entries].reverse(), // oldest-first
+        };
+      })
+    );
+
+    // 3. Collect all unique dates across all histories
+    const dateSet = new Set();
+    for (const { entries } of historiesByProduct) {
+      for (const entry of entries) {
+        dateSet.add(entry.date);
+      }
+    }
+    const allDates = [...dateSet].sort(); // ascending
+
+    if (allDates.length === 0) {
+      return res.json([]);
+    }
+
+    // 4. For each date, find each product's effective state (most recent snapshot <= date)
+    //    then compute unit price and pick the cheapest
+    const results = [];
+    for (const date of allDates) {
+      let cheapest = null;
+      let cheapestUnitPrice = Infinity;
+
+      for (const { saved, entries } of historiesByProduct) {
+        // Most recent snapshot on or before this date
+        const snapshot = [...entries].reverse().find(e => e.date <= date);
+        if (!snapshot) continue;
+
+        const price = snapshot.currentPrice;
+        if (price == null) continue;
+
+        const { volume, unit } = parseUnitSize(saved.salesUnitSize);
+        const calc = calcPricePerUnit(price, volume, unit);
+
+        const unitPriceVal = calc ? calc.unitPrice : price;
+        const standardUnit = calc ? calc.standardUnit : null;
+
+        if (unitPriceVal < cheapestUnitPrice) {
+          cheapestUnitPrice = unitPriceVal;
+          cheapest = {
+            date,
+            title: saved.title,
+            store: saved.store,
+            salesUnitSize: saved.salesUnitSize,
+            currentPrice: snapshot.currentPrice,
+            priceBeforeBonus: snapshot.priceBeforeBonus,
+            isBonus: snapshot.isBonus,
+            bonusMechanism: snapshot.bonusMechanism,
+            unitPrice: calc ? calc.unitPrice : null,
+            standardUnit,
+          };
+        }
+      }
+
+      if (cheapest) {
+        results.push(cheapest);
+      }
+    }
+
+    // 5. Return newest-first
+    res.json(results.reverse());
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

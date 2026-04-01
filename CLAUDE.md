@@ -1,168 +1,153 @@
-# Korting Scanner
+# CLAUDE.md
 
-Browser-based discount scanner for Dutch supermarkets. Monitors product bonuses/sales across stores.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Architecture Reference
+## Commands
 
-Based on **sports-tracker** pattern:
-- Node.js/Express backend serving static frontend
-- `start.command` launcher (detects node, manages port, opens browser, cleans Terminal)
-- Port 3001 (3000 is sports-tracker), vanilla JS frontend in `public/`, backend in `src/`
-- ES modules (`"type": "module"` in package.json)
+```bash
+# Start server (development)
+node server.js
+
+# Start via macOS launcher (installs deps, opens browser, survives terminal close)
+./start.command
+
+# Run bonus email script manually
+node src/scripts/sendBonusEmail.js
+```
+
+No build step, no tests. Server runs on port 3001 (`src/config.js`).
+
+## Architecture
+
+Node.js/Express backend (ES modules) serving a vanilla JS frontend. The backend proxies all store API calls — this keeps CORS clean and AH's bearer token server-side.
+
+```
+server.js              → Express entry, mounts /api and static public/
+src/config.js          → Port config (3001)
+src/routes/api.js      → All REST endpoints
+src/stores/            → Store adapters (base.js, ah.js, dirk.js, index.js)
+src/services/
+  productStore.js      → JSON file CRUD for saved products (src/data/products.json)
+  priceHistory.js      → Price snapshot storage (src/data/price-history.json)
+src/scripts/
+  sendBonusEmail.js    → Standalone bonus email script (run via run.sh / sleepwatcher)
+public/js/
+  api.js               → Fetch wrapper for all /api/* calls
+  app.js               → Init + tab switching
+  views/               → onSale.js, myProducts.js
+  components/          → productCard.js, searchResult.js, productDetail.js, toast.js
+  utils/               → unitPrice.js (parseUnitSize, calcPricePerUnit)
+```
+
+`src/data/` is auto-created and gitignored. Data persists in JSON files across runs.
+
+## Store Adapter Pattern
+
+Each store extends `StoreAdapter` (src/stores/base.js) and implements:
+- `searchProducts(query)` → normalized product array
+- `getProductDetail(storeProductId)` → single normalized product
+- `checkBonus(savedProducts)` → normalized products where `isBonus: true`
+
+Register in `src/stores/index.js`. All methods normalize to the common schema below.
+
+## Backend API Routes
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/products` | List saved products |
+| `POST` | `/api/products` | Save a product |
+| `DELETE` | `/api/products/:id` | Remove a saved product |
+| `GET` | `/api/search?store=ah&q=koffie` | Proxy search to store |
+| `GET` | `/api/product/:store/:storeProductId` | Fetch product detail + record price snapshot |
+| `GET` | `/api/bonus` | Check saved products for current bonus status + record snapshots |
+| `GET` | `/api/history/:productId` | Get price history for a product |
 
 ## Store APIs
 
 ### Albert Heijn (AH)
 - **Base URL**: `https://api.ah.nl`
-- **Auth**: Anonymous bearer token via `POST /mobile-auth/v1/auth/token/anonymous` with body `{"clientId": "appie"}`
-- **Headers**: `Authorization: Bearer {token}`, `x-application: AHWEBSHOP`, `Content-Type: application/json`
-- **Product search**: `GET /mobile-services/product/search/v2?query={term}&page=0&size=25`
-- **Bonus page**: `GET /mobile-services/bonuspage/v1/segment?date={date}&segmentId=&includeActivatableDiscount=false`
-- **Product detail**: `GET /mobile-services/product/detail/v4/fir/{product_id}`
-- Key fields: `hqId`, `title`, `salesUnitSize`, `bonusMechanism`, `priceBeforeBonus`, `bonusStartDate`, `bonusEndDate`, `mainCategory`, `subCategory`, `brand`, `isBonus`
+- **Auth**: Anonymous bearer token — `POST /mobile-auth/v1/auth/token/anonymous` with `{"clientId": "appie"}`. Token cached in memory with expiry.
+- **Headers**: `Authorization: Bearer {token}`, `x-application: AHWEBSHOP`
+- **Search**: `GET /mobile-services/product/search/v2?query={term}&page=0&size=25` → `data.products`
+- **Detail**: `GET /mobile-services/product/detail/v4/fir/{webshopId}` → `data.productCard`
+- **Important**: Use `webshopId` (not `hqId`) as the stable product ID. Bundle products have `hqId: 0`.
+- Bonus info in search results is in `discountLabels[0].defaultDescription`
 
 ### Dirk van den Broek
-- **Base URL**: `https://www.dirk.nl/api`
-- **Auth**: None (public API)
-- **Current offers**: `GET /offers/current/{page}` — paginated, returns `currentOffers` array
-- **Search**: Filter offers locally by `headerText` (case-insensitive)
-- Key fields: `offerId`, `headerText`, `offerPrice`, `packaging`, `textPriceSign`, `startDate`, `endDate`, `products[0].productInformation.{department,webgroup,brand}`
-- Bonus multipliers: `actie_` and `vr, za & zo_actie` both map to 1.0 (offerPrice is already the final price)
+- **GraphQL** (full catalog search + product detail): `POST https://web-gateway.dirk.nl/graphql` with header `x-gateway-apikey: 6d3a42a3-6d93-4f98-838d-bcc0ab2307fd`
+  - Search: `newSearchProducts(query: { searchTerm, limit })` → `[{ productId }]`
+  - Batch details: `listProducts(productIds: [...])` → `{ products: [{ productId, headerText, packaging, brand, department, webgroup }] }`
+  - Pricing/offers: `productAssortment(productId, storeId: 36)` → `{ normalPrice, offerPrice, productOffer { productOfferId, textPriceSign, startDate, endDate } }`
+  - Single product: `product(productId: N)` → same fields as listProducts
+- `productAssortment` is batched using GraphQL aliases (`p0:`, `p1:`, …)
+- Dirk product IDs are integers
 
-## Bonus Mechanisms (from Bonus Scanner)
+## Bonus Mechanisms
 
-### AH multipliers
-- `2e gratis` / `1 + 1 gratis` / `2 + 2 gratis` → 50% off
-- `2 + 1 gratis` → 33% off
-- `2e halve prijs` → 25% off
+### AH (`parseBonusMechanism` in src/stores/ah.js)
+- `2e gratis` / `1 + 1 gratis` / `2 + 2 gratis` → 50% off (× 0.5)
+- `2 + 1 gratis` → 33% off (× 2/3)
+- `2e halve prijs` → 25% off (× 0.75)
 - `XX%` → dynamic percentage
-- `X voor Y euros` → bundle price
+- `X voor Y euro` → bundle price (total / count)
+- `voor Y` → fixed single-item price
 
 ### Dirk
-- Price given directly as `offerPrice` (no calculation needed)
+- `offerPrice` is the final price; `normalPrice` is the pre-offer price. No calculation needed.
+- `textPriceSign` is the bonus mechanism label (normalized: underscores/spaces stripped)
 
-## Common Product Schema (normalized)
+## Common Product Schema
 
 ```json
 {
-  "productId": "string|number",
+  "productId": "string",
   "title": "string",
-  "salesUnitSize": "string (e.g. 250ml, 500g)",
+  "salesUnitSize": "string",
   "bonusMechanism": "string",
-  "priceBeforeBonus": "number",
-  "currentPrice": "number (calculated)",
+  "priceBeforeBonus": "number|null",
+  "currentPrice": "number|null",
   "bonusStartDate": "string",
   "bonusEndDate": "string",
   "mainCategory": "string",
   "subCategory": "string",
   "brand": "string",
   "isBonus": "boolean",
-  "store": "string (ah|dirk)"
+  "store": "ah|dirk"
 }
 ```
 
-## Store Adapter Pattern
-
-Each store implements: `searchProducts(query)`, `checkBonus(savedProducts)`, normalize internally.
-New stores added by creating adapter file in `src/stores/` and registering in `src/stores/index.js`.
-
-## Implementation Plan
-
-### File Structure
-
-```
-korting-scanner/
-├── server.js                          # Express entry point
-├── package.json                       # ES module, express only
-├── start.command                      # macOS launcher (sports-tracker pattern)
-├── .gitignore
-├── CLAUDE.md
-├── src/
-│   ├── config.js                      # Port config
-│   ├── routes/
-│   │   └── api.js                     # All REST endpoints
-│   ├── stores/
-│   │   ├── base.js                    # StoreAdapter base class
-│   │   ├── ah.js                      # Albert Heijn (token auth + search + detail)
-│   │   ├── dirk.js                    # Dirk (public API, offers cache, local filter)
-│   │   └── index.js                   # Store registry { ah, dirk }
-│   ├── services/
-│   │   └── productStore.js            # JSON file CRUD for saved products
-│   └── data/                          # Auto-created, gitignored
-│       └── products.json
-└── public/
-    ├── index.html                     # App shell: header + 2 tabs
-    ├── css/
-    │   ├── reset.css                  # From sports-tracker
-    │   ├── variables.css              # Dark theme, orange accent, store colors
-    │   ├── layout.css                 # Header, tabs, panels
-    │   └── components.css             # Cards, search, badges, pills, toast
-    └── js/
-        ├── app.js                     # Init + tab switching
-        ├── api.js                     # Fetch wrapper for /api/*
-        ├── components/
-        │   ├── productCard.js         # Product card (bonus info + remove btn)
-        │   ├── searchResult.js        # Search result row (+ add btn)
-        │   └── toast.js               # Toast notifications
-        └── views/
-            ├── onSale.js              # "In de Bonus" tab — bonus products by store
-            └── myProducts.js          # "Mijn Producten" tab — saved list + search
-```
-
-### Backend API Routes
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/api/products` | List all saved products |
-| `POST` | `/api/products` | Save a product `{store, storeProductId, title, ...}` |
-| `DELETE` | `/api/products/:id` | Remove a saved product |
-| `GET` | `/api/search?store=ah&q=koffie` | Proxy search to store API |
-| `GET` | `/api/bonus` | Check saved products for current bonus status |
-
-### Saved Product Data Model
+## Saved Product Data Model (products.json)
 
 ```json
 {
   "id": "ah-12345",
   "store": "ah",
   "storeProductId": "12345",
-  "title": "Douwe Egberts Aroma Rood",
-  "brand": "Douwe Egberts",
-  "salesUnitSize": "500g",
-  "mainCategory": "Koffie",
-  "subCategory": "Filterkoffie",
-  "addedAt": "2026-02-09T12:00:00Z"
+  "title": "...",
+  "brand": "...",
+  "salesUnitSize": "...",
+  "mainCategory": "...",
+  "subCategory": "...",
+  "addedAt": "ISO timestamp"
 }
 ```
 
-Bonus/pricing info is NOT saved — fetched live from APIs (changes weekly).
+Bonus/pricing is NOT saved — always fetched live (changes weekly).
 
-### Frontend Tabs
+## Price History (priceHistory.js)
 
-**Tab 1: "In de Bonus"** — Calls `GET /api/bonus`, renders products grouped by store section. Each card shows: title, unit size, bonus mechanism, price, end date. Empty state if nothing on sale.
+Keyed by `{store}-{storeProductId}` (e.g. `ah-588920`). A new snapshot is only appended when `currentPrice`, `isBonus`, or `bonusMechanism` differs from the last entry. Snapshots are recorded automatically on every detail fetch and bonus check.
 
-**Tab 2: "Mijn Producten"** — Store filter pills (Alle / AH / Dirk) + search input. Default: shows saved products. When typing: live search results from selected store with add buttons. Debounced 300ms. Saved products show remove button.
+## Design Decisions
 
-### Implementation Phases
+- Backend proxies store calls: CORS + AH token kept server-side
+- Dirk search: GraphQL full catalog (not offer-filtered). Bonus data comes from `productAssortment`.
+- AH bonus check: individual detail calls per product (acceptable for <50 products)
+- Dirk bonus check: batched via `productAssortment` aliases in a single GraphQL request
+- Price history deduplication: only write when price/bonus state changes (not every poll)
+- `start.command`: survives terminal close via `nohup`; if port 3001 already in use, just opens browser
 
-1. **Skeleton**: package.json, server.js, config, start.command, index.html, CSS, tab switching
-2. **Data layer**: productStore.js, CRUD routes, api.js fetch wrapper
-3. **Store adapters**: base.js, ah.js, dirk.js, index.js, search + bonus routes
-4. **My Products tab**: toast, searchResult, productCard components, myProducts view
-5. **On Sale tab**: onSale view with store sections
-6. **Polish**: loading states, error toasts, refresh button, responsive
+## Known Limitations
 
-### Design Decisions
-
-- Backend proxies all store API calls (CORS + AH token kept server-side)
-- Saved products in JSON file (persists across browser clears, simple for small dataset)
-- Dirk offers cached 10min in memory (no search API, filter locally)
-- AH bonus check via individual product detail endpoint (fine for <50 products)
-- Dirk search only returns current offers (no full catalog API available — acceptable)
-- Notifications deferred to future version (core browse/save experience first)
-
-### Known Limitations
-
-- Dirk search only covers current offers, not full product catalog
-- Dirk `offerId` may change weekly; saved products only match when exact offer is active
-- AH individual product checks scale linearly; optimize with bonus page endpoint if needed later
+- Dirk `storeProductId` is an integer product ID (stable); previously used `offerId` which changed weekly
+- AH individual product checks scale linearly — optimize with bonus page endpoint if needed for large lists
