@@ -58,8 +58,8 @@ class KruidvatAdapter extends StoreAdapter {
   normalize(product) {
     const promo = product.topPromotion;
     const rawMechanism = promo?.badge?.headline || '';
-    // "met gratis artikel" doesn't reduce the price of the saved product — ignore it
-    const isPriceReducing = rawMechanism && !/met\s+gratis\s+artikel/i.test(rawMechanism);
+    // "gratis artikel" promos don't reduce the price of the saved product — ignore them
+    const isPriceReducing = rawMechanism && !/gratis\s+artikel/i.test(rawMechanism);
     const bonusMechanism = isPriceReducing ? rawMechanism : '';
     const isBonus = !!bonusMechanism;
     const normalPrice = product.price?.value ?? null;
