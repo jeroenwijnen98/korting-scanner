@@ -34,6 +34,7 @@ export async function initMyProducts() {
       renderSaved();
       // Clear search when switching store
       searchInput.value = '';
+      clearBtn.hidden = true;
       resultsContainer.innerHTML = '';
       resultsContainer.style.display = 'none';
     });
@@ -50,9 +51,16 @@ export async function initMyProducts() {
       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
     </svg>
     <input type="text" placeholder="Zoek producten..." id="search-input">
+    <button type="button" class="search-bar-clear" aria-label="Wissen" hidden>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
   `;
   panel.appendChild(searchBar);
   const searchInput = searchBar.querySelector('input');
+  const clearBtn = searchBar.querySelector('.search-bar-clear');
 
   // Search results container
   const resultsContainer = document.createElement('div');
@@ -65,15 +73,28 @@ export async function initMyProducts() {
   savedContainer.id = 'saved-products';
   panel.appendChild(savedContainer);
 
+  const resetSearch = () => {
+    resultsContainer.innerHTML = '';
+    resultsContainer.style.display = 'none';
+    savedContainer.style.display = '';
+    renderSaved();
+  };
+
+  clearBtn.addEventListener('click', () => {
+    clearTimeout(searchTimeout);
+    searchInput.value = '';
+    clearBtn.hidden = true;
+    resetSearch();
+    searchInput.focus();
+  });
+
   // Search input handler with debounce
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimeout);
     const query = searchInput.value.trim();
+    clearBtn.hidden = searchInput.value.length === 0;
     if (!query) {
-      resultsContainer.innerHTML = '';
-      resultsContainer.style.display = 'none';
-      savedContainer.style.display = '';
-      renderSaved();
+      resetSearch();
       return;
     }
     searchTimeout = setTimeout(async () => {

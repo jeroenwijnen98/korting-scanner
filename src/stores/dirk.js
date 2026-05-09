@@ -3,6 +3,12 @@ import { StoreAdapter } from './base.js';
 const GRAPHQL_URL = 'https://web-gateway.dirk.nl/graphql';
 const GRAPHQL_API_KEY = '6d3a42a3-6d93-4f98-838d-bcc0ab2307fd';
 const DEFAULT_STORE_ID = 36;
+const IMAGE_BASE_URL = 'https://web-fileserver.dirk.nl/';
+
+function buildImageUrl(image) {
+  if (!image) return null;
+  return IMAGE_BASE_URL + encodeURIComponent(image);
+}
 
 async function graphqlQuery(query) {
   const res = await fetch(GRAPHQL_URL, {
@@ -58,7 +64,7 @@ class DirkAdapter extends StoreAdapter {
       subCategory: product.webgroup || '',
       brand: product.brand || '',
       isBonus: hasOffer,
-      imageUrl: product.imageUrl || null,
+      imageUrl: buildImageUrl(product.image),
       store: 'dirk',
     };
   }
@@ -76,7 +82,7 @@ class DirkAdapter extends StoreAdapter {
     // Batch fetch product details
     const productData = await graphqlQuery(`{
       listProducts(productIds: [${ids.join(',')}]) {
-        products { productId headerText packaging brand department webgroup imageUrl }
+        products { productId headerText packaging brand department webgroup image }
       }
     }`);
     const products = productData.listProducts?.products || [];
@@ -93,7 +99,7 @@ class DirkAdapter extends StoreAdapter {
 
     const data = await graphqlQuery(`{
       product(productId: ${id}) {
-        productId headerText packaging brand department webgroup imageUrl
+        productId headerText packaging brand department webgroup image
       }
     }`);
     if (!data.product) return null;
@@ -127,7 +133,7 @@ class DirkAdapter extends StoreAdapter {
     // Batch fetch product details for those on offer
     const productData = await graphqlQuery(`{
       listProducts(productIds: [${offerIds.join(',')}]) {
-        products { productId headerText packaging brand department webgroup imageUrl }
+        products { productId headerText packaging brand department webgroup image }
       }
     }`);
     const products = productData.listProducts?.products || [];

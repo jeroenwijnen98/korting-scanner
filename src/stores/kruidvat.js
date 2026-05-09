@@ -1,9 +1,10 @@
 import { StoreAdapter } from './base.js';
 
-const BASE_URL = 'https://www.kruidvat.nl/api/v2/kvn';
+const BASE_URL = 'https://app.kruidvat.nl/api/v2/kvn-spa';
+const IMAGE_HOST = 'https://www.kruidvat.nl';
 const COMMON_HEADERS = {
   'Accept': 'application/json',
-  'User-Agent': 'Mozilla/5.0',
+  'User-Agent': 'okhttp/4.9.3',
 };
 
 async function kvFetch(path) {
@@ -15,7 +16,8 @@ async function kvFetch(path) {
 // Reuse AH bonus mechanism logic for Dutch promo labels
 function parseBonusMechanism(mechanism, priceBeforeBonus) {
   if (!mechanism) return null;
-  const m = mechanism.toLowerCase();
+  // Normalize spaces around "+" so "1+1 gratis" matches "1 + 1 gratis"
+  const m = mechanism.toLowerCase().replace(/\s*\+\s*/g, ' + ');
 
   if (m === '2e gratis' || m === '1 + 1 gratis' || m === '2 + 2 gratis') {
     return priceBeforeBonus * 0.5;
@@ -32,7 +34,7 @@ function parseBonusMechanism(mechanism, priceBeforeBonus) {
     return priceBeforeBonus * (1 - parseInt(pctMatch[1]) / 100);
   }
 
-  const bundleMatch = m.match(/(\d+)\s*voor\s*(\d+(?:[.,]\d+)?)\s*euro/);
+  const bundleMatch = m.match(/(\d+)\s*voor\s*(\d+(?:[.,]\d+)?)(?:\s*euro)?/);
   if (bundleMatch) {
     const count = parseInt(bundleMatch[1]);
     const total = parseFloat(bundleMatch[2].replace(',', '.'));
@@ -54,22 +56,30 @@ class KruidvatAdapter extends StoreAdapter {
   }
 
   normalize(product) {
-    const promo = product.potentialPromotions?.[0];
-    const bonusMechanism = promo?.description || '';
-    const isBonus = (product.potentialPromotions?.length ?? 0) > 0;
+    const promo = product.topPromotion;
+    const rawMechanism = promo?.badge?.headline || '';
+    // "met gratis artikel" doesn't reduce the price of the saved product — ignore it
+    const isPriceReducing = rawMechanism && !/met\s+gratis\s+artikel/i.test(rawMechanism);
+    const bonusMechanism = isPriceReducing ? rawMechanism : '';
+    const isBonus = !!bonusMechanism;
     const normalPrice = product.price?.value ?? null;
     const computedPrice = isBonus
       ? (parseBonusMechanism(bonusMechanism, normalPrice) ?? normalPrice)
       : normalPrice;
 
-    const categories = product.categories || [];
-    const mainCategory = categories[0]?.name || '';
-    const subCategory = categories[1]?.name || '';
+    const hierarchyCats = product.categoriesHierarchy?.[0]?.categories || [];
+    const mainCategory = hierarchyCats[0]?.name || '';
+    const subCategory = hierarchyCats[1]?.name || '';
+
+    const firstImage = product.images?.find(i => i.imageType === 'PRIMARY') || product.images?.[0];
+    const imageUrl = firstImage?.url
+      ? (firstImage.url.startsWith('http') ? firstImage.url : `${IMAGE_HOST}${firstImage.url}`)
+      : null;
 
     return {
       productId: String(product.code),
       title: product.name || '',
-      salesUnitSize: product.summary || '',
+      salesUnitSize: product.shortDescription || '',
       bonusMechanism: bonusMechanism,
       priceBeforeBonus: isBonus ? normalPrice : null,
       currentPrice: computedPrice != null ? Math.round(computedPrice * 100) / 100 : null,
@@ -79,21 +89,21 @@ class KruidvatAdapter extends StoreAdapter {
       subCategory,
       brand: product.manufacturer || '',
       isBonus,
-      imageUrl: product.images?.[0]?.url || null,
+      imageUrl,
       store: 'kruidvat',
     };
   }
 
   async searchProducts(query) {
     const data = await kvFetch(
-      `/products/search?query=${encodeURIComponent(query)}&currentPage=0&pageSize=25&fields=FULL`
+      `/search?fields=FULL&lang=nl&query=${encodeURIComponent(query)}`
     );
     const products = data.products || [];
     return products.map(p => this.normalize(p));
   }
 
   async getProductDetail(storeProductId) {
-    const data = await kvFetch(`/products/${encodeURIComponent(storeProductId)}?fields=FULL`);
+    const data = await kvFetch(`/products/${encodeURIComponent(storeProductId)}?fields=FULL&lang=nl`);
     return this.normalize(data);
   }
 
@@ -102,7 +112,7 @@ class KruidvatAdapter extends StoreAdapter {
     const notFound = [];
     for (const saved of savedProducts) {
       try {
-        const data = await kvFetch(`/products/${encodeURIComponent(saved.storeProductId)}?fields=FULL`);
+        const data = await kvFetch(`/products/${encodeURIComponent(saved.storeProductId)}?fields=FULL&lang=nl`);
         const normalized = this.normalize(data);
         if (normalized.isBonus) {
           results.push({ ...normalized, savedId: saved.id });

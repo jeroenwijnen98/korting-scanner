@@ -202,10 +202,36 @@
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 10px 12px 10px 40px;
+  padding: 10px 36px 10px 40px;
   font-size: 0.9375rem;
   outline: none;
   transition: border-color var(--transition);
+}
+
+.search-bar-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background var(--transition), color var(--transition);
+}
+
+.search-bar-clear:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.search-bar-clear[hidden] {
+  display: none;
 }
 
 .search-bar input:focus {

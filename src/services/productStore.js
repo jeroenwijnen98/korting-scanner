@@ -72,3 +72,14 @@ export async function update(id, fields) {
   await writeProducts(products);
   return product;
 }
+
+export async function bulkUpdate(updates) {
+  const products = await readProducts();
+  const byId = new Map(products.map(p => [p.id, p]));
+  for (const { id, fields } of updates) {
+    const p = byId.get(id);
+    if (p) Object.assign(p, fields);
+  }
+  await writeProducts(products);
+  return products;
+}

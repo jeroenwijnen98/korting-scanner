@@ -84,17 +84,22 @@ router.post('/products/sync-images', async (req, res) => {
   try {
     const saved = await productStore.getAll();
     const missing = saved.filter(p => !p.imageUrl);
-    await Promise.all(missing.map(async (p) => {
+    const fetched = await Promise.all(missing.map(async (p) => {
       try {
         const adapter = stores[p.store];
-        if (!adapter) return;
+        if (!adapter) return null;
         const detail = await adapter.getProductDetail(p.storeProductId);
         if (detail?.imageUrl) {
-          await productStore.update(p.id, { imageUrl: detail.imageUrl });
+          return { id: p.id, fields: { imageUrl: detail.imageUrl } };
         }
       } catch { /* skip on error */ }
+      return null;
     }));
-    res.json(await productStore.getAll());
+    const updates = fetched.filter(Boolean);
+    const products = updates.length > 0
+      ? await productStore.bulkUpdate(updates)
+      : saved;
+    res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
