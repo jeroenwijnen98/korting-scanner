@@ -18,8 +18,9 @@ async function readProducts() {
   try {
     const data = await readFile(FILE_PATH, 'utf-8');
     return JSON.parse(data);
-  } catch {
-    return [];
+  } catch (err) {
+    if (err.code === 'ENOENT') return [];
+    throw err;
   }
 }
 
