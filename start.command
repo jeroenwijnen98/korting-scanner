@@ -22,8 +22,10 @@ if [ ! -d "node_modules" ]; then
   "$NPM_DIR/npm" install
 fi
 
-# If server is already running on port 3001, just open browser
-if lsof -ti:3001 &>/dev/null; then
+# If server is already running on port 3001, just open browser.
+# -sTCP:LISTEN matters: a plain `lsof -ti:3001` also matches browser tabs
+# connected to the server, so a stale tab would look like a running server.
+if [ -n "$(lsof -ti:3001 -sTCP:LISTEN)" ]; then
   open "http://localhost:3001"
 else
   # Start server in background (survives terminal close)
