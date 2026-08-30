@@ -5,12 +5,14 @@ cd "$(dirname "$0")"
 TERMINAL_WINDOWS=$(osascript -e 'tell application "Terminal" to count windows' 2>/dev/null || echo 1)
 
 # Find node
-if command -v node &>/dev/null; then
-  NODE=node
-elif [ -x "/opt/homebrew/bin/node" ]; then
+# Prefer the native arm64 Homebrew node; /usr/local holds the x86_64 build,
+# which runs under Rosetta.
+if [ -x "/opt/homebrew/bin/node" ]; then
   NODE=/opt/homebrew/bin/node
 elif [ -x "/usr/local/bin/node" ]; then
   NODE=/usr/local/bin/node
+elif command -v node &>/dev/null; then
+  NODE=$(command -v node)
 else
   osascript -e 'display alert "Node.js not found" message "Install it with: brew install node"'
   exit 1
