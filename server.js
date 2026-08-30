@@ -1,11 +1,15 @@
 import express from 'express';
 import { PORT } from './src/config.js';
 import { router as apiRouter } from './src/routes/api.js';
+import { attachIdleShutdown } from './src/services/idleShutdown.js';
 
 const app = express();
 
 app.use(express.json());
 app.use(express.static('public'));
+
+attachIdleShutdown(app, { enabled: process.env.KORTING_AUTOQUIT === '1' });
+
 app.use('/api', apiRouter);
 
 app.listen(PORT, () => {

@@ -1,5 +1,6 @@
 import { initOnSale } from './views/onSale.js';
 import { initMyProducts } from './views/myProducts.js';
+import { keepSessionAlive } from './session.js';
 
 // Tab switching
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -19,5 +20,6 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
 });
 
 // Init views
+keepSessionAlive();
 initOnSale();
 initMyProducts();
