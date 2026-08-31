@@ -8,9 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Start server (development)
 node server.js
 
-# Start via macOS launcher (installs deps, opens browser, survives terminal close)
-./start.command
-
 # Install/refresh /Applications/KortingScanner.app (only when the bundle changes)
 ./install-app.command
 
@@ -164,7 +161,7 @@ as Moneybird.app and NextSeason.app.
   the launcher, since three-levels-up no longer resolves there. Update that path
   if the repo moves again.
 - Node lookup prefers `/opt/homebrew/bin/node` (arm64) over `/usr/local/bin/node`
-  (x86_64, runs under Rosetta). Same order in `start.command`, `restart.command`
+  (x86_64, runs under Rosetta). Same order in the launcher, `restart.command`
   and `run.sh`.
 
 ### Idle shutdown
@@ -187,7 +184,6 @@ page's `EventSource` reconnects once the tab is foregrounded and unfrozen.
 - AH bonus check: individual detail calls per product (acceptable for <50 products)
 - Dirk bonus check: batched via `productAssortment` aliases in a single GraphQL request
 - Price history deduplication: only write when price/bonus state changes (not every poll)
-- `start.command`: survives terminal close via `nohup`; if port 3001 already in use, just opens browser
 - Idle shutdown uses an SSE connection rather than a polling heartbeat: an open connection is not throttled in a background tab and drops the instant the tab closes
 - `run.sh` derives its own project directory instead of hardcoding one, so moving the repo does not silently break the weekly bonus email
 
