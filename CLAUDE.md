@@ -186,6 +186,7 @@ page's `EventSource` reconnects once the tab is foregrounded and unfrozen.
 - Price history deduplication: only write when price/bonus state changes (not every poll)
 - Idle shutdown uses an SSE connection rather than a polling heartbeat: an open connection is not throttled in a background tab and drops the instant the tab closes
 - `run.sh` derives its own project directory instead of hardcoding one, so moving the repo does not silently break the weekly bonus email
+- `restart.command` sets `KORTING_AUTOQUIT=1` like the bundle does: every double-clickable way of starting the server produces one that quits with the last window. Only `node server.js` leaves a server up, and that is the development case
 
 ## Known Limitations
 

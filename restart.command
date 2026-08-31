@@ -31,8 +31,10 @@ if [ -n "$PIDS" ]; then
   [ -n "$REMAINING" ] && kill -9 $REMAINING 2>/dev/null
 fi
 
-# Start fresh in background (survives terminal close)
-nohup $NODE server.js > /dev/null 2>&1 &
+# Start fresh in background (survives terminal close). KORTING_AUTOQUIT=1
+# matches what KortingScanner.app sets, so a restarted server still quits with
+# the last browser window instead of sitting on port 3001 forever.
+KORTING_AUTOQUIT=1 nohup $NODE server.js > /dev/null 2>&1 &
 
 for i in {1..20}; do
   sleep 0.5
