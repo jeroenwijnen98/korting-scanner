@@ -10,7 +10,7 @@ PORT=3001
 # bundle keeps working if it is moved to /Applications.
 APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 if [ ! -f "$APP_DIR/server.js" ]; then
-  APP_DIR="/Users/marcwijnen/Developer/korting-scanner"
+  APP_DIR="$HOME/Developer/korting-scanner"
 fi
 cd "$APP_DIR" || exit 1
 
