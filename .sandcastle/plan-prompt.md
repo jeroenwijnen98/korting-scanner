@@ -8,9 +8,7 @@ Here are the open issues in the repo:
 
 </issues-json>
 
-The list above has already been filtered to issues labelled `ready-for-agent`.
-
-Each issue body has a `## Blocked by` section listing the issues that gate it. Treat any listed issue that is still open (present in the list above) as a hard blocker.
+The list above has already been filtered to issues ready for work (label `ready-for-agent`; see `docs/agents/triage-labels.md`).
 
 # TASK
 

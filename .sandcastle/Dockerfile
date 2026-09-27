@@ -27,9 +27,10 @@ USER ${AGENT_UID}:${AGENT_GID}
 
 # Install Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash
-
-# Add Claude to PATH
 ENV PATH="/home/agent/.local/bin:$PATH"
+
+# Dependencies are not baked in: the onSandboxReady hook in main.mts runs
+# `npm ci` from package-lock.json, so the image cannot drift from the repo.
 
 WORKDIR /home/agent
 

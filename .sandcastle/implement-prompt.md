@@ -6,9 +6,19 @@ Pull in the issue using `gh issue view <ID>`. If it has a parent PRD, pull that 
 
 Only work on the issue specified.
 
-Work on branch {{BRANCH}}. Make commits and verify your change.
+Work on branch {{BRANCH}}. Make commits and run the checks below.
 
 # CONTEXT
+
+Read `CLAUDE.md` first, and `CONTEXT.md` if it exists. `CLAUDE.md` describes the
+store adapters, the common product schema and the bonus mechanisms; follow its
+names (store adapter, saved product, price snapshot, bonus mechanism).
+
+You are in a sandbox, not on the Mac that runs Korting Scanner. There is no `.env`
+and no `src/data/`: never call the store APIs (AH, Dirk, Etos, Kruidvat) and never
+run `src/scripts/sendBonusEmail.js`. The .app launcher, `install-app.command`,
+`restart.command`, `run.sh` and sleepwatcher cannot be exercised here either; edit
+them if the issue asks, but you cannot run them.
 
 Here are the last 10 commits:
 
@@ -22,23 +32,41 @@ Here are the last 10 commits:
 
 Explore the repo and fill your context window with relevant information that will allow you to complete the task.
 
-Read CLAUDE.md and `docs/agents/` first. They describe the architecture, store APIs and conventions.
+# EXECUTION
+
+There is no test suite. Your check is a smoke boot.
+
+Frontend files in `public/` are served to the browser as they are: never add a
+build step, a bundler or emitted files there.
 
 # FEEDBACK LOOPS
 
-This repo has no test suite. Before committing:
+Smoke boot: `PORT=3999 node server.js > /tmp/boot.log 2>&1 &`, then
+`curl -s -o /dev/null -w '%{http_code}\n'` against `/` and `/api/products`. Expect
+200 and 200. Do not curl `/api/search`, `/api/product/*` or `/api/bonus` (they reach
+the stores) or `/api/session` (it never ends). Kill the server afterwards.
 
-1. Run `npm run typecheck` if the script exists, and fix every error
-2. Start the server with `node server.js` (or `node server.ts` once that exists) and curl the endpoints your change touches, e.g. `curl localhost:3001/api/search?store=ah&q=koffie`. Stop the server afterwards
-3. Do not install or launch the macOS app bundle; the sandbox is Linux. Note any app-bundle checks as manual follow-ups in your issue comment
-
-Do not add a test framework unless the issue asks for one.
+Save the output with `2>&1 | tee /tmp/<name>.log` and read that file instead of
+rerunning the check.
 
 # COMMIT
 
-Make a git commit. Match the style in the recent commits above: a short imperative subject line, then a body explaining what changed and why. Reference the issue as `#<ID>`.
+Make a git commit. The commit message must:
+
+1. Start with `RALPH:` prefix
+2. Include task completed + PRD reference
+3. Key decisions made
+4. Files changed
+5. Blockers or notes for next iteration
+
+Keep it concise.
 
 # THE ISSUE
+
+Some acceptance criteria can only be checked on the host (launching the .app,
+autoquit timing, a real store response, the bonus email). Do not claim them. Once
+the rest is done, comment on the issue listing which criteria you verified and which
+are left for a human on the host.
 
 If the task is not complete, leave a comment on the issue with what was done.
 
