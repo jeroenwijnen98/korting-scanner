@@ -63,14 +63,14 @@ function buildImageUrl(image: string | null): string | null {
   return IMAGE_BASE_URL + encodeURIComponent(image);
 }
 
-async function graphqlQuery<T>(query: string): Promise<T> {
+async function graphqlQuery<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   const res = await fetch(GRAPHQL_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-gateway-apikey': GRAPHQL_API_KEY,
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, variables }),
   });
   if (!res.ok) throw new Error(`Dirk GraphQL error: ${res.status}`);
   const data = (await res.json()) as DirkGraphQLResponse<T>;
@@ -133,11 +133,11 @@ class DirkAdapter extends StoreAdapter {
   }
 
   async searchProducts(query: string): Promise<Product[]> {
-    const searchData = await graphqlQuery<DirkSearchData>(`{
-      newSearchProducts(query: { searchTerm: "${query.replace(/"/g, '\\"')}", limit: 25 }) {
+    const searchData = await graphqlQuery<DirkSearchData>(`query Search($q: String!) {
+      newSearchProducts(query: { searchTerm: $q, limit: 25 }) {
         productId
       }
-    }`);
+    }`, { q: query });
 
     const ids = (searchData.newSearchProducts || []).map(p => p.productId);
     if (ids.length === 0) return [];
