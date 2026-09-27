@@ -1,7 +1,7 @@
 import { createTransport } from 'nodemailer';
 import * as productStore from '../services/productStore.js';
 import * as priceHistory from '../services/priceHistory.js';
-import { stores } from '../stores/index.js';
+import { stores } from '../stores/index.ts';
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 import { readFile } from 'fs/promises';
 import { dirname, join } from 'path';

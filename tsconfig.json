@@ -13,6 +13,9 @@
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
+    // Lets the .ts files import the modules still in .js, with inferred
+    // types; those files are not checked themselves (no checkJs).
+    "allowJs": true,
     "strict": true,
     "skipLibCheck": true
   },

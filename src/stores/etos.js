@@ -1,4 +1,4 @@
-import { StoreAdapter } from './base.js';
+import { StoreAdapter } from './base.ts';
 
 // TODO: CLIENT_ID needs to be discovered from browser DevTools (network tab on etos.nl)
 const CLIENT_ID = 'ajs_client_id';
@@ -54,6 +54,7 @@ class EtosAdapter extends StoreAdapter {
     super('etos');
   }
 
+  /** @returns {import('../types.ts').Product} */
   normalize(product) {
     const normalPrice = product.price ?? null;
     const promoPrice = product.promotional_price ?? null;
