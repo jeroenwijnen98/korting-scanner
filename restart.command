@@ -34,7 +34,7 @@ fi
 # Start fresh in background (survives terminal close). KORTING_AUTOQUIT=1
 # matches what KortingScanner.app sets, so a restarted server still quits with
 # the last browser window instead of sitting on port 3001 forever.
-KORTING_AUTOQUIT=1 nohup $NODE server.js > /dev/null 2>&1 &
+KORTING_AUTOQUIT=1 nohup $NODE server.ts > /dev/null 2>&1 &
 
 for i in {1..20}; do
   sleep 0.5

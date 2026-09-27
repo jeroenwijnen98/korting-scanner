@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Start server (development)
-node server.js
+# Start server (development); same as npm start
+node server.ts
 
 # Type check (tsc, no emit): the server (tsconfig.json; Node strips the
 # types itself) and the page (public/tsconfig.json; JSDoc + // @ts-check)
@@ -22,15 +22,17 @@ npm run typecheck
 node src/scripts/sendBonusEmail.ts
 ```
 
-No build step, no tests. `tsconfig.json` and `public/tsconfig.json` are for type checking only (Node >= 22.18). The browser loads `public/js` as plain `.js`; every file there is `// @ts-check`ed against the shared types via JSDoc `import('../../src/types.ts')`. Server runs on port 3001 (`src/config.js`).
+No build step, no tests. `tsconfig.json` and `public/tsconfig.json` are for type checking only (Node >= 22.18). The browser loads `public/js` as plain `.js`; every file there is `// @ts-check`ed against the shared types via JSDoc `import('../../src/types.ts')`. Server runs on port 3001 (`PORT` in `.env`, read by `src/config.ts`).
 
 ## Architecture
 
 Node.js/Express backend (ES modules) serving a vanilla JS frontend. The backend proxies all store API calls — this keeps CORS clean and AH's bearer token server-side.
 
 ```
-server.js              → Express entry, mounts /api and static public/
-src/config.js          → Port config (3001)
+server.ts              → Entry: loads .env (dotenv/config, first import), createApp(), listen
+src/app.ts             → createApp(): builds the Express app (/api, static public/,
+                         idle shutdown) without listening
+src/config.ts          → PORT (default 3001) and KORTING_AUTOQUIT, from env
 src/types.ts           → Domain types (product, saved product, price snapshot, API
                          response shapes), shared with the page
 src/routes/api.ts      → All REST endpoints
@@ -167,10 +169,13 @@ as Moneybird.app and NextSeason.app.
 - The bundle lives in the repo; `./install-app.command` copies it to
   `/Applications` and ad-hoc codesigns it. Run that **only** when the bundle
   itself changes — the launcher `cd`s into the repo, so app code changes
-  (server.js, src/, public/) need no reinstall.
+  (server.ts, src/, public/) need no reinstall.
 - The copy in `/Applications` finds the repo via the hardcoded fallback path in
   the launcher, since three-levels-up no longer resolves there. Update that path
   if the repo moves again.
+- The launcher and `restart.command` start `server.ts` and hardcode port 3001,
+  matching `PORT=3001` in `.env` (see `.env.example`). Renaming the entry or
+  changing the port means updating them in the same commit, then reinstalling.
 - Node lookup prefers `/opt/homebrew/bin/node` (arm64) over `/usr/local/bin/node`
   (x86_64, runs under Rosetta). Same order in the launcher, `restart.command`
   and `run.sh`.
@@ -181,7 +186,7 @@ The bundle sets `KORTING_AUTOQUIT=1`, which arms `src/services/idleShutdown.ts`.
 Each page holds an SSE connection to `/api/session` (`public/js/session.js`);
 when the last one drops the process exits after a 15s grace, so closing the
 window returns to zero RAM. A 60s startup grace covers the browser never
-connecting at all. Running `node server.js` by hand leaves the server up as
+connecting at all. Running `node server.ts` by hand leaves the server up as
 before — the auto-quit is opt-in via the env var.
 
 Note: after an auto-quit, a still-open browser tab pointing at localhost:3001
@@ -197,7 +202,7 @@ page's `EventSource` reconnects once the tab is foregrounded and unfrozen.
 - Price history deduplication: only write when price/bonus state changes (not every poll)
 - Idle shutdown uses an SSE connection rather than a polling heartbeat: an open connection is not throttled in a background tab and drops the instant the tab closes
 - `run.sh` derives its own project directory instead of hardcoding one, so moving the repo does not silently break the weekly bonus email
-- `restart.command` sets `KORTING_AUTOQUIT=1` like the bundle does: every double-clickable way of starting the server produces one that quits with the last window. Only `node server.js` leaves a server up, and that is the development case
+- `restart.command` sets `KORTING_AUTOQUIT=1` like the bundle does: every double-clickable way of starting the server produces one that quits with the last window. Only `node server.ts` (or `npm start`) leaves a server up, and that is the development case
 
 ## Known Limitations
 
