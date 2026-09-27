@@ -4,8 +4,9 @@ import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { createSearchResult } from '../components/searchResult.js';
 import { showToast } from '../components/toast.js';
-import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
+import { STORES } from '../utils/stores.js';
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
@@ -13,7 +14,6 @@ import { errorMessage } from '../utils/errorMessage.js';
  * @typedef {import('../../../src/types.ts').SavedProduct} SavedProduct
  * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
  * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
- * @typedef {import('../components/productCard.js').DisplayedProduct} DisplayedProduct
  * @typedef {StoreName | 'alle'} StoreFilter
  */
 
@@ -39,10 +39,10 @@ export async function initMyProducts() {
   // Store pills
   const pills = document.createElement('div');
   pills.className = 'store-pills';
+  /** @type {Record<StoreFilter, string>} */
+  const storeLabels = { alle: 'Alle', ah: STORES.ah.label, dirk: STORES.dirk.label, kruidvat: STORES.kruidvat.label, etos: STORES.etos.label };
   /** @type {StoreFilter[]} */
   const stores = ['alle', 'ah', 'dirk', 'kruidvat', 'etos'];
-  /** @type {Record<StoreFilter, string>} */
-  const storeLabels = { alle: 'Alle', ah: 'AH', dirk: 'Dirk', kruidvat: 'Kruidvat', etos: 'Etos' };
   stores.forEach(store => {
     const pill = document.createElement('button');
     pill.className = `store-pill${store === 'ah' ? ' active' : ''}`;
@@ -153,14 +153,6 @@ async function loadSaved() {
   }
 }
 
-/** @param {DisplayedProduct} product */
-function getUnitPriceForSort(product) {
-  if (product.currentPrice == null) return null;
-  const { volume, unit } = parseUnitSize(product.salesUnitSize);
-  const result = calcPricePerUnit(product.currentPrice, volume, unit);
-  return result ? result.unitPrice : null;
-}
-
 function renderSaved() {
   const container = document.getElementById('saved-products');
   if (!container) return;
@@ -181,101 +173,22 @@ function renderSaved() {
     return;
   }
 
-  // Split into grouped and ungrouped
-  const withGroup = filtered.filter(p => p.productGroup);
-  const withoutGroup = filtered.filter(p => !p.productGroup);
-
-  // Group withGroup products by productGroup name
-  /** @type {Record<string, SavedProduct[]>} */
-  const groups = {};
-  withGroup.forEach(p => {
-    if (!groups[p.productGroup]) groups[p.productGroup] = [];
-    groups[p.productGroup].push(p);
-  });
-
-  // Sort each group by unit price ascending (null prices last, fallback to title)
-  Object.values(groups).forEach(items => {
-    items.sort((a, b) => {
-      const ua = getUnitPriceForSort(a);
-      const ub = getUnitPriceForSort(b);
-      if (ua == null && ub == null) return 0;
-      if (ua == null) return 1;
-      if (ub == null) return -1;
-      return ua - ub;
+  renderGroupedSections(container, filtered, product => {
+    const card = createProductCard(product, {
+      isUnavailable: unavailableIds.includes(product.id),
+      onRemove: async (p) => {
+        try {
+          await removeProduct(p.id);
+          savedProducts = savedProducts.filter(s => s.id !== p.id);
+          renderSaved();
+          showToast('Product verwijderd', 'success');
+        } catch (err) {
+          showToast(errorMessage(err), 'error');
+        }
+      },
     });
-  });
-
-  // Render ungrouped products first with a section header
-  if (withoutGroup.length > 0) {
-    const section = document.createElement('div');
-    section.className = 'group-section';
-
-    const header = document.createElement('div');
-    header.className = 'group-section-header';
-    header.innerHTML = `
-      <span class="group-section-name">Niet gecategoriseerd</span>
-      <span class="group-section-count">${withoutGroup.length} product${withoutGroup.length !== 1 ? 'en' : ''}</span>
-    `;
-    section.appendChild(header);
-
-    const list = document.createElement('div');
-    list.className = 'card-list';
-    withoutGroup.forEach(product => {
-      const card = createProductCard(product, {
-        isUnavailable: unavailableIds.includes(product.id),
-        onRemove: async (p) => {
-          try {
-            await removeProduct(p.id);
-            savedProducts = savedProducts.filter(s => s.id !== p.id);
-            renderSaved();
-            showToast('Product verwijderd', 'success');
-          } catch (err) {
-            showToast(errorMessage(err), 'error');
-          }
-        },
-      });
-      card.addEventListener('click', () => showProductDetail(product));
-      list.appendChild(card);
-    });
-    section.appendChild(list);
-    container.appendChild(section);
-  }
-
-  // Render group sections
-  Object.entries(groups).forEach(([groupName, items]) => {
-    const section = document.createElement('div');
-    section.className = 'group-section';
-
-    const header = document.createElement('div');
-    header.className = 'group-section-header';
-    header.innerHTML = `
-      <span class="group-section-name">${groupName}</span>
-      <span class="group-section-count">${items.length} product${items.length !== 1 ? 'en' : ''}</span>
-    `;
-    section.appendChild(header);
-
-    const list = document.createElement('div');
-    list.className = 'card-list';
-    items.forEach(product => {
-      const card = createProductCard(product, {
-        isUnavailable: unavailableIds.includes(product.id),
-        onRemove: async (p) => {
-          try {
-            await removeProduct(p.id);
-            savedProducts = savedProducts.filter(s => s.id !== p.id);
-            renderSaved();
-            showToast('Product verwijderd', 'success');
-          } catch (err) {
-            showToast(errorMessage(err), 'error');
-          }
-        },
-      });
-      card.addEventListener('click', () => showProductDetail(product));
-      list.appendChild(card);
-    });
-    section.appendChild(list);
-
-    container.appendChild(section);
+    card.addEventListener('click', () => showProductDetail(product));
+    return card;
   });
 }
 
@@ -372,6 +285,7 @@ function renderSearchResults(results, container) {
             salesUnitSize: p.salesUnitSize,
             mainCategory: p.mainCategory,
             subCategory: p.subCategory,
+            imageUrl: p.imageUrl,
           });
           savedProducts.push(entry);
           showToast('Product toegevoegd', 'success');

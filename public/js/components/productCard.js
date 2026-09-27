@@ -1,5 +1,7 @@
 // @ts-check
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
+import { STORES } from '../utils/stores.js';
 
 /**
  * @typedef {import('../../../src/types.ts').Product} Product
@@ -73,10 +75,8 @@ export function createProductCard(product, { onRemove, showBonus = false, isUnav
   // Meta: size, brand, store badge
   const meta = document.createElement('div');
   meta.className = 'product-card-meta';
-  const store = product.store || '';
-  const storeBadge = `<span class="badge-store badge-store-${store}">${store.toUpperCase()}</span>`;
   const parts = [product.salesUnitSize, product.brand].filter(Boolean);
-  meta.innerHTML = `${storeBadge} ${parts.join(' · ')}`;
+  meta.innerHTML = `${storeBadge(product.store)} ${escapeHtml(parts.join(' · '))}`;
   content.appendChild(meta);
 
   // Unit price
@@ -134,22 +134,12 @@ export function createProductCard(product, { onRemove, showBonus = false, isUnav
   return el;
 }
 
-/** @param {number} price */
-function formatPrice(price) {
-  return new Intl.NumberFormat('nl-NL', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(price);
-}
-
-/** @param {string} dateStr */
-function formatDate(dateStr) {
-  try {
-    return new Date(dateStr).toLocaleDateString('nl-NL', {
-      day: 'numeric',
-      month: 'short',
-    });
-  } catch {
-    return dateStr;
-  }
+/**
+ * The store badge of a card or the detail: the store's short label.
+ * @param {import('../../../src/types.ts').StoreName} store
+ * @returns {string} markup
+ */
+export function storeBadge(store) {
+  const label = STORES[store]?.label ?? store ?? '';
+  return `<span class="badge-store badge-store-${escapeHtml(store)}">${escapeHtml(label.toUpperCase())}</span>`;
 }

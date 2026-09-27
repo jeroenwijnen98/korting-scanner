@@ -2,6 +2,8 @@
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 import { updateProduct } from '../api.js';
 import { showToast } from './toast.js';
+import { storeBadge } from './productCard.js';
+import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
 
 /**
  * @typedef {import('./productCard.js').DisplayedProduct} DisplayedProduct
@@ -70,10 +72,8 @@ export function createProductDetail(product, {
   // Meta: store badge, brand, size
   const meta = document.createElement('div');
   meta.className = 'product-detail-meta';
-  const store = product.store || '';
-  const storeBadge = `<span class="badge-store badge-store-${store}">${store.toUpperCase()}</span>`;
   const parts = [product.brand, product.salesUnitSize].filter(Boolean);
-  meta.innerHTML = `${storeBadge} ${parts.join(' &middot; ')}`;
+  meta.innerHTML = `${storeBadge(product.store)} ${parts.map(escapeHtml).join(' &middot; ')}`;
   el.appendChild(meta);
 
   // Productgroup selector (only when viewing a saved product)
@@ -288,8 +288,8 @@ export function createProductDetail(product, {
 
       tr.innerHTML = `
         <td>${formatDate(entry.date)}</td>
-        <td>${entry.currentPrice != null ? formatPrice(entry.currentPrice) : '-'}</td>
-        <td>${entry.bonusMechanism || '-'}</td>
+        <td>${formatPrice(entry.currentPrice)}</td>
+        <td>${escapeHtml(entry.bonusMechanism || '-')}</td>
         <td>${unitInfo ? formatPrice(unitInfo.unitPrice) + ' / ' + unitInfo.standardUnit : '-'}</td>
         <td>${entry.isBonus && normalUnitInfo ? formatPrice(normalUnitInfo.unitPrice) + ' / ' + normalUnitInfo.standardUnit : '-'}</td>
       `;
@@ -326,11 +326,11 @@ export function createProductDetail(product, {
 
       tr.innerHTML = `
         <td>${formatDate(entry.date)}</td>
-        <td>${entry.title || '—'}</td>
-        <td>${entry.store || '—'}</td>
-        <td>${entry.salesUnitSize || '—'}</td>
+        <td>${escapeHtml(entry.title || '—')}</td>
+        <td>${escapeHtml(entry.store || '—')}</td>
+        <td>${escapeHtml(entry.salesUnitSize || '—')}</td>
         <td>${entry.currentPrice != null ? `€${entry.currentPrice.toFixed(2)}` : '—'}</td>
-        <td>${entry.bonusMechanism || '—'}</td>
+        <td>${escapeHtml(entry.bonusMechanism || '—')}</td>
         <td>${gUnitInfo ? `€${gUnitInfo.unitPrice.toFixed(2)} per ${gUnitInfo.standardUnit}` : '—'}</td>
       `;
       groupTbody.appendChild(tr);
@@ -341,24 +341,4 @@ export function createProductDetail(product, {
   }
 
   return el;
-}
-
-/** @param {number} price */
-function formatPrice(price) {
-  return new Intl.NumberFormat('nl-NL', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(price);
-}
-
-/** @param {string} dateStr */
-function formatDate(dateStr) {
-  try {
-    return new Date(dateStr).toLocaleDateString('nl-NL', {
-      day: 'numeric',
-      month: 'short',
-    });
-  } catch {
-    return dateStr;
-  }
 }

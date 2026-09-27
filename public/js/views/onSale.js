@@ -3,8 +3,9 @@ import { getBonus, getProducts, getProductHistory, getGroupHistory } from '../ap
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { showToast } from '../components/toast.js';
-import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
+import { escapeHtml } from '../utils/format.js';
 import { setUnavailableIds } from './myProducts.js';
 
 /**
@@ -52,7 +53,7 @@ export async function initOnSale() {
       <div class="empty-state">
         <div class="empty-state-icon">!</div>
         <h3>Fout bij laden</h3>
-        <p>${errorMessage(err)}</p>
+        <p>${escapeHtml(errorMessage(err))}</p>
       </div>
     `;
   }
@@ -118,14 +119,6 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
   panel.appendChild(detail);
 }
 
-/** @param {OnSaleProduct} product */
-function getUnitPriceForSort(product) {
-  if (product.currentPrice == null) return null;
-  const { volume, unit } = parseUnitSize(product.salesUnitSize);
-  const result = calcPricePerUnit(product.currentPrice, volume, unit);
-  return result ? result.unitPrice : null;
-}
-
 /**
  * @param {OnSaleProduct[]} products
  * @param {SavedProduct[]} savedProducts
@@ -141,7 +134,7 @@ function render(products, savedProducts, notFound = []) {
       .join(', ');
     const banner = document.createElement('div');
     banner.className = 'unavailable-banner';
-    banner.innerHTML = `<strong>Niet meer beschikbaar:</strong> ${unavailableNames}`;
+    banner.innerHTML = `<strong>Niet meer beschikbaar:</strong> ${escapeHtml(unavailableNames)}`;
     panel.appendChild(banner);
   }
 
@@ -156,76 +149,9 @@ function render(products, savedProducts, notFound = []) {
     return;
   }
 
-  // Split into grouped and ungrouped
-  const withGroup = products.filter(p => p.productGroup);
-  const withoutGroup = products.filter(p => !p.productGroup);
-
-  // Group withGroup products by productGroup name
-  /** @type {Record<string, OnSaleProduct[]>} */
-  const groups = {};
-  withGroup.forEach(p => {
-    if (!groups[p.productGroup]) groups[p.productGroup] = [];
-    groups[p.productGroup].push(p);
-  });
-
-  // Sort each group by unit price ascending (null prices last)
-  Object.values(groups).forEach(items => {
-    items.sort((a, b) => {
-      const ua = getUnitPriceForSort(a);
-      const ub = getUnitPriceForSort(b);
-      if (ua == null && ub == null) return 0;
-      if (ua == null) return 1;
-      if (ub == null) return -1;
-      return ua - ub;
-    });
-  });
-
-  // Render ungrouped products first with a section header
-  if (withoutGroup.length > 0) {
-    const section = document.createElement('div');
-    section.className = 'group-section';
-
-    const header = document.createElement('div');
-    header.className = 'group-section-header';
-    header.innerHTML = `
-      <span class="group-section-name">Niet gecategoriseerd</span>
-      <span class="group-section-count">${withoutGroup.length} product${withoutGroup.length !== 1 ? 'en' : ''}</span>
-    `;
-    section.appendChild(header);
-
-    const list = document.createElement('div');
-    list.className = 'card-list';
-    withoutGroup.forEach(product => {
-      const card = createProductCard(product, { showBonus: true });
-      card.addEventListener('click', () => showDetail(product, products, savedProducts, notFound));
-      list.appendChild(card);
-    });
-    section.appendChild(list);
-    panel.appendChild(section);
-  }
-
-  // Render group sections
-  Object.entries(groups).forEach(([groupName, items]) => {
-    const section = document.createElement('div');
-    section.className = 'group-section';
-
-    const header = document.createElement('div');
-    header.className = 'group-section-header';
-    header.innerHTML = `
-      <span class="group-section-name">${groupName}</span>
-      <span class="group-section-count">${items.length} product${items.length !== 1 ? 'en' : ''}</span>
-    `;
-    section.appendChild(header);
-
-    const list = document.createElement('div');
-    list.className = 'card-list';
-    items.forEach(product => {
-      const card = createProductCard(product, { showBonus: true });
-      card.addEventListener('click', () => showDetail(product, products, savedProducts, notFound));
-      list.appendChild(card);
-    });
-    section.appendChild(list);
-
-    panel.appendChild(section);
+  renderGroupedSections(panel, products, product => {
+    const card = createProductCard(product, { showBonus: true });
+    card.addEventListener('click', () => showDetail(product, products, savedProducts, notFound));
+    return card;
   });
 }
