@@ -1,0 +1,16 @@
+{
+  "productId": 588920,
+  "productCard": {
+    "webshopId": 588920,
+    "hqId": 0,
+    "title": "AH Pindakaas",
+    "salesUnitSize": "350 g",
+    "price": { "now": { "amount": 2.99 } },
+    "isBonus": true,
+    "bonus": { "segmentDescription": "2 voor 5 euro", "startDate": "2026-09-21", "endDate": "2026-09-27" },
+    "mainCategory": "Ontbijtgranen, broodbeleg",
+    "subCategory": "Pindakaas",
+    "brand": "AH",
+    "images": [{ "url": "https://static.ah.nl/pindakaas.jpg" }]
+  }
+}

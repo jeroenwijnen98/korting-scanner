@@ -1,0 +1,35 @@
+{
+  "products": [
+    {
+      "code": "2780321",
+      "name": "Kruidvat Tandpasta Fresh",
+      "shortDescription": "75 ml",
+      "manufacturer": "Kruidvat",
+      "price": { "value": 2.49 },
+      "topPromotion": {
+        "badge": { "headline": "1+1 gratis" },
+        "startDate": "2026-09-22",
+        "endDate": "2026-10-05"
+      },
+      "categoriesHierarchy": [{ "categories": [{ "name": "Verzorging" }, { "name": "Mondverzorging" }] }],
+      "images": [
+        { "imageType": "GALLERY", "url": "/medias/gallery.jpg" },
+        { "imageType": "PRIMARY", "url": "/medias/primary.jpg" }
+      ]
+    },
+    {
+      "code": "5550001",
+      "name": "Andrélon Shampoo",
+      "shortDescription": "300 ml",
+      "manufacturer": "Andrélon",
+      "price": { "value": 4.99 },
+      "topPromotion": { "badge": { "headline": "Gratis artikel bij aankoop" } },
+      "images": [{ "url": "https://cdn.kruidvat.nl/shampoo.jpg" }]
+    },
+    {
+      "code": "5550002",
+      "name": "Kruidvat Wattenschijfjes",
+      "price": { "value": null }
+    }
+  ]
+}

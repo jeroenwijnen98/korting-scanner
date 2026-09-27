@@ -1,0 +1,26 @@
+{
+  "data": {
+    "listProducts": {
+      "products": [
+        {
+          "productId": 101,
+          "headerText": "Coca-Cola Regular",
+          "packaging": "Fles 1,5 liter",
+          "brand": "Coca-Cola",
+          "department": "Frisdrank, sappen",
+          "webgroup": "Cola",
+          "image": "artikelen/101 cola.png"
+        },
+        {
+          "productId": 202,
+          "headerText": "Dirk Volkoren brood",
+          "packaging": "800 g",
+          "brand": null,
+          "department": "Brood",
+          "webgroup": null,
+          "image": null
+        }
+      ]
+    }
+  }
+}

@@ -15,7 +15,22 @@ const GRACE_MS = 15_000;         // survive a page reload
 const STARTUP_GRACE_MS = 60_000; // in case the browser never connects
 const PING_MS = 25_000;
 
-export function attachIdleShutdown(app: Express, { enabled }: { enabled: boolean }): void {
+export interface IdleShutdownOptions {
+  enabled: boolean;
+  /** Ends the process; tests pass a spy. */
+  exit?: () => void;
+  /** How long after the last window closes to quit. */
+  graceMs?: number;
+  /** How long to wait for the first window. */
+  startupGraceMs?: number;
+}
+
+export function attachIdleShutdown(app: Express, {
+  enabled,
+  exit = () => process.exit(0),
+  graceMs = GRACE_MS,
+  startupGraceMs = STARTUP_GRACE_MS,
+}: IdleShutdownOptions): void {
   let clients = 0;
   let timer: NodeJS.Timeout | undefined;
 
@@ -25,7 +40,7 @@ export function attachIdleShutdown(app: Express, { enabled }: { enabled: boolean
     timer = setTimeout(() => {
       if (clients > 0) return;
       console.log('No open windows — shutting down.');
-      process.exit(0);
+      exit();
     }, ms);
   };
 
@@ -45,9 +60,9 @@ export function attachIdleShutdown(app: Express, { enabled }: { enabled: boolean
     req.on('close', () => {
       clearInterval(ping);
       clients -= 1;
-      if (clients <= 0) scheduleQuit(GRACE_MS);
+      if (clients <= 0) scheduleQuit(graceMs);
     });
   });
 
-  scheduleQuit(STARTUP_GRACE_MS);
+  scheduleQuit(startupGraceMs);
 }

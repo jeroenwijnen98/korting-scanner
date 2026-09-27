@@ -12,6 +12,9 @@ node server.ts
 # types itself) and the page (public/tsconfig.json; JSDoc + // @ts-check)
 npm run typecheck
 
+# Run the tests (node:test, test/*.test.ts; no network, temp data dir)
+npm test
+
 # Install/refresh /Applications/KortingScanner.app (only when the bundle changes)
 ./install-app.command
 
@@ -22,7 +25,7 @@ npm run typecheck
 node src/scripts/sendBonusEmail.ts
 ```
 
-No build step, no tests. `tsconfig.json` and `public/tsconfig.json` are for type checking only (Node >= 22.18). The browser loads `public/js` as plain `.js`; every file there is `// @ts-check`ed against the shared types via JSDoc `import('../../src/types.ts')`. Server runs on port 3001 (`PORT` in `.env`, read by `src/config.ts`).
+No build step. `tsconfig.json` and `public/tsconfig.json` are for type checking only (Node >= 22.18); `tsconfig.json` covers `test/` too. The browser loads `public/js` as plain `.js`; every file there is `// @ts-check`ed against the shared types via JSDoc `import('../../src/types.ts')`. Server runs on port 3001 (`PORT` in `.env`, read by `src/config.ts`).
 
 ## Architecture
 
@@ -30,13 +33,15 @@ Node.js/Express backend (ES modules) serving a vanilla JS frontend. The backend 
 
 ```
 server.ts              → Entry: loads .env (dotenv/config, first import), createApp(), listen
-src/app.ts             → createApp(): builds the Express app (/api, static public/,
-                         idle shutdown) without listening
+src/app.ts             → createApp({ stores?, idleShutdown? }): builds the Express app
+                         (/api, static public/, idle shutdown) without listening;
+                         the real store adapters by default, fakes in tests
 src/config.ts          → PORT (default 3001), KORTING_AUTOQUIT and dataFile() (KORTING_DATA_DIR,
                          default src/data), from env
 src/types.ts           → Domain types (product, saved product, price snapshot, API
                          response shapes), shared with the page
-src/routes/api.ts      → All REST endpoints + errorHandler (thrown error → 500 { error })
+src/routes/api.ts      → createApiRouter(stores): all REST endpoints + errorHandler
+                         (thrown error → 500 { error })
 src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, etos.ts, kruidvat.ts)
                          + bonusMechanism.ts (shared bonus-mechanism parser)
 src/services/
@@ -62,6 +67,12 @@ public/js/
                          stores.js (STORES: label, name, colour per store); also
                          imported by the server, so they stay plain JS + JSDoc;
                          errorMessage.js (message of a caught error)
+test/                  → node:test suites (*.test.ts, run as they are like the server):
+                         bonus mechanism, unit price, cheapestPerDate, price history
+                         (incl. the concurrent-write regression), adapter normalize
+                         against fixtures/ (hand-written; replace with real captures),
+                         the API via createApp({ stores }) with fake store adapters,
+                         and idle shutdown with an injected exit
 KortingScanner.app/    → macOS launcher bundle (installed via install-app.command)
 assets/                → icon.svg (source) + generated icon.png / icon.icns
 ```
@@ -199,7 +210,9 @@ The bundle sets `KORTING_AUTOQUIT=1`, which arms `src/services/idleShutdown.ts`.
 Each page holds an SSE connection to `/api/session` (`public/js/session.js`);
 when the last one drops the process exits after a 15s grace, so closing the
 window returns to zero RAM. A 60s startup grace covers the browser never
-connecting at all. Running `node server.ts` by hand leaves the server up as
+connecting at all. `attachIdleShutdown` takes optional `exit`, `graceMs` and
+`startupGraceMs` (defaults: `process.exit(0)`, 15s, 60s) so the tests can run it
+without exiting. Running `node server.ts` by hand leaves the server up as
 before — the auto-quit is opt-in via the env var.
 
 Note: after an auto-quit, a still-open browser tab pointing at localhost:3001

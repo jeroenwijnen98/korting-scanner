@@ -1,0 +1,21 @@
+{
+  "data": {
+    "p0": {
+      "productId": 101,
+      "normalPrice": 2.49,
+      "offerPrice": 1.79,
+      "productOffer": {
+        "productOfferId": 9001,
+        "textPriceSign": "2_VOOR_3,58",
+        "startDate": "2026-09-23",
+        "endDate": "2026-09-29"
+      }
+    },
+    "p1": {
+      "productId": 202,
+      "normalPrice": 1.99,
+      "offerPrice": null,
+      "productOffer": null
+    }
+  }
+}
