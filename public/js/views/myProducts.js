@@ -41,12 +41,12 @@ export async function initMyProducts() {
   pills.className = 'store-pills';
   /** @type {StoreFilter[]} */
   const stores = ['alle', 'ah', 'dirk', 'kruidvat', 'etos'];
+  /** @type {Record<StoreFilter, string>} */
+  const storeLabels = { alle: 'Alle', ah: 'AH', dirk: 'Dirk', kruidvat: 'Kruidvat', etos: 'Etos' };
   stores.forEach(store => {
     const pill = document.createElement('button');
     pill.className = `store-pill${store === 'ah' ? ' active' : ''}`;
-    /** @type {Record<StoreFilter, string>} */
-    const storeLabels = { alle: 'Alle', ah: 'AH', dirk: 'Dirk', kruidvat: 'Kruidvat', etos: 'Etos' };
-    pill.textContent = storeLabels[store] || store.toUpperCase();
+    pill.textContent = storeLabels[store];
     pill.dataset.store = store;
     pill.addEventListener('click', () => {
       pills.querySelectorAll('.store-pill').forEach(p => p.classList.toggle('active', p === pill));
