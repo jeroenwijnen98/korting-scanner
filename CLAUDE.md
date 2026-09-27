@@ -19,7 +19,7 @@ npm run typecheck
 ./scripts/generate-icons.sh
 
 # Run bonus email script manually
-node src/scripts/sendBonusEmail.js
+node src/scripts/sendBonusEmail.ts
 ```
 
 No build step, no tests. `tsconfig.json` and `public/tsconfig.json` are for type checking only (Node >= 22.18). The browser loads `public/js` as plain `.js`; every file there is `// @ts-check`ed against the shared types via JSDoc `import('../../src/types.ts')`. Server runs on port 3001 (`src/config.js`).
@@ -40,7 +40,7 @@ src/services/
   priceHistory.ts      → Price snapshot storage (src/data/price-history.json)
   idleShutdown.ts      → SSE session tracking + auto-quit (see App Bundle below)
 src/scripts/
-  sendBonusEmail.js    → Standalone bonus email script (run via run.sh / sleepwatcher)
+  sendBonusEmail.ts    → Standalone bonus email script (run via run.sh / sleepwatcher)
 public/js/
   api.js               → Fetch wrapper for all /api/* calls
   app.js               → Init + tab switching

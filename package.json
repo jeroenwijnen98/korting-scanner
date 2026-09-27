@@ -11,6 +11,7 @@
     "typecheck": "tsc -p . && tsc -p public"
   },
   "dependencies": {
+    "dotenv": "^18.0.4",
     "express": "^4.21.0",
     "nodemailer": "^8.0.1"
   },
