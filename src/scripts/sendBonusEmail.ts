@@ -12,6 +12,9 @@ const ROOT = join(import.meta.dirname, '..', '..');
 // Variables already set in the environment win over .env; a missing .env is fine.
 dotenv.config({ path: join(ROOT, '.env'), quiet: true });
 
+const STORE_NAMES: Record<StoreName, string> = { ah: 'Albert Heijn', dirk: 'Dirk', kruidvat: 'Kruidvat', etos: 'Etos' };
+const STORE_COLORS: Record<StoreName, string> = { ah: '#00A0E2', dirk: '#ED1C24', kruidvat: '#FF5500', etos: '#7B2D8B' };
+
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -43,18 +46,13 @@ function formatDate(dateStr: string): string {
   }
 }
 
-function buildHtml(bonusProducts: BonusProduct[], appUrl: string): string {
-  const storeNames: Record<StoreName, string> = { ah: 'Albert Heijn', dirk: 'Dirk', kruidvat: 'Kruidvat', etos: 'Etos' };
-  const grouped: Partial<Record<StoreName, BonusProduct[]>> = {};
-  bonusProducts.forEach(p => {
-    (grouped[p.store] ??= []).push(p);
-  });
-
-  const today = new Date().toLocaleDateString('nl-NL', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+function buildHtml(bonusProducts: BonusProduct[], appUrl: string, today: string): string {
+  const grouped = new Map<StoreName, BonusProduct[]>();
+  for (const p of bonusProducts) {
+    const group = grouped.get(p.store);
+    if (group) group.push(p);
+    else grouped.set(p.store, [p]);
+  }
 
   let html = `
 <!DOCTYPE html>
@@ -73,10 +71,9 @@ function buildHtml(bonusProducts: BonusProduct[], appUrl: string): string {
   if (bonusProducts.length === 0) {
     html += `<p style="color: #999; font-style: italic;">Geen opgeslagen producten zijn momenteel in de bonus.</p>`;
   } else {
-    for (const [store, products] of Object.entries(grouped) as [StoreName, BonusProduct[]][]) {
-      const storeColors: Record<StoreName, string> = { ah: '#00A0E2', dirk: '#ED1C24', kruidvat: '#FF5500', etos: '#7B2D8B' };
+    for (const [store, products] of grouped) {
       html += `
-    <h2 style="font-size: 18px; color: ${storeColors[store] || '#333'}; margin: 24px 0 12px 0;">${storeNames[store] || store}</h2>
+    <h2 style="font-size: 18px; color: ${STORE_COLORS[store] || '#333'}; margin: 24px 0 12px 0;">${STORE_NAMES[store] || store}</h2>
     <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
       <thead>
         <tr style="background: #f0f0f0;">
@@ -162,7 +159,7 @@ async function main(): Promise<void> {
     year: 'numeric',
   });
 
-  const html = buildHtml(bonusProducts, appUrl);
+  const html = buildHtml(bonusProducts, appUrl, today);
 
   // Send via Gmail SMTP
   const transporter = createTransport({
