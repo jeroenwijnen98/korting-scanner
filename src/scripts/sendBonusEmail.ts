@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { createTransport } from 'nodemailer';
 import { join } from 'node:path';
 import * as productStore from '../services/productStore.ts';
-import * as priceHistory from '../services/priceHistory.ts';
+import { checkAllBonuses } from '../services/bonusCheck.ts';
 import { stores } from '../stores/index.ts';
 import { parseUnitSize, calcPricePerUnit } from '../../public/js/utils/unitPrice.js';
 import { formatPrice, formatDate, escapeHtml } from '../../public/js/utils/format.js';
@@ -13,10 +13,6 @@ const ROOT = join(import.meta.dirname, '..', '..');
 
 // Variables already set in the environment win over .env; a missing .env is fine.
 dotenv.config({ path: join(ROOT, '.env'), quiet: true });
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
 
 function formatUnitPrice(price: number | null, salesUnitSize: string): string {
   const { volume, unit } = parseUnitSize(salesUnitSize);
@@ -114,21 +110,7 @@ async function main(): Promise<void> {
 
   // Check bonus status per store
   console.log(`Checking bonus for ${saved.length} products...`);
-  const bonusProducts: BonusProduct[] = [];
-  for (const [storeName, adapter] of Object.entries(stores)) {
-    const storeProducts = saved.filter(p => p.store === storeName);
-    if (storeProducts.length === 0) continue;
-    try {
-      const { results } = await adapter.checkBonus(storeProducts);
-      await priceHistory.recordSnapshots(results.map(product => ({
-        productId: product.savedId || `${storeName}-${product.productId}`,
-        data: product,
-      }))).catch(() => {});
-      bonusProducts.push(...results);
-    } catch (err) {
-      console.error(`Error checking ${storeName}:`, errorMessage(err));
-    }
-  }
+  const { bonusProducts } = await checkAllBonuses(saved, stores);
 
   console.log(`Found ${bonusProducts.length} bonus products.`);
 

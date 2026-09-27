@@ -1,7 +1,6 @@
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import type { SavedProduct } from '../types.ts';
 import { readJson, updateJson } from './jsonFile.ts';
+import { dataFile } from '../config.ts';
 
 /** What a client posts to save a product: a product from search or detail. */
 export type NewSavedProduct = Pick<SavedProduct, 'store' | 'storeProductId' | 'title'>
@@ -11,16 +10,14 @@ export type NewSavedProduct = Pick<SavedProduct, 'store' | 'storeProductId' | 't
 /** Fields that may change on a saved product after it is saved. */
 export type SavedProductFields = Partial<Pick<SavedProduct, 'imageUrl' | 'productGroup'>>;
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, '..', 'data');
-const FILE_PATH = join(DATA_DIR, 'products.json');
+const FILE = 'products.json';
 
 export async function getAll(): Promise<SavedProduct[]> {
-  return readJson<SavedProduct[]>(FILE_PATH, []);
+  return readJson<SavedProduct[]>(dataFile(FILE), []);
 }
 
 export async function add(product: NewSavedProduct): Promise<SavedProduct | null> {
-  return updateJson<SavedProduct[], SavedProduct | null>(FILE_PATH, [], (products) => {
+  return updateJson<SavedProduct[], SavedProduct | null>(dataFile(FILE), [], (products) => {
     const id = `${product.store}-${product.storeProductId}`;
     if (products.find(p => p.id === id)) {
       return { changed: false, result: null };
@@ -43,7 +40,7 @@ export async function add(product: NewSavedProduct): Promise<SavedProduct | null
 }
 
 export async function remove(id: string): Promise<boolean> {
-  return updateJson<SavedProduct[], boolean>(FILE_PATH, [], (products) => {
+  return updateJson<SavedProduct[], boolean>(dataFile(FILE), [], (products) => {
     const idx = products.findIndex(p => p.id === id);
     if (idx === -1) return { changed: false, result: false };
     products.splice(idx, 1);
@@ -52,7 +49,7 @@ export async function remove(id: string): Promise<boolean> {
 }
 
 export async function update(id: string, fields: SavedProductFields): Promise<SavedProduct | null> {
-  return updateJson<SavedProduct[], SavedProduct | null>(FILE_PATH, [], (products) => {
+  return updateJson<SavedProduct[], SavedProduct | null>(dataFile(FILE), [], (products) => {
     const product = products.find(p => p.id === id);
     if (!product) return { changed: false, result: null };
     Object.assign(product, fields);
@@ -63,7 +60,7 @@ export async function update(id: string, fields: SavedProductFields): Promise<Sa
 export async function bulkUpdate(
   updates: { id: string; fields: SavedProductFields }[],
 ): Promise<SavedProduct[]> {
-  return updateJson<SavedProduct[], SavedProduct[]>(FILE_PATH, [], (products) => {
+  return updateJson<SavedProduct[], SavedProduct[]>(dataFile(FILE), [], (products) => {
     const byId = new Map(products.map(p => [p.id, p]));
     for (const { id, fields } of updates) {
       const p = byId.get(id);

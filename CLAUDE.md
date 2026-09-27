@@ -32,15 +32,19 @@ Node.js/Express backend (ES modules) serving a vanilla JS frontend. The backend 
 server.ts              → Entry: loads .env (dotenv/config, first import), createApp(), listen
 src/app.ts             → createApp(): builds the Express app (/api, static public/,
                          idle shutdown) without listening
-src/config.ts          → PORT (default 3001) and KORTING_AUTOQUIT, from env
+src/config.ts          → PORT (default 3001), KORTING_AUTOQUIT and dataFile() (KORTING_DATA_DIR,
+                         default src/data), from env
 src/types.ts           → Domain types (product, saved product, price snapshot, API
                          response shapes), shared with the page
-src/routes/api.ts      → All REST endpoints
+src/routes/api.ts      → All REST endpoints + errorHandler (thrown error → 500 { error })
 src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, etos.ts, kruidvat.ts)
                          + bonusMechanism.ts (shared bonus-mechanism parser)
 src/services/
-  productStore.ts      → JSON file CRUD for saved products (src/data/products.json)
-  priceHistory.ts      → Price snapshot storage (src/data/price-history.json)
+  productStore.ts      → JSON file CRUD for saved products (<data dir>/products.json)
+  priceHistory.ts      → Price snapshot storage (<data dir>/price-history.json)
+  bonusCheck.ts        → checkAllBonuses(saved, stores): per-store bonus check + snapshots,
+                         used by /api/bonus and the bonus email
+  groupHistory.ts      → cheapestPerDate(): pure, the /api/group-history calculation
   jsonFile.ts          → Serialized JSON file read/update (per-file queue) used by both
   idleShutdown.ts      → SSE session tracking + auto-quit (see App Bundle below)
 src/scripts/
@@ -62,7 +66,7 @@ KortingScanner.app/    → macOS launcher bundle (installed via install-app.comm
 assets/                → icon.svg (source) + generated icon.png / icon.icns
 ```
 
-`src/data/` is auto-created and gitignored. Data persists in JSON files across runs.
+The data dir is `KORTING_DATA_DIR` if set (relative to the cwd), else `src/data/`. It is auto-created on first write; `src/data/` is gitignored. Data persists in JSON files across runs.
 
 ## Store Adapter Pattern
 
@@ -209,6 +213,8 @@ page's `EventSource` reconnects once the tab is foregrounded and unfrozen.
 - AH bonus check: individual detail calls per product (acceptable for <50 products)
 - Dirk bonus check: batched via `productAssortment` aliases in a single GraphQL request
 - Price history deduplication: only write when price/bonus state changes (not every poll)
+- Express 5: route handlers throw (or reject) instead of each catching; `errorHandler` in src/routes/api.ts turns that into `500 { error }` (a client error with its own 4xx status, like a malformed JSON body, keeps it). `req.body` is undefined without a JSON body
+- One bonus check (`checkAllBonuses`) for the route and the email: a store whose check throws is logged and its saved products go to `notFound`, so the other stores still come back
 - Every read-modify-write of a data file goes through `updateJson` (src/services/jsonFile.ts), queued per file, so concurrent requests (e.g. the unawaited snapshots of a bonus check) cannot overwrite each other. The queue is per process: the bonus email script running at the same moment as the server is not covered
 - Idle shutdown uses an SSE connection rather than a polling heartbeat: an open connection is not throttled in a background tab and drops the instant the tab closes
 - `run.sh` derives its own project directory instead of hardcoding one, so moving the repo does not silently break the weekly bonus email

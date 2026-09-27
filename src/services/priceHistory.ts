@@ -1,7 +1,6 @@
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import type { PriceSnapshot, Product } from '../types.ts';
 import { readJson, updateJson } from './jsonFile.ts';
+import { dataFile } from '../config.ts';
 
 /** Price snapshots per saved product id, oldest first. */
 type History = Record<string, PriceSnapshot[]>;
@@ -9,9 +8,7 @@ type History = Record<string, PriceSnapshot[]>;
 /** The product fields a price snapshot records. */
 type SnapshotData = Pick<Product, 'currentPrice' | 'priceBeforeBonus' | 'isBonus' | 'bonusMechanism'>;
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, '..', 'data');
-const FILE_PATH = join(DATA_DIR, 'price-history.json');
+const FILE = 'price-history.json';
 
 /** Append a snapshot to `history`; returns whether it changed anything. */
 function appendSnapshot(history: History, productId: string, data: SnapshotData): boolean {
@@ -49,7 +46,7 @@ export function recordSnapshot(productId: string, data: SnapshotData): Promise<v
 export function recordSnapshots(
   snapshots: { productId: string; data: SnapshotData }[],
 ): Promise<void> {
-  return updateJson<History, void>(FILE_PATH, {}, (history) => {
+  return updateJson<History, void>(dataFile(FILE), {}, (history) => {
     let changed = false;
     for (const { productId, data } of snapshots) {
       if (appendSnapshot(history, productId, data)) changed = true;
@@ -59,7 +56,7 @@ export function recordSnapshots(
 }
 
 export async function getHistory(productId: string): Promise<PriceSnapshot[]> {
-  const history = await readJson<History>(FILE_PATH, {});
+  const history = await readJson<History>(dataFile(FILE), {});
   const entries = history[productId] || [];
   return [...entries].reverse(); // newest first
 }
