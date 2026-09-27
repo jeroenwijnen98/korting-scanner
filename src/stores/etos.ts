@@ -1,13 +1,49 @@
+import type { BonusCheckResult, BonusProduct, Product, SavedProduct } from '../types.ts';
 import { StoreAdapter } from './base.ts';
 
 // TODO: CLIENT_ID needs to be discovered from browser DevTools (network tab on etos.nl)
 const CLIENT_ID = 'ajs_client_id';
 const BASE_URL = 'https://www.etos.nl/s/etos/dw/shop/v23_2';
 
-// In-memory session cookie (dwanonymous_* pattern like AH token management)
-let sessionCookie = null;
+// Raw Etos (Salesforce Commerce Cloud OCAPI) shapes: only the fields this
+// adapter reads. Search hits and product detail share the product fields.
 
-async function ensureSession() {
+interface EtosAuthResponse {
+  auth_token?: string;
+}
+
+interface EtosPromotion {
+  /** The bonus mechanism label as Etos shows it. */
+  callout_msg?: string;
+  name?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface EtosRawProduct {
+  product_id: string | number;
+  name?: string;
+  /** Search hits name the product here instead of in `name`. */
+  product_name?: string;
+  price?: number | null;
+  promotional_price?: number | null;
+  promotions?: EtosPromotion[];
+  c_contentSize?: string;
+  c_unitSize?: string;
+  primary_category_id?: string;
+  brand?: string;
+  image?: { link?: string };
+  images?: { url?: string }[];
+}
+
+interface EtosSearchResponse {
+  hits?: EtosRawProduct[];
+}
+
+// In-memory session cookie (dwanonymous_* pattern like AH token management)
+let sessionCookie: string | null = null;
+
+async function ensureSession(): Promise<void> {
   if (sessionCookie) return;
 
   const res = await fetch(
@@ -31,22 +67,28 @@ async function ensureSession() {
 
   // Also accept bearer token if returned in JSON
   if (!sessionCookie) {
-    const data = await res.json().catch(() => null);
+    const data = (await res.json().catch(() => null)) as EtosAuthResponse | null;
     if (data?.auth_token) {
       sessionCookie = `auth_token=${data.auth_token}`;
     }
   }
 }
 
-async function etosFetch(path) {
+async function etosFetch<T>(path: string): Promise<T> {
   await ensureSession();
-  const headers = { 'Accept': 'application/json' };
+  const headers: Record<string, string> = { 'Accept': 'application/json' };
   if (sessionCookie) headers['Cookie'] = sessionCookie;
 
   const url = `${BASE_URL}${path}${path.includes('?') ? '&' : '?'}client_id=${CLIENT_ID}`;
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`Etos API error: ${res.status}`);
-  return res.json();
+  return (await res.json()) as T;
+}
+
+function fetchProductDetail(storeProductId: string): Promise<EtosRawProduct> {
+  return etosFetch<EtosRawProduct>(
+    `/products/${encodeURIComponent(storeProductId)}?expand=prices,promotions`
+  );
 }
 
 class EtosAdapter extends StoreAdapter {
@@ -54,8 +96,7 @@ class EtosAdapter extends StoreAdapter {
     super('etos');
   }
 
-  /** @returns {import('../types.ts').Product} */
-  normalize(product) {
+  normalize(product: EtosRawProduct): Product {
     const normalPrice = product.price ?? null;
     const promoPrice = product.promotional_price ?? null;
     const isBonus = promoPrice != null && promoPrice !== normalPrice;
@@ -83,30 +124,24 @@ class EtosAdapter extends StoreAdapter {
     };
   }
 
-  async searchProducts(query) {
-    const data = await etosFetch(
+  async searchProducts(query: string): Promise<Product[]> {
+    const data = await etosFetch<EtosSearchResponse>(
       `/product_search?q=${encodeURIComponent(query)}&expand=prices,promotions&count=25`
     );
     const hits = data.hits || [];
     return hits.map(h => this.normalize(h));
   }
 
-  async getProductDetail(storeProductId) {
-    const data = await etosFetch(
-      `/products/${encodeURIComponent(storeProductId)}?expand=prices,promotions`
-    );
-    return this.normalize(data);
+  async getProductDetail(storeProductId: string): Promise<Product> {
+    return this.normalize(await fetchProductDetail(storeProductId));
   }
 
-  async checkBonus(savedProducts) {
-    const results = [];
-    const notFound = [];
+  async checkBonus(savedProducts: SavedProduct[]): Promise<BonusCheckResult> {
+    const results: BonusProduct[] = [];
+    const notFound: string[] = [];
     for (const saved of savedProducts) {
       try {
-        const data = await etosFetch(
-          `/products/${encodeURIComponent(saved.storeProductId)}?expand=prices,promotions`
-        );
-        const normalized = this.normalize(data);
+        const normalized = this.normalize(await fetchProductDetail(saved.storeProductId));
         if (normalized.isBonus) {
           results.push({ ...normalized, savedId: saved.id });
         }
