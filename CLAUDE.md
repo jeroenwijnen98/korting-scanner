@@ -40,6 +40,7 @@ src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, et
 src/services/
   productStore.ts      → JSON file CRUD for saved products (src/data/products.json)
   priceHistory.ts      → Price snapshot storage (src/data/price-history.json)
+  jsonFile.ts          → Serialized JSON file read/update (per-file queue) used by both
   idleShutdown.ts      → SSE session tracking + auto-quit (see App Bundle below)
 src/scripts/
   sendBonusEmail.ts    → Standalone bonus email script (run via run.sh / sleepwatcher)
@@ -200,6 +201,7 @@ page's `EventSource` reconnects once the tab is foregrounded and unfrozen.
 - AH bonus check: individual detail calls per product (acceptable for <50 products)
 - Dirk bonus check: batched via `productAssortment` aliases in a single GraphQL request
 - Price history deduplication: only write when price/bonus state changes (not every poll)
+- Every read-modify-write of a data file goes through `updateJson` (src/services/jsonFile.ts), queued per file, so concurrent requests (e.g. the unawaited snapshots of a bonus check) cannot overwrite each other. The queue is per process: the bonus email script running at the same moment as the server is not covered
 - Idle shutdown uses an SSE connection rather than a polling heartbeat: an open connection is not throttled in a background tab and drops the instant the tab closes
 - `run.sh` derives its own project directory instead of hardcoding one, so moving the repo does not silently break the weekly bonus email
 - `restart.command` sets `KORTING_AUTOQUIT=1` like the bundle does: every double-clickable way of starting the server produces one that quits with the last window. Only `node server.ts` (or `npm start`) leaves a server up, and that is the development case

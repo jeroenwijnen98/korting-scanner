@@ -151,9 +151,10 @@ router.get('/bonus', async (req, res) => {
       const storeProducts = saved.filter(p => p.store === storeName);
       if (storeProducts.length === 0) continue;
       const { results, notFound: storeNotFound } = await adapter.checkBonus(storeProducts);
-      for (const product of results) {
-        priceHistory.recordSnapshot(product.savedId || `${storeName}-${product.productId}`, product).catch(() => {});
-      }
+      priceHistory.recordSnapshots(results.map(product => ({
+        productId: product.savedId || `${storeName}-${product.productId}`,
+        data: product,
+      }))).catch(() => {});
       bonusProducts.push(...results);
       notFound.push(...(storeNotFound || []));
     }
