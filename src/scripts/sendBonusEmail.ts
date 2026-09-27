@@ -141,9 +141,10 @@ async function main(): Promise<void> {
     if (storeProducts.length === 0) continue;
     try {
       const { results } = await adapter.checkBonus(storeProducts);
-      for (const product of results) {
-        await priceHistory.recordSnapshot(product.savedId || `${storeName}-${product.productId}`, product).catch(() => {});
-      }
+      await priceHistory.recordSnapshots(results.map(product => ({
+        productId: product.savedId || `${storeName}-${product.productId}`,
+        data: product,
+      }))).catch(() => {});
       bonusProducts.push(...results);
     } catch (err) {
       console.error(`Error checking ${storeName}:`, errorMessage(err));
