@@ -17,14 +17,17 @@ export function parseBonusMechanism(label: string | null, priceBeforeBonus: numb
     const paid = parseInt(plusMatch[1]);
     return discounted(paid / (paid + parseInt(plusMatch[2])));
   }
-  // "2e gratis" / "3e gratis": pay for N - 1 of N
-  const nthMatch = m.match(/^(\d+)e gratis$/);
+  // "Ne ... ": the Nth item is cheaper, the other N - 1 cost the regular
+  // price. "product" / "artikel" is optional: "2e gratis", "2e artikel halve
+  // prijs", "2e product voor € 1.00"
+  const nthMatch = m.match(/^(\d+)e (?:product |artikel )?(gratis|halve prijs|voor (?:€\s*)?(\d+(?:[.,]\d+)?))$/);
   if (nthMatch) {
+    if (priceBeforeBonus == null) return null;
     const n = parseInt(nthMatch[1]);
-    return discounted((n - 1) / n);
-  }
-  if (m === '2e halve prijs') {
-    return discounted(0.75);
+    const nth = nthMatch[2] === 'gratis' ? 0
+      : nthMatch[2] === 'halve prijs' ? priceBeforeBonus / 2
+      : parseFloat(nthMatch[3].replace(',', '.'));
+    return ((n - 1) * priceBeforeBonus + nth) / n;
   }
 
   const pctMatch = m.match(/(\d+)%/);

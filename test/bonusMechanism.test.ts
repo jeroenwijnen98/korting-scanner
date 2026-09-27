@@ -29,6 +29,15 @@ const cases: [label: string | null, priceBeforeBonus: number | null, expected: n
   ['1 + 2 gratis', 3, 1],
   ['3e gratis', 3, 2],
   ['2 + 3 gratis', null, null],
+  // "Ne (product|artikel) ...": the Nth item cheaper, price per item over N
+  ['2e product voor 1.00', 19.99, 10.495],
+  ['2E PRODUCT VOOR 1,00', 20, 10.5],
+  ['2e product voor € 1.00', 20, 10.5],
+  ['3e product voor 1.00', 4, 3],
+  ['2e artikel halve prijs', 4, 3],
+  ['3e halve prijs', 6, 5],
+  ['2e artikel gratis', 3, 1.5],
+  ['2e product voor 1.00', null, null],
   // Mechanisms that need a regular price but have none
   ['1 + 1 gratis', null, null],
   ['25%', null, null],
