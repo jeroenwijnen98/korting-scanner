@@ -1,10 +1,33 @@
 import { Router } from 'express';
-import * as productStore from '../services/productStore.js';
-import * as priceHistory from '../services/priceHistory.js';
+import * as productStore from '../services/productStore.ts';
+import * as priceHistory from '../services/priceHistory.ts';
 import { stores } from '../stores/index.ts';
+import type { StoreAdapter } from '../stores/base.ts';
+import type { BonusProduct, PriceSnapshot, StoreName } from '../types.ts';
 import { parseUnitSize, calcPricePerUnit } from '../../public/js/utils/unitPrice.js';
+import type { StandardUnit } from '../../public/js/utils/unitPrice.js';
+
+/** One day of a product group's history: the saved product cheapest per unit that day. */
+interface GroupHistoryEntry extends PriceSnapshot {
+  title: string;
+  store: StoreName;
+  salesUnitSize: string;
+  unitPrice: number | null;
+  standardUnit: StandardUnit | null;
+}
 
 export const router = Router();
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** The store adapter for a store name from the request, if there is one. */
+function adapterFor(store: unknown): StoreAdapter | undefined {
+  return typeof store === 'string' && Object.hasOwn(stores, store)
+    ? stores[store as StoreName]
+    : undefined;
+}
 
 // List saved products
 router.get('/products', async (req, res) => {
@@ -12,7 +35,7 @@ router.get('/products', async (req, res) => {
     const products = await productStore.getAll();
     res.json(products);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -25,7 +48,7 @@ router.post('/products', async (req, res) => {
     }
     res.status(201).json(entry);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -38,7 +61,7 @@ router.delete('/products/:id', async (req, res) => {
     }
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -46,17 +69,17 @@ router.delete('/products/:id', async (req, res) => {
 router.get('/search', async (req, res) => {
   try {
     const { store, q } = req.query;
-    if (!store || !q) {
+    if (!store || !q || typeof q !== 'string') {
       return res.status(400).json({ error: 'store and q params required' });
     }
-    const adapter = stores[store];
+    const adapter = adapterFor(store);
     if (!adapter) {
       return res.status(400).json({ error: `Unknown store: ${store}` });
     }
     const results = await adapter.searchProducts(q);
     res.json(results);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -64,7 +87,7 @@ router.get('/search', async (req, res) => {
 router.get('/product/:store/:storeProductId', async (req, res) => {
   try {
     const { store, storeProductId } = req.params;
-    const adapter = stores[store];
+    const adapter = adapterFor(store);
     if (!adapter) {
       return res.status(400).json({ error: `Unknown store: ${store}` });
     }
@@ -75,7 +98,7 @@ router.get('/product/:store/:storeProductId', async (req, res) => {
     priceHistory.recordSnapshot(`${store}-${storeProductId}`, detail).catch(() => {});
     res.json(detail);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -86,7 +109,7 @@ router.post('/products/sync-images', async (req, res) => {
     const missing = saved.filter(p => !p.imageUrl);
     const fetched = await Promise.all(missing.map(async (p) => {
       try {
-        const adapter = stores[p.store];
+        const adapter = adapterFor(p.store);
         if (!adapter) return null;
         const detail = await adapter.getProductDetail(p.storeProductId);
         if (detail?.imageUrl) {
@@ -95,13 +118,13 @@ router.post('/products/sync-images', async (req, res) => {
       } catch { /* skip on error */ }
       return null;
     }));
-    const updates = fetched.filter(Boolean);
+    const updates = fetched.filter(u => u !== null);
     const products = updates.length > 0
       ? await productStore.bulkUpdate(updates)
       : saved;
     res.json(products);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -111,7 +134,7 @@ router.get('/history/:productId', async (req, res) => {
     const history = await priceHistory.getHistory(req.params.productId);
     res.json(history);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -122,8 +145,8 @@ router.get('/bonus', async (req, res) => {
     if (saved.length === 0) {
       return res.json({ bonusProducts: [], notFound: [] });
     }
-    const bonusProducts = [];
-    const notFound = [];
+    const bonusProducts: BonusProduct[] = [];
+    const notFound: string[] = [];
     for (const [storeName, adapter] of Object.entries(stores)) {
       const storeProducts = saved.filter(p => p.store === storeName);
       if (storeProducts.length === 0) continue;
@@ -136,7 +159,7 @@ router.get('/bonus', async (req, res) => {
     }
     res.json({ bonusProducts, notFound });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -151,7 +174,7 @@ router.patch('/products/:id', async (req, res) => {
     }
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });
 
@@ -179,7 +202,7 @@ router.get('/group-history/:groupName', async (req, res) => {
     );
 
     // 3. Collect all unique dates across all histories
-    const dateSet = new Set();
+    const dateSet = new Set<string>();
     for (const { entries } of historiesByProduct) {
       for (const entry of entries) {
         dateSet.add(entry.date);
@@ -193,9 +216,9 @@ router.get('/group-history/:groupName', async (req, res) => {
 
     // 4. For each date, find each product's effective state (most recent snapshot <= date)
     //    then compute unit price and pick the cheapest
-    const results = [];
+    const results: GroupHistoryEntry[] = [];
     for (const date of allDates) {
-      let cheapest = null;
+      let cheapest: GroupHistoryEntry | null = null;
       let cheapestUnitPrice = Infinity;
 
       for (const { saved, entries } of historiesByProduct) {
@@ -237,6 +260,6 @@ router.get('/group-history/:groupName', async (req, res) => {
     // 5. Return newest-first
     res.json(results.reverse());
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: errorMessage(err) });
   }
 });

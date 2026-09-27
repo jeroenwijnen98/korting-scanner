@@ -29,7 +29,7 @@ where they differ, those win.
 
 - Saved products never store price or bonus state: those are fetched live.
 - A price snapshot is appended only when `currentPrice`, `isBonus` or
-  `bonusMechanism` changes. Keep that dedup when touching `priceHistory.js`.
+  `bonusMechanism` changes. Keep that dedup when touching `priceHistory.ts`.
 - `src/data/` and `.env` are gitignored runtime state; never commit them and
   never assume they exist.
 
