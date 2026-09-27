@@ -288,7 +288,7 @@ export function createProductDetail(product, {
 
       tr.innerHTML = `
         <td>${formatDate(entry.date)}</td>
-        <td>${entry.currentPrice != null ? formatPrice(entry.currentPrice) : '-'}</td>
+        <td>${formatPrice(entry.currentPrice)}</td>
         <td>${escapeHtml(entry.bonusMechanism || '-')}</td>
         <td>${unitInfo ? formatPrice(unitInfo.unitPrice) + ' / ' + unitInfo.standardUnit : '-'}</td>
         <td>${entry.isBonus && normalUnitInfo ? formatPrice(normalUnitInfo.unitPrice) + ' / ' + normalUnitInfo.standardUnit : '-'}</td>
@@ -330,7 +330,7 @@ export function createProductDetail(product, {
         <td>${escapeHtml(entry.store || '—')}</td>
         <td>${escapeHtml(entry.salesUnitSize || '—')}</td>
         <td>${entry.currentPrice != null ? `€${entry.currentPrice.toFixed(2)}` : '—'}</td>
-        <td>${entry.bonusMechanism || '—'}</td>
+        <td>${escapeHtml(entry.bonusMechanism || '—')}</td>
         <td>${gUnitInfo ? `€${gUnitInfo.unitPrice.toFixed(2)} per ${gUnitInfo.standardUnit}` : '—'}</td>
       `;
       groupTbody.appendChild(tr);
