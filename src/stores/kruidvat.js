@@ -1,4 +1,4 @@
-import { StoreAdapter } from './base.js';
+import { StoreAdapter } from './base.ts';
 
 const BASE_URL = 'https://app.kruidvat.nl/api/v2/kvn-spa';
 const IMAGE_HOST = 'https://www.kruidvat.nl';
@@ -55,6 +55,7 @@ class KruidvatAdapter extends StoreAdapter {
     super('kruidvat');
   }
 
+  /** @returns {import('../types.ts').Product} */
   normalize(product) {
     const promo = product.topPromotion;
     const rawMechanism = promo?.badge?.headline || '';

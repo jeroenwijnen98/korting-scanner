@@ -20,7 +20,7 @@ where they differ, those win.
 - Every outbound call lives in a store adapter in `src/stores/`, which extends
   `StoreAdapter` and returns the common product schema from `CLAUDE.md`. The
   frontend only talks to this server, through `public/js/api.js`.
-- A new store is registered in `src/stores/index.js` and gets a section in
+- A new store is registered in `src/stores/index.ts` and gets a section in
   `CLAUDE.md` for its API and bonus mechanism.
 - Theme tokens live in `public/css/variables.css`; raw hex appears only there.
 - User-facing text is Dutch.

@@ -1,4 +1,4 @@
-import { StoreAdapter } from './base.js';
+import { StoreAdapter } from './base.ts';
 
 const GRAPHQL_URL = 'https://web-gateway.dirk.nl/graphql';
 const GRAPHQL_API_KEY = '6d3a42a3-6d93-4f98-838d-bcc0ab2307fd';
@@ -45,6 +45,7 @@ class DirkAdapter extends StoreAdapter {
     super('dirk');
   }
 
+  /** @returns {import('../types.ts').Product} */
   normalizeProduct(product, assortment) {
     const hasOffer = assortment?.productOffer != null;
     const normalPrice = assortment?.normalPrice ?? null;

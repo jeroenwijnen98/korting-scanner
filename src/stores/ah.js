@@ -1,4 +1,4 @@
-import { StoreAdapter } from './base.js';
+import { StoreAdapter } from './base.ts';
 
 const BASE_URL = 'https://api.ah.nl';
 let tokenData = null;
@@ -78,6 +78,7 @@ class AHAdapter extends StoreAdapter {
     super('ah');
   }
 
+  /** @returns {import('../types.ts').Product} */
   normalize(product) {
     const price = product.priceBeforeBonus ?? product.currentPrice ?? product.price?.now?.amount;
 

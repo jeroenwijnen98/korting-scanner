@@ -30,8 +30,9 @@ Node.js/Express backend (ES modules) serving a vanilla JS frontend. The backend 
 ```
 server.js              → Express entry, mounts /api and static public/
 src/config.js          → Port config (3001)
+src/types.ts           → Domain types (product, saved product, price snapshot), shared with the page
 src/routes/api.js      → All REST endpoints
-src/stores/            → Store adapters (base.js, ah.js, dirk.js, index.js)
+src/stores/            → Store adapters (base.ts, index.ts, ah.js, dirk.js, etos.js, kruidvat.js)
 src/services/
   productStore.js      → JSON file CRUD for saved products (src/data/products.json)
   priceHistory.js      → Price snapshot storage (src/data/price-history.json)
@@ -54,12 +55,12 @@ assets/                → icon.svg (source) + generated icon.png / icon.icns
 
 ## Store Adapter Pattern
 
-Each store extends `StoreAdapter` (src/stores/base.js) and implements:
+Each store extends `StoreAdapter` (src/stores/base.ts) and implements:
 - `searchProducts(query)` → normalized product array
 - `getProductDetail(storeProductId)` → single normalized product
-- `checkBonus(savedProducts)` → normalized products where `isBonus: true`
+- `checkBonus(savedProducts)` → `{ results, notFound }`: normalized products where `isBonus: true` (with `savedId`), plus saved ids the store did not know
 
-Register in `src/stores/index.js`. All methods normalize to the common schema below.
+Register in `src/stores/index.ts`. All methods normalize to the common schema below; its type (`Product`) and the other domain types live in `src/types.ts`. Adapters still in `.js` annotate their normalize method with JSDoc `@returns {import('../types.ts').Product}`.
 
 ## Backend API Routes
 
@@ -124,7 +125,8 @@ Register in `src/stores/index.js`. All methods normalize to the common schema be
   "subCategory": "string",
   "brand": "string",
   "isBonus": "boolean",
-  "store": "ah|dirk"
+  "imageUrl": "string|null",
+  "store": "ah|dirk|kruidvat|etos"
 }
 ```
 
@@ -140,7 +142,9 @@ Register in `src/stores/index.js`. All methods normalize to the common schema be
   "salesUnitSize": "...",
   "mainCategory": "...",
   "subCategory": "...",
-  "addedAt": "ISO timestamp"
+  "imageUrl": "...",
+  "addedAt": "ISO timestamp",
+  "productGroup": "string|null (optional)"
 }
 ```
 
