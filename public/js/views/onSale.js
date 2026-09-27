@@ -1,3 +1,4 @@
+// @ts-nocheck -- typed in #11; until then imported here but not checked
 import { getBonus, getProducts, getProductHistory, getGroupHistory } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';

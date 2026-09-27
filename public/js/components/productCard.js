@@ -1,3 +1,4 @@
+// @ts-nocheck -- typed in #11; until then imported here but not checked
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 
 export function createProductCard(product, { onRemove, showBonus = false, isUnavailable = false }) {

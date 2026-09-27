@@ -1,5 +1,13 @@
+// @ts-check
+
+/** @typedef {'info' | 'success' | 'error'} ToastType */
+
 const container = document.getElementById('toast-container');
 
+/**
+ * @param {string} message
+ * @param {ToastType} [type]
+ */
 export function showToast(message, type = 'info') {
   const el = document.createElement('div');
   el.className = `toast ${type}`;

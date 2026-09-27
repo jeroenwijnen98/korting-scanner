@@ -1,0 +1,29 @@
+{
+  // Type checking only, for the page. The browser loads these .js files as
+  // they are: nothing is emitted and there is no build step. Types come from
+  // JSDoc; the shared domain types from import('../../src/types.ts').
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": [],
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    // Relaxed for the page: querySelector/getElementById results are used
+    // against markup that is known to be there.
+    "strictNullChecks": false,
+    "skipLibCheck": true
+  },
+  // The core modules for now; the views and components follow.
+  "include": [
+    "js/api.js",
+    "js/app.js",
+    "js/session.js",
+    "js/components/toast.js",
+    "js/utils/unitPrice.js"
+  ]
+}

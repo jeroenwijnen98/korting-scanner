@@ -70,3 +70,28 @@ export interface PriceSnapshot {
   isBonus: boolean;
   bonusMechanism: string;
 }
+
+/** What `GET /api/bonus` returns: every saved product on bonus, across stores. */
+export interface BonusOverview {
+  bonusProducts: BonusProduct[];
+  notFound: string[];
+}
+
+/**
+ * One day of `GET /api/group-history/:groupName`: the product in the group with
+ * the lowest unit price on that date, per its most recent price snapshot.
+ */
+export interface GroupHistoryEntry {
+  /** YYYY-MM-DD. */
+  date: string;
+  title: string;
+  store: StoreName;
+  salesUnitSize: string;
+  currentPrice: number | null;
+  priceBeforeBonus: number | null;
+  isBonus: boolean;
+  bonusMechanism: string;
+  /** Null when the sales unit size could not be parsed. */
+  unitPrice: number | null;
+  standardUnit: 'liter' | 'kg' | 'stuk' | 'rol' | null;
+}

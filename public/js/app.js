@@ -1,9 +1,12 @@
+// @ts-check
 import { initOnSale } from './views/onSale.js';
 import { initMyProducts } from './views/myProducts.js';
 import { keepSessionAlive } from './session.js';
 
 // Tab switching
+/** @type {NodeListOf<HTMLButtonElement>} */
 const tabBtns = document.querySelectorAll('.tab-btn');
+/** @type {NodeListOf<HTMLElement>} */
 const panels = document.querySelectorAll('.tab-panel');
 
 tabBtns.forEach(btn => {
