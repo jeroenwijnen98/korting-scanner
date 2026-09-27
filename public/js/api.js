@@ -12,9 +12,10 @@
 
 /**
  * What `POST /api/products` takes: a saved product before the server gives it
- * its id and addedAt.
+ * its id and addedAt. imageUrl may be null, as in a product from search.
  * @typedef {Pick<SavedProduct, 'store' | 'storeProductId' | 'title'>
- *   & Partial<Pick<SavedProduct, 'brand' | 'salesUnitSize' | 'mainCategory' | 'subCategory' | 'imageUrl'>>} NewSavedProduct
+ *   & Partial<Pick<SavedProduct, 'brand' | 'salesUnitSize' | 'mainCategory' | 'subCategory'>>
+ *   & { imageUrl?: string | null }} NewSavedProduct
  */
 
 const BASE = '/api';

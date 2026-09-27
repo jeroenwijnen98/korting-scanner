@@ -48,9 +48,13 @@ public/js/
   app.js               → Init + tab switching
   session.js           → Holds the SSE connection that keeps the server alive
   views/               → onSale.js, myProducts.js
-  components/          → productCard.js, searchResult.js, productDetail.js, toast.js
-  utils/               → unitPrice.js (parseUnitSize, calcPricePerUnit); also
-                         imported by the server, so it stays plain JS + JSDoc;
+  components/          → productCard.js, searchResult.js, productDetail.js, toast.js,
+                         groupedSections.js (renderGroupedSections: the
+                         "Niet gecategoriseerd" + productgroup sections of both views)
+  utils/               → unitPrice.js (parseUnitSize, calcPricePerUnit),
+                         format.js (formatPrice, formatDate, escapeHtml) and
+                         stores.js (STORES: label, name, colour per store); also
+                         imported by the server, so they stay plain JS + JSDoc;
                          errorMessage.js (message of a caught error)
 KortingScanner.app/    → macOS launcher bundle (installed via install-app.command)
 assets/                → icon.svg (source) + generated icon.png / icon.icns

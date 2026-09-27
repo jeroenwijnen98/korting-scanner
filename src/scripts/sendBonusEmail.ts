@@ -5,6 +5,8 @@ import * as productStore from '../services/productStore.ts';
 import * as priceHistory from '../services/priceHistory.ts';
 import { stores } from '../stores/index.ts';
 import { parseUnitSize, calcPricePerUnit } from '../../public/js/utils/unitPrice.js';
+import { formatPrice, formatDate, escapeHtml } from '../../public/js/utils/format.js';
+import { STORES } from '../../public/js/utils/stores.js';
 import type { BonusProduct, StoreName } from '../types.ts';
 
 const ROOT = join(import.meta.dirname, '..', '..');
@@ -12,19 +14,8 @@ const ROOT = join(import.meta.dirname, '..', '..');
 // Variables already set in the environment win over .env; a missing .env is fine.
 dotenv.config({ path: join(ROOT, '.env'), quiet: true });
 
-const STORE_NAMES: Record<StoreName, string> = { ah: 'Albert Heijn', dirk: 'Dirk', kruidvat: 'Kruidvat', etos: 'Etos' };
-const STORE_COLORS: Record<StoreName, string> = { ah: '#00A0E2', dirk: '#ED1C24', kruidvat: '#FF5500', etos: '#7B2D8B' };
-
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-function formatPrice(price: number | null | undefined): string {
-  if (price == null) return '-';
-  return new Intl.NumberFormat('nl-NL', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(price);
 }
 
 function formatUnitPrice(price: number | null, salesUnitSize: string): string {
@@ -32,18 +23,6 @@ function formatUnitPrice(price: number | null, salesUnitSize: string): string {
   const result = calcPricePerUnit(price, volume, unit);
   if (!result) return '-';
   return `${formatPrice(result.unitPrice)}/${result.standardUnit}`;
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '-';
-  try {
-    return new Date(dateStr).toLocaleDateString('nl-NL', {
-      day: 'numeric',
-      month: 'short',
-    });
-  } catch {
-    return dateStr;
-  }
 }
 
 function buildHtml(bonusProducts: BonusProduct[], appUrl: string, today: string): string {
@@ -73,7 +52,7 @@ function buildHtml(bonusProducts: BonusProduct[], appUrl: string, today: string)
   } else {
     for (const [store, products] of grouped) {
       html += `
-    <h2 style="font-size: 18px; color: ${STORE_COLORS[store] || '#333'}; margin: 24px 0 12px 0;">${STORE_NAMES[store] || store}</h2>
+    <h2 style="font-size: 18px; color: ${STORES[store]?.color || '#333'}; margin: 24px 0 12px 0;">${escapeHtml(STORES[store]?.name || store)}</h2>
     <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
       <thead>
         <tr style="background: #f0f0f0;">
@@ -91,9 +70,9 @@ function buildHtml(bonusProducts: BonusProduct[], appUrl: string, today: string)
       for (const p of products) {
         html += `
         <tr>
-          <td style="padding: 8px; border: 1px solid #ddd;">${p.title}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${p.salesUnitSize || '-'}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #FF6B00;">${p.bonusMechanism || '-'}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${escapeHtml(p.title)}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${escapeHtml(p.salesUnitSize || '-')}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #FF6B00;">${escapeHtml(p.bonusMechanism || '-')}</td>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${formatPrice(p.currentPrice)}</td>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #FF6B00;">${formatUnitPrice(p.currentPrice, p.salesUnitSize)}</td>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #999;">${formatUnitPrice(p.priceBeforeBonus, p.salesUnitSize)}</td>
