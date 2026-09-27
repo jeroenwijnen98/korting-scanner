@@ -37,6 +37,7 @@ src/types.ts           → Domain types (product, saved product, price snapshot,
                          response shapes), shared with the page
 src/routes/api.ts      → All REST endpoints
 src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, etos.ts, kruidvat.ts)
+                         + bonusMechanism.ts (shared bonus-mechanism parser)
 src/services/
   productStore.ts      → JSON file CRUD for saved products (src/data/products.json)
   priceHistory.ts      → Price snapshot storage (src/data/price-history.json)
@@ -63,7 +64,8 @@ assets/                → icon.svg (source) + generated icon.png / icon.icns
 Each store extends `StoreAdapter` (src/stores/base.ts) and implements:
 - `searchProducts(query)` → normalized product array
 - `getProductDetail(storeProductId)` → single normalized product
-- `checkBonus(savedProducts)` → `{ results, notFound }`: normalized products where `isBonus: true` (with `savedId`), plus saved ids the store did not know
+
+`StoreAdapter` provides `checkBonus(savedProducts)` → `{ results, notFound }`: normalized products where `isBonus: true` (with `savedId`), plus saved ids the store did not know. The default fetches each detail in turn via `getProductDetail`; a detail that throws or returns null goes to `notFound`. An adapter narrows what counts as bonus by overriding `countsAsBonus(product)` (AH drops online-only products), or overrides `checkBonus` itself to batch (Dirk).
 
 Register in `src/stores/index.ts`. All methods normalize to the common schema below; its type (`Product`) and the other domain types live in `src/types.ts`. Each adapter types its raw API responses next to itself (only the fields it reads) and casts `res.json()` to them once, in its fetch helper.
 
@@ -98,16 +100,18 @@ Register in `src/stores/index.ts`. All methods normalize to the common schema be
   - Pricing/offers: `productAssortment(productId, storeId: 36)` → `{ normalPrice, offerPrice, productOffer { productOfferId, textPriceSign, startDate, endDate } }`
   - Single product: `product(productId: N)` → same fields as listProducts
 - `productAssortment` is batched using GraphQL aliases (`p0:`, `p1:`, …)
+- The search term is sent as a GraphQL variable (`$q`), never interpolated into the query
 - Dirk product IDs are integers
 
 ## Bonus Mechanisms
 
-### AH (`parseBonusMechanism` in src/stores/ah.ts)
+### AH and Kruidvat (`parseBonusMechanism` in src/stores/bonusMechanism.ts)
+The one shared parser: label + regular price → price per item (or null). Case-insensitive; spaces around `+` are optional (`1+1 gratis`) and so is `euro` in `X voor Y`.
 - `2e gratis` / `1 + 1 gratis` / `2 + 2 gratis` → 50% off (× 0.5)
 - `2 + 1 gratis` → 33% off (× 2/3)
 - `2e halve prijs` → 25% off (× 0.75)
 - `XX%` → dynamic percentage
-- `X voor Y euro` → bundle price (total / count)
+- `X voor Y euro` / `X voor Y` → bundle price (total / count)
 - `voor Y` → fixed single-item price
 
 ### Dirk

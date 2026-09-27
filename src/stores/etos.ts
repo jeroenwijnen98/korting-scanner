@@ -1,4 +1,4 @@
-import type { BonusCheckResult, BonusProduct, Product, SavedProduct } from '../types.ts';
+import type { Product } from '../types.ts';
 import { StoreAdapter } from './base.ts';
 
 // TODO: CLIENT_ID needs to be discovered from browser DevTools (network tab on etos.nl)
@@ -134,22 +134,6 @@ class EtosAdapter extends StoreAdapter {
 
   async getProductDetail(storeProductId: string): Promise<Product> {
     return this.normalize(await fetchProductDetail(storeProductId));
-  }
-
-  async checkBonus(savedProducts: SavedProduct[]): Promise<BonusCheckResult> {
-    const results: BonusProduct[] = [];
-    const notFound: string[] = [];
-    for (const saved of savedProducts) {
-      try {
-        const normalized = this.normalize(await fetchProductDetail(saved.storeProductId));
-        if (normalized.isBonus) {
-          results.push({ ...normalized, savedId: saved.id });
-        }
-      } catch {
-        notFound.push(saved.id);
-      }
-    }
-    return { results, notFound };
   }
 }
 
