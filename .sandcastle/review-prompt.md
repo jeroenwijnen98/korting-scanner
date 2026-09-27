@@ -48,7 +48,7 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
 If you find improvements to make:
 
 1. Make the changes directly on this branch
-2. Run `npm run typecheck` (if the script exists) and the smoke boot from `.sandcastle/implement-prompt.md` once each, saving output with `2>&1 | tee` and reading that file rather than rerunning
+2. Run `npm run typecheck` (if the script exists), `npm test` and the smoke boot from `.sandcastle/implement-prompt.md` once each, saving output with `2>&1 | tee` and reading that file rather than rerunning
 3. Commit describing the refinements
 
 If the code is already clean and well-structured, do nothing.

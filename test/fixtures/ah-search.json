@@ -1,0 +1,41 @@
+{
+  "products": [
+    {
+      "webshopId": 588920,
+      "hqId": 0,
+      "title": "AH Halfvolle melk",
+      "salesUnitSize": "1,5 l",
+      "priceBeforeBonus": 1.8,
+      "isBonus": true,
+      "discountLabels": [{ "code": "DISCOUNT_ONE_PLUS_ONE", "defaultDescription": "1+1 gratis" }],
+      "bonusStartDate": "2026-09-21",
+      "bonusEndDate": "2026-09-27",
+      "mainCategory": "Zuivel, eieren",
+      "subCategory": "Melk",
+      "brand": "AH",
+      "images": [{ "width": 800, "height": 800, "url": "https://static.ah.nl/melk.jpg" }],
+      "availability": { "orderable": "ORDERABLE" }
+    },
+    {
+      "webshopId": 123456,
+      "hqId": 4455,
+      "title": "Douwe Egberts Aroma rood filterkoffie",
+      "salesUnitSize": "500 g",
+      "currentPrice": 7.49,
+      "isBonus": false,
+      "mainCategory": "Koffie, thee",
+      "subCategory": "Filterkoffie",
+      "brand": "Douwe Egberts",
+      "images": []
+    },
+    {
+      "webshopId": 777,
+      "title": "AH Online pakket",
+      "salesUnitSize": "1 stuk",
+      "priceBeforeBonus": 10,
+      "isBonus": true,
+      "discountLabels": [{ "defaultDescription": "25%" }],
+      "availability": { "orderable": "ONLINE_ONLY" }
+    }
+  ]
+}
