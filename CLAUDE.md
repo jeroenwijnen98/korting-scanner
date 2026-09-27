@@ -34,7 +34,7 @@ src/config.js          → Port config (3001)
 src/types.ts           → Domain types (product, saved product, price snapshot, API
                          response shapes), shared with the page
 src/routes/api.ts      → All REST endpoints
-src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, etos.js, kruidvat.js)
+src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, etos.ts, kruidvat.ts)
 src/services/
   productStore.ts      → JSON file CRUD for saved products (src/data/products.json)
   priceHistory.ts      → Price snapshot storage (src/data/price-history.json)
@@ -62,7 +62,7 @@ Each store extends `StoreAdapter` (src/stores/base.ts) and implements:
 - `getProductDetail(storeProductId)` → single normalized product
 - `checkBonus(savedProducts)` → `{ results, notFound }`: normalized products where `isBonus: true` (with `savedId`), plus saved ids the store did not know
 
-Register in `src/stores/index.ts`. All methods normalize to the common schema below; its type (`Product`) and the other domain types live in `src/types.ts`. Adapters in `.ts` type their raw API responses next to the adapter; those still in `.js` (Etos, Kruidvat) annotate their normalize method with JSDoc `@returns {import('../types.ts').Product}`.
+Register in `src/stores/index.ts`. All methods normalize to the common schema below; its type (`Product`) and the other domain types live in `src/types.ts`. Each adapter types its raw API responses next to itself (only the fields it reads) and casts `res.json()` to them once, in its fetch helper.
 
 ## Backend API Routes
 
