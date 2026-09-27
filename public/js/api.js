@@ -5,7 +5,6 @@
  * @typedef {import('../../src/types.ts').Product} Product
  * @typedef {import('../../src/types.ts').SavedProduct} SavedProduct
  * @typedef {import('../../src/types.ts').PriceSnapshot} PriceSnapshot
- * @typedef {import('../../src/types.ts').BonusProduct} BonusProduct
  * @typedef {import('../../src/types.ts').BonusOverview} BonusOverview
  * @typedef {import('../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
  */
@@ -90,14 +89,8 @@ export function getProductHistory(productId) {
 }
 
 /** @returns {Promise<BonusOverview>} */
-export async function getBonus() {
-  /** @type {BonusOverview | BonusProduct[]} */
-  const data = await request('/bonus');
-  // Support both old array shape and new { bonusProducts, notFound } shape
-  if (Array.isArray(data)) {
-    return { bonusProducts: data, notFound: [] };
-  }
-  return data;
+export function getBonus() {
+  return request('/bonus');
 }
 
 /**

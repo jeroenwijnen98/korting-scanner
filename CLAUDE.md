@@ -84,11 +84,14 @@ Register in `src/stores/index.ts`. All methods normalize to the common schema be
 |--------|------|---------|
 | `GET` | `/api/products` | List saved products |
 | `POST` | `/api/products` | Save a product |
+| `PATCH` | `/api/products/:id` | Set a saved product's `productGroup` (`null` clears it) |
 | `DELETE` | `/api/products/:id` | Remove a saved product |
+| `POST` | `/api/products/sync-images` | Backfill `imageUrl` of saved products that lack one (detail fetch per product) |
 | `GET` | `/api/search?store=ah&q=koffie` | Proxy search to store |
 | `GET` | `/api/product/:store/:storeProductId` | Fetch product detail + record price snapshot |
 | `GET` | `/api/bonus` | Check saved products for current bonus status + record snapshots |
 | `GET` | `/api/history/:productId` | Get price history for a product |
+| `GET` | `/api/group-history/:groupName` | Cheapest unit price per date across a product group (`cheapestPerDate`) |
 | `GET` | `/api/session` | SSE stream held open by each page; drives the auto-quit |
 
 ## Store APIs
@@ -112,6 +115,19 @@ Register in `src/stores/index.ts`. All methods normalize to the common schema be
 - The search term is sent as a GraphQL variable (`$q`), never interpolated into the query
 - Dirk product IDs are integers
 
+### Kruidvat
+- **Base URL**: `https://app.kruidvat.nl/api/v2/kvn-spa` (SAP Commerce, the app's API)
+- **Auth**: none
+- **Headers**: `Accept: application/json`, `User-Agent: okhttp/4.9.3`
+- **Search**: `GET /search?fields=FULL&lang=nl&query={term}` → `products`
+- **Detail**: `GET /products/{code}?fields=FULL&lang=nl` → the product
+- `code` is the `storeProductId`. Bonus info is in `topPromotion` (`badge.headline` is the mechanism, plus `startDate` / `endDate`); the regular price is `price.value`
+- Image URLs are relative to `https://www.kruidvat.nl` unless already absolute
+- Bonus check: individual detail calls per product (the `StoreAdapter` default)
+
+### Etos (broken)
+The adapter has never worked: the OCAPI site ID `etos` does not exist, the client ID is a placeholder and Node's default user agent gets no response. Search, detail and bonus check all fail. Fix or removal is tracked in #12.
+
 ## Bonus Mechanisms
 
 ### AH and Kruidvat (`parseBonusMechanism` in src/stores/bonusMechanism.ts)
@@ -122,6 +138,8 @@ The one shared parser: label + regular price → price per item (or null). Case-
 - `XX%` → dynamic percentage
 - `X voor Y euro` / `X voor Y` → bundle price (total / count)
 - `voor Y` → fixed single-item price
+
+Kruidvat ignores promotions whose label contains `gratis artikel` (a free extra item, not a lower price for the saved product): such a product is not bonus. An unparseable label keeps the regular price as `currentPrice`.
 
 ### Dirk
 - `offerPrice` is the final price; `normalPrice` is the pre-offer price. No calculation needed.
