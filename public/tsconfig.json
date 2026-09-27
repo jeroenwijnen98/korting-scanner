@@ -18,12 +18,5 @@
     "strictNullChecks": false,
     "skipLibCheck": true
   },
-  // The core modules for now; the views and components follow.
-  "include": [
-    "js/api.js",
-    "js/app.js",
-    "js/session.js",
-    "js/components/toast.js",
-    "js/utils/unitPrice.js"
-  ]
+  "include": ["**/*.js"]
 }

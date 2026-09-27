@@ -1,8 +1,31 @@
-// @ts-nocheck -- typed in #11; until then imported here but not checked
+// @ts-check
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 import { updateProduct } from '../api.js';
 import { showToast } from './toast.js';
 
+/**
+ * @typedef {import('./productCard.js').DisplayedProduct} DisplayedProduct
+ * @typedef {import('../../../src/types.ts').SavedProduct} SavedProduct
+ * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
+ * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
+ */
+
+/**
+ * @typedef {object} ProductDetailOptions
+ * @property {() => void} onBack
+ * @property {boolean} [showBonus]
+ * @property {PriceSnapshot[]} [history] newest first
+ * @property {SavedProduct | null} [savedProduct] set when the product is saved; enables the productgroup selector
+ * @property {string[]} [existingGroups]
+ * @property {((id: string, productGroup: string | null) => void) | null} [onProductGroupChange]
+ * @property {GroupHistoryEntry[]} [groupHistory] newest first
+ */
+
+/**
+ * @param {DisplayedProduct} product
+ * @param {ProductDetailOptions} options
+ * @returns {HTMLDivElement}
+ */
 export function createProductDetail(product, {
   onBack,
   showBonus = false,
@@ -320,6 +343,7 @@ export function createProductDetail(product, {
   return el;
 }
 
+/** @param {number} price */
 function formatPrice(price) {
   return new Intl.NumberFormat('nl-NL', {
     style: 'currency',
@@ -327,6 +351,7 @@ function formatPrice(price) {
   }).format(price);
 }
 
+/** @param {string} dateStr */
 function formatDate(dateStr) {
   try {
     return new Date(dateStr).toLocaleDateString('nl-NL', {

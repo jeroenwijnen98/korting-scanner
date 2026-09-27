@@ -1,17 +1,33 @@
-// @ts-nocheck -- typed in #11; until then imported here but not checked
+// @ts-check
 import { getProducts, addProduct, removeProduct, searchProducts, getProductDetail, getProductHistory, getGroupHistory, syncProductImages } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { createSearchResult } from '../components/searchResult.js';
 import { showToast } from '../components/toast.js';
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { errorMessage } from '../utils/errorMessage.js';
+
+/**
+ * @typedef {import('../../../src/types.ts').StoreName} StoreName
+ * @typedef {import('../../../src/types.ts').Product} Product
+ * @typedef {import('../../../src/types.ts').SavedProduct} SavedProduct
+ * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
+ * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
+ * @typedef {import('../components/productCard.js').DisplayedProduct} DisplayedProduct
+ * @typedef {StoreName | 'alle'} StoreFilter
+ */
 
 const panel = document.getElementById('panel-my-products');
+/** @type {SavedProduct[]} */
 let savedProducts = [];
+/** @type {StoreFilter} */
 let activeStore = 'ah';
-let searchTimeout = null;
+/** @type {number | undefined} */
+let searchTimeout;
+/** @type {string[]} */
 let unavailableIds = [];
 
+/** @param {string[]} ids saved product ids the last bonus check could not find */
 export function setUnavailableIds(ids) {
   unavailableIds = ids || [];
   renderSaved();
@@ -23,9 +39,12 @@ export async function initMyProducts() {
   // Store pills
   const pills = document.createElement('div');
   pills.className = 'store-pills';
-  ['alle', 'ah', 'dirk', 'kruidvat', 'etos'].forEach(store => {
+  /** @type {StoreFilter[]} */
+  const stores = ['alle', 'ah', 'dirk', 'kruidvat', 'etos'];
+  stores.forEach(store => {
     const pill = document.createElement('button');
     pill.className = `store-pill${store === 'ah' ? ' active' : ''}`;
+    /** @type {Record<StoreFilter, string>} */
     const storeLabels = { alle: 'Alle', ah: 'AH', dirk: 'Dirk', kruidvat: 'Kruidvat', etos: 'Etos' };
     pill.textContent = storeLabels[store] || store.toUpperCase();
     pill.dataset.store = store;
@@ -61,7 +80,7 @@ export async function initMyProducts() {
   `;
   panel.appendChild(searchBar);
   const searchInput = searchBar.querySelector('input');
-  const clearBtn = searchBar.querySelector('.search-bar-clear');
+  const clearBtn = /** @type {HTMLButtonElement} */ (searchBar.querySelector('.search-bar-clear'));
 
   // Search results container
   const resultsContainer = document.createElement('div');
@@ -107,7 +126,7 @@ export async function initMyProducts() {
         const results = await searchProducts(store, query);
         renderSearchResults(results, resultsContainer);
       } catch (err) {
-        showToast(err.message, 'error');
+        showToast(errorMessage(err), 'error');
         resultsContainer.innerHTML = '';
       }
     }, 300);
@@ -134,6 +153,7 @@ async function loadSaved() {
   }
 }
 
+/** @param {DisplayedProduct} product */
 function getUnitPriceForSort(product) {
   if (product.currentPrice == null) return null;
   const { volume, unit } = parseUnitSize(product.salesUnitSize);
@@ -166,6 +186,7 @@ function renderSaved() {
   const withoutGroup = filtered.filter(p => !p.productGroup);
 
   // Group withGroup products by productGroup name
+  /** @type {Record<string, SavedProduct[]>} */
   const groups = {};
   withGroup.forEach(p => {
     if (!groups[p.productGroup]) groups[p.productGroup] = [];
@@ -209,7 +230,7 @@ function renderSaved() {
             renderSaved();
             showToast('Product verwijderd', 'success');
           } catch (err) {
-            showToast(err.message, 'error');
+            showToast(errorMessage(err), 'error');
           }
         },
       });
@@ -245,7 +266,7 @@ function renderSaved() {
             renderSaved();
             showToast('Product verwijderd', 'success');
           } catch (err) {
-            showToast(err.message, 'error');
+            showToast(errorMessage(err), 'error');
           }
         },
       });
@@ -258,17 +279,21 @@ function renderSaved() {
   });
 }
 
+/** @param {SavedProduct} product */
 async function showProductDetail(product) {
   panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
   const productId = product.id || `${product.store}-${product.storeProductId}`;
 
+  /** @type {PriceSnapshot[]} */
   let history = [];
+  /** @type {GroupHistoryEntry[]} */
   let groupHistory = [];
+  /** @type {Product | null} */
   let detail = null;
 
   try {
     [history, groupHistory, detail] = await Promise.all([
-      getProductHistory(productId).catch(() => []),
+      getProductHistory(productId).catch(() => /** @type {PriceSnapshot[]} */ ([])),
       product.productGroup ? getGroupHistory(product.productGroup) : Promise.resolve([]),
       getProductDetail(product.store, product.storeProductId),
     ]);
@@ -288,7 +313,7 @@ async function showProductDetail(product) {
 
   panel.innerHTML = '';
   const detailEl = createProductDetail(enrichedDetail, {
-    showBonus: enrichedDetail.isBonus || false,
+    showBonus: detail?.isBonus || false,
     history,
     groupHistory,
     savedProduct,
@@ -312,6 +337,10 @@ async function showProductDetail(product) {
   panel.appendChild(detailEl);
 }
 
+/**
+ * @param {Product[]} results
+ * @param {HTMLElement} container
+ */
 function renderSearchResults(results, container) {
   container.innerHTML = '';
 
@@ -349,7 +378,7 @@ function renderSearchResults(results, container) {
           // Re-render search results to show checkmark
           renderSearchResults(results, container);
         } catch (err) {
-          showToast(err.message, 'error');
+          showToast(errorMessage(err), 'error');
         }
       },
     });

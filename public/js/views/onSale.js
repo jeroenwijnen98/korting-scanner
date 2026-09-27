@@ -1,10 +1,23 @@
-// @ts-nocheck -- typed in #11; until then imported here but not checked
+// @ts-check
 import { getBonus, getProducts, getProductHistory, getGroupHistory } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { showToast } from '../components/toast.js';
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { errorMessage } from '../utils/errorMessage.js';
 import { setUnavailableIds } from './myProducts.js';
+
+/**
+ * @typedef {import('../../../src/types.ts').BonusProduct} BonusProduct
+ * @typedef {import('../../../src/types.ts').SavedProduct} SavedProduct
+ * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
+ * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
+ */
+
+/**
+ * A product on bonus, with the productgroup of its saved product.
+ * @typedef {BonusProduct & { productGroup?: string | null }} OnSaleProduct
+ */
 
 const panel = document.getElementById('panel-on-sale');
 
@@ -39,17 +52,25 @@ export async function initOnSale() {
       <div class="empty-state">
         <div class="empty-state-icon">!</div>
         <h3>Fout bij laden</h3>
-        <p>${err.message}</p>
+        <p>${errorMessage(err)}</p>
       </div>
     `;
   }
 }
 
+/**
+ * @param {OnSaleProduct} product
+ * @param {OnSaleProduct[]} allProducts
+ * @param {SavedProduct[]} savedProducts
+ * @param {string[]} [notFound]
+ */
 async function showDetail(product, allProducts, savedProducts, notFound = []) {
   panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
   const productId = product.savedId || `${product.store}-${product.productId}`;
 
+  /** @type {PriceSnapshot[]} */
   let history = [];
+  /** @type {GroupHistoryEntry[]} */
   let groupHistory = [];
   try {
     [history, groupHistory] = await Promise.all([
@@ -97,6 +118,7 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
   panel.appendChild(detail);
 }
 
+/** @param {OnSaleProduct} product */
 function getUnitPriceForSort(product) {
   if (product.currentPrice == null) return null;
   const { volume, unit } = parseUnitSize(product.salesUnitSize);
@@ -104,6 +126,11 @@ function getUnitPriceForSort(product) {
   return result ? result.unitPrice : null;
 }
 
+/**
+ * @param {OnSaleProduct[]} products
+ * @param {SavedProduct[]} savedProducts
+ * @param {string[]} [notFound]
+ */
 function render(products, savedProducts, notFound = []) {
   panel.innerHTML = '';
 
@@ -134,6 +161,7 @@ function render(products, savedProducts, notFound = []) {
   const withoutGroup = products.filter(p => !p.productGroup);
 
   // Group withGroup products by productGroup name
+  /** @type {Record<string, OnSaleProduct[]>} */
   const groups = {};
   withGroup.forEach(p => {
     if (!groups[p.productGroup]) groups[p.productGroup] = [];

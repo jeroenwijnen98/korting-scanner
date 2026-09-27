@@ -1,6 +1,23 @@
-// @ts-nocheck -- typed in #11; until then imported here but not checked
+// @ts-check
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 
+/**
+ * @typedef {import('../../../src/types.ts').Product} Product
+ */
+
+/**
+ * What a product card or the product detail shows: a product from a store
+ * adapter, or a saved product, which carries no price or bonus state.
+ * @typedef {Pick<Product, 'title' | 'store' | 'salesUnitSize' | 'brand' | 'imageUrl'>
+ *   & Partial<Pick<Product, 'currentPrice' | 'priceBeforeBonus' | 'isBonus' | 'bonusMechanism' | 'bonusEndDate'>>} DisplayedProduct
+ */
+
+/**
+ * @template {DisplayedProduct} P
+ * @param {P} product
+ * @param {{ onRemove?: (product: P) => void, showBonus?: boolean, isUnavailable?: boolean }} options
+ * @returns {HTMLDivElement}
+ */
 export function createProductCard(product, { onRemove, showBonus = false, isUnavailable = false }) {
   const el = document.createElement('div');
   el.className = 'product-card';
@@ -117,6 +134,7 @@ export function createProductCard(product, { onRemove, showBonus = false, isUnav
   return el;
 }
 
+/** @param {number} price */
 function formatPrice(price) {
   return new Intl.NumberFormat('nl-NL', {
     style: 'currency',
@@ -124,6 +142,7 @@ function formatPrice(price) {
   }).format(price);
 }
 
+/** @param {string} dateStr */
 function formatDate(dateStr) {
   try {
     return new Date(dateStr).toLocaleDateString('nl-NL', {

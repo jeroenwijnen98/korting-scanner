@@ -1,4 +1,12 @@
-// @ts-nocheck -- typed in #11; until then imported here but not checked
+// @ts-check
+
+/** @typedef {import('../../../src/types.ts').Product} Product */
+
+/**
+ * @param {Product} product
+ * @param {{ onAdd: (product: Product) => void, isSaved: boolean }} options
+ * @returns {HTMLDivElement}
+ */
 export function createSearchResult(product, { onAdd, isSaved }) {
   const el = document.createElement('div');
   el.className = 'search-result';

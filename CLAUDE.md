@@ -22,7 +22,7 @@ npm run typecheck
 node src/scripts/sendBonusEmail.js
 ```
 
-No build step, no tests. `tsconfig.json` and `public/tsconfig.json` are for type checking only (Node >= 22.18). The browser loads `public/js` as plain `.js`; its core modules (api, app, session, toast, utils) are `// @ts-check`ed against the shared types via JSDoc `import('../../src/types.ts')`. Views and the other components are `// @ts-nocheck` until they are typed. Server runs on port 3001 (`src/config.js`).
+No build step, no tests. `tsconfig.json` and `public/tsconfig.json` are for type checking only (Node >= 22.18). The browser loads `public/js` as plain `.js`; every file there is `// @ts-check`ed against the shared types via JSDoc `import('../../src/types.ts')`. Server runs on port 3001 (`src/config.js`).
 
 ## Architecture
 
@@ -48,7 +48,8 @@ public/js/
   views/               → onSale.js, myProducts.js
   components/          → productCard.js, searchResult.js, productDetail.js, toast.js
   utils/               → unitPrice.js (parseUnitSize, calcPricePerUnit); also
-                         imported by the server, so it stays plain JS + JSDoc
+                         imported by the server, so it stays plain JS + JSDoc;
+                         errorMessage.js (message of a caught error)
 KortingScanner.app/    → macOS launcher bundle (installed via install-app.command)
 assets/                → icon.svg (source) + generated icon.png / icon.icns
 ```
