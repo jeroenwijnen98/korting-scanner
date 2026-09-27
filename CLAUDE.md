@@ -8,6 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Start server (development)
 node server.js
 
+# Type check (tsc, no emit; Node strips the types itself)
+npm run typecheck
+
 # Install/refresh /Applications/KortingScanner.app (only when the bundle changes)
 ./install-app.command
 
@@ -18,7 +21,7 @@ node server.js
 node src/scripts/sendBonusEmail.js
 ```
 
-No build step, no tests. Server runs on port 3001 (`src/config.js`).
+No build step, no tests. `tsconfig.json` is for type checking only (Node >= 22.18). Server runs on port 3001 (`src/config.js`).
 
 ## Architecture
 
