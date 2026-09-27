@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node server.js",
     "sandcastle": "tsx .sandcastle/main.mts",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p . && tsc -p public"
   },
   "dependencies": {
     "express": "^4.21.0",

@@ -1,3 +1,4 @@
+// @ts-nocheck -- typed in #11; until then imported here but not checked
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 import { updateProduct } from '../api.js';
 import { showToast } from './toast.js';

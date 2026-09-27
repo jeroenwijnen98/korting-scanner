@@ -1,3 +1,4 @@
+// @ts-nocheck -- typed in #11; until then imported here but not checked
 export function createSearchResult(product, { onAdd, isSaved }) {
   const el = document.createElement('div');
   el.className = 'search-result';

@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Start server (development)
 node server.js
 
-# Type check (tsc, no emit; Node strips the types itself)
+# Type check (tsc, no emit): the server (tsconfig.json; Node strips the
+# types itself) and the page (public/tsconfig.json; JSDoc + // @ts-check)
 npm run typecheck
 
 # Install/refresh /Applications/KortingScanner.app (only when the bundle changes)
@@ -21,7 +22,7 @@ npm run typecheck
 node src/scripts/sendBonusEmail.js
 ```
 
-No build step, no tests. `tsconfig.json` is for type checking only (Node >= 22.18). Server runs on port 3001 (`src/config.js`).
+No build step, no tests. `tsconfig.json` and `public/tsconfig.json` are for type checking only (Node >= 22.18). The browser loads `public/js` as plain `.js`; its core modules (api, app, session, toast, utils) are `// @ts-check`ed against the shared types via JSDoc `import('../../src/types.ts')`. Views and the other components are `// @ts-nocheck` until they are typed. Server runs on port 3001 (`src/config.js`).
 
 ## Architecture
 
@@ -30,7 +31,8 @@ Node.js/Express backend (ES modules) serving a vanilla JS frontend. The backend 
 ```
 server.js              → Express entry, mounts /api and static public/
 src/config.js          → Port config (3001)
-src/types.ts           → Domain types (product, saved product, price snapshot), shared with the page
+src/types.ts           → Domain types (product, saved product, price snapshot, API
+                         response shapes), shared with the page
 src/routes/api.ts      → All REST endpoints
 src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, etos.js, kruidvat.js)
 src/services/
