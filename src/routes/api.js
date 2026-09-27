@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as productStore from '../services/productStore.js';
 import * as priceHistory from '../services/priceHistory.js';
 import { stores } from '../stores/index.js';
-import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { parseUnitSize, calcPricePerUnit } from '../../public/js/utils/unitPrice.js';
 
 export const router = Router();
 

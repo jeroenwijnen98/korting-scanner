@@ -1,6 +1,19 @@
+// @ts-check
+// Shared by the browser and the server (src/routes/api.js, the bonus email), so
+// it stays plain JS that the browser can load as it is, typed with JSDoc.
+
+/**
+ * @typedef {'ml' | 'cl' | 'l' | 'g' | 'kg' | 'stuk' | 'rol'} SizeUnit
+ * @typedef {'liter' | 'kg' | 'stuk' | 'rol'} StandardUnit
+ * @typedef {{ volume: number, unit: SizeUnit }} UnitSize
+ * @typedef {{ unitPrice: number, standardUnit: StandardUnit }} PricePerUnit
+ */
+
 /**
  * Parse salesUnitSize string into volume and unit.
  * Examples: "500 g" → { volume: 500, unit: 'g' }, "1.5 l" → { volume: 1.5, unit: 'l' }
+ * @param {string | null | undefined} salesUnitSize
+ * @returns {UnitSize}
  */
 export function parseUnitSize(salesUnitSize) {
   if (!salesUnitSize) return { volume: 1, unit: 'stuk' };
@@ -18,12 +31,16 @@ export function parseUnitSize(salesUnitSize) {
   if (unit === 'stuks') unit = 'stuk';
   if (unit === 'rollen') unit = 'rol';
 
-  return { volume, unit };
+  return { volume, unit: /** @type {SizeUnit} */ (unit) };
 }
 
 /**
  * Calculate price per standard unit.
  * Returns { unitPrice, standardUnit } or null if not calculable.
+ * @param {number | null | undefined} price
+ * @param {number} volume
+ * @param {string} unit
+ * @returns {PricePerUnit | null}
  */
 export function calcPricePerUnit(price, volume, unit) {
   if (price == null || !volume || volume <= 0) return null;

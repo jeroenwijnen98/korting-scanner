@@ -44,7 +44,8 @@ public/js/
   session.js           → Holds the SSE connection that keeps the server alive
   views/               → onSale.js, myProducts.js
   components/          → productCard.js, searchResult.js, productDetail.js, toast.js
-  utils/               → unitPrice.js (parseUnitSize, calcPricePerUnit)
+  utils/               → unitPrice.js (parseUnitSize, calcPricePerUnit); also
+                         imported by the server, so it stays plain JS + JSDoc
 KortingScanner.app/    → macOS launcher bundle (installed via install-app.command)
 assets/                → icon.svg (source) + generated icon.png / icon.icns
 ```
