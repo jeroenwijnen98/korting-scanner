@@ -4,7 +4,7 @@
 
 /**
  * @typedef {'ml' | 'cl' | 'l' | 'g' | 'kg' | 'stuk' | 'rol'} SizeUnit
- * @typedef {'liter' | 'kg' | 'stuk' | 'rol'} StandardUnit
+ * @typedef {import('../../../src/types.ts').StandardUnit} StandardUnit
  * @typedef {{ volume: number, unit: SizeUnit }} UnitSize
  * @typedef {{ unitPrice: number, standardUnit: StandardUnit }} PricePerUnit
  */

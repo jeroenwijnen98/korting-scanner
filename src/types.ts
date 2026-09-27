@@ -77,6 +77,9 @@ export interface BonusOverview {
   notFound: string[];
 }
 
+/** The unit a unit price is expressed per (see public/js/utils/unitPrice.js). */
+export type StandardUnit = 'liter' | 'kg' | 'stuk' | 'rol';
+
 /**
  * One day of `GET /api/group-history/:groupName`: the product in the group with
  * the lowest unit price on that date, per its most recent price snapshot.
@@ -93,5 +96,5 @@ export interface GroupHistoryEntry {
   bonusMechanism: string;
   /** Null when the sales unit size could not be parsed. */
   unitPrice: number | null;
-  standardUnit: 'liter' | 'kg' | 'stuk' | 'rol' | null;
+  standardUnit: StandardUnit | null;
 }
