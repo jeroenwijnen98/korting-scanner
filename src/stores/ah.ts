@@ -85,6 +85,11 @@ async function ahFetch<T>(path: string, retried = false): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function fetchProductDetail(webshopId: string): Promise<AHRawProduct> {
+  const data = await ahFetch<AHDetailResponse>(`/mobile-services/product/detail/v4/fir/${webshopId}`);
+  return data.productCard || data;
+}
+
 /**
  * The price per item under a bonus mechanism, or null when the mechanism is
  * not recognised. Percentage and "gratis" mechanisms need the regular price;
@@ -168,9 +173,7 @@ class AHAdapter extends StoreAdapter {
   }
 
   async getProductDetail(storeProductId: string): Promise<Product> {
-    const data = await ahFetch<AHDetailResponse>(`/mobile-services/product/detail/v4/fir/${storeProductId}`);
-    const product = data.productCard || data;
-    return this.normalize(product);
+    return this.normalize(await fetchProductDetail(storeProductId));
   }
 
   async checkBonus(savedProducts: SavedProduct[]): Promise<BonusCheckResult> {
@@ -178,9 +181,7 @@ class AHAdapter extends StoreAdapter {
     const notFound: string[] = [];
     for (const saved of savedProducts) {
       try {
-        const data = await ahFetch<AHDetailResponse>(`/mobile-services/product/detail/v4/fir/${saved.storeProductId}`);
-        const product = data.productCard || data;
-        const normalized = this.normalize(product);
+        const normalized = this.normalize(await fetchProductDetail(saved.storeProductId));
         if (normalized.isBonus && !normalized.isOnlineOnly) {
           results.push({ ...normalized, savedId: saved.id });
         }

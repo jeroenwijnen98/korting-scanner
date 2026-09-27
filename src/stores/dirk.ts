@@ -5,6 +5,8 @@ const GRAPHQL_URL = 'https://web-gateway.dirk.nl/graphql';
 const GRAPHQL_API_KEY = '6d3a42a3-6d93-4f98-838d-bcc0ab2307fd';
 const DEFAULT_STORE_ID = 36;
 const IMAGE_BASE_URL = 'https://web-fileserver.dirk.nl/';
+/** The `DirkRawProduct` fields, as selected from `listProducts` and `product`. */
+const PRODUCT_FIELDS = 'productId headerText packaging brand department webgroup image';
 
 // Raw Dirk GraphQL shapes: only the fields the queries below select.
 
@@ -76,6 +78,15 @@ async function graphqlQuery<T>(query: string): Promise<T> {
   return data.data;
 }
 
+async function fetchProducts(productIds: number[]): Promise<DirkRawProduct[]> {
+  const data = await graphqlQuery<DirkListProductsData>(`{
+    listProducts(productIds: [${productIds.join(',')}]) {
+      products { ${PRODUCT_FIELDS} }
+    }
+  }`);
+  return data.listProducts?.products || [];
+}
+
 // Batch fetch assortment (pricing + offer) for multiple product IDs using aliases
 async function fetchAssortmentBatch(productIds: number[]): Promise<Map<number, DirkAssortment>> {
   if (productIds.length === 0) return new Map();
@@ -131,13 +142,7 @@ class DirkAdapter extends StoreAdapter {
     const ids = (searchData.newSearchProducts || []).map(p => p.productId);
     if (ids.length === 0) return [];
 
-    // Batch fetch product details
-    const productData = await graphqlQuery<DirkListProductsData>(`{
-      listProducts(productIds: [${ids.join(',')}]) {
-        products { productId headerText packaging brand department webgroup image }
-      }
-    }`);
-    const products = productData.listProducts?.products || [];
+    const products = await fetchProducts(ids);
 
     // Batch fetch pricing/offer status
     const assortmentMap = await fetchAssortmentBatch(ids);
@@ -151,7 +156,7 @@ class DirkAdapter extends StoreAdapter {
 
     const data = await graphqlQuery<DirkProductData>(`{
       product(productId: ${id}) {
-        productId headerText packaging brand department webgroup image
+        ${PRODUCT_FIELDS}
       }
     }`);
     if (!data.product) return null;
@@ -183,12 +188,7 @@ class DirkAdapter extends StoreAdapter {
     const offerIds = onOffer.map(p => parseInt(p.storeProductId, 10));
 
     // Batch fetch product details for those on offer
-    const productData = await graphqlQuery<DirkListProductsData>(`{
-      listProducts(productIds: [${offerIds.join(',')}]) {
-        products { productId headerText packaging brand department webgroup image }
-      }
-    }`);
-    const products = productData.listProducts?.products || [];
+    const products = await fetchProducts(offerIds);
     const productMap = new Map(products.map(p => [p.productId, p]));
 
     const results: BonusProduct[] = [];
