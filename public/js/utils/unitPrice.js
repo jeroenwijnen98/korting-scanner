@@ -1,5 +1,5 @@
 // @ts-check
-// Shared by the browser and the server (src/routes/api.js, the bonus email), so
+// Shared by the browser and the server (src/routes/api.ts, the bonus email), so
 // it stays plain JS that the browser can load as it is, typed with JSDoc.
 
 /**

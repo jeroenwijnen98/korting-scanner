@@ -31,12 +31,12 @@ Node.js/Express backend (ES modules) serving a vanilla JS frontend. The backend 
 server.js              → Express entry, mounts /api and static public/
 src/config.js          → Port config (3001)
 src/types.ts           → Domain types (product, saved product, price snapshot), shared with the page
-src/routes/api.js      → All REST endpoints
+src/routes/api.ts      → All REST endpoints
 src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, etos.js, kruidvat.js)
 src/services/
-  productStore.js      → JSON file CRUD for saved products (src/data/products.json)
-  priceHistory.js      → Price snapshot storage (src/data/price-history.json)
-  idleShutdown.js      → SSE session tracking + auto-quit (see App Bundle below)
+  productStore.ts      → JSON file CRUD for saved products (src/data/products.json)
+  priceHistory.ts      → Price snapshot storage (src/data/price-history.json)
+  idleShutdown.ts      → SSE session tracking + auto-quit (see App Bundle below)
 src/scripts/
   sendBonusEmail.js    → Standalone bonus email script (run via run.sh / sleepwatcher)
 public/js/
@@ -150,7 +150,7 @@ Register in `src/stores/index.ts`. All methods normalize to the common schema be
 
 Bonus/pricing is NOT saved — always fetched live (changes weekly).
 
-## Price History (priceHistory.js)
+## Price History (priceHistory.ts)
 
 Keyed by `{store}-{storeProductId}` (e.g. `ah-588920`). A new snapshot is only appended when `currentPrice`, `isBonus`, or `bonusMechanism` differs from the last entry. Snapshots are recorded automatically on every detail fetch and bonus check.
 
@@ -174,7 +174,7 @@ as Moneybird.app and NextSeason.app.
 
 ### Idle shutdown
 
-The bundle sets `KORTING_AUTOQUIT=1`, which arms `src/services/idleShutdown.js`.
+The bundle sets `KORTING_AUTOQUIT=1`, which arms `src/services/idleShutdown.ts`.
 Each page holds an SSE connection to `/api/session` (`public/js/session.js`);
 when the last one drops the process exits after a 15s grace, so closing the
 window returns to zero RAM. A 60s startup grace covers the browser never

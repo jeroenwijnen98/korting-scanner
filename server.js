@@ -1,7 +1,7 @@
 import express from 'express';
 import { PORT } from './src/config.js';
-import { router as apiRouter } from './src/routes/api.js';
-import { attachIdleShutdown } from './src/services/idleShutdown.js';
+import { router as apiRouter } from './src/routes/api.ts';
+import { attachIdleShutdown } from './src/services/idleShutdown.ts';
 
 const app = express();
 

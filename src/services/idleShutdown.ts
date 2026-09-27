@@ -9,15 +9,17 @@
 // Only active when KORTING_AUTOQUIT=1 (set by KortingScanner.app). Running
 // `node server.js` by hand keeps the server up as before.
 
+import type { Express } from 'express';
+
 const GRACE_MS = 15_000;         // survive a page reload
 const STARTUP_GRACE_MS = 60_000; // in case the browser never connects
 const PING_MS = 25_000;
 
-export function attachIdleShutdown(app, { enabled }) {
+export function attachIdleShutdown(app: Express, { enabled }: { enabled: boolean }): void {
   let clients = 0;
-  let timer = null;
+  let timer: NodeJS.Timeout | undefined;
 
-  const scheduleQuit = (ms) => {
+  const scheduleQuit = (ms: number) => {
     clearTimeout(timer);
     if (!enabled) return;
     timer = setTimeout(() => {
