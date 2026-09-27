@@ -192,3 +192,17 @@ page's `EventSource` reconnects once the tab is foregrounded and unfrozen.
 
 - Dirk `storeProductId` is an integer product ID (stable); previously used `offerId` which changed weekly
 - AH individual product checks scale linearly — optimize with bonus page endpoint if needed for large lists
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on jeroenwijnen98/korting-scanner via `gh`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five labels (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
