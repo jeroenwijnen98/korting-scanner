@@ -1,9 +1,56 @@
+import type { BonusCheckResult, BonusProduct, Product, SavedProduct } from '../types.ts';
 import { StoreAdapter } from './base.ts';
 
 const BASE_URL = 'https://api.ah.nl';
-let tokenData = null;
 
-async function getToken() {
+// Raw AH API shapes: only the fields this adapter reads. Search and detail
+// return the same product fields, though not always all of them.
+
+interface AHTokenResponse {
+  access_token: string;
+  /** Seconds. */
+  expires_in: number;
+}
+
+interface AHDiscountLabel {
+  /** The bonus mechanism label, e.g. "1 + 1 gratis" or "2 voor 3 euro". */
+  defaultDescription?: string;
+}
+
+interface AHRawProduct {
+  webshopId?: number;
+  /** 0 for bundle products: never key on it when webshopId is there. */
+  hqId?: number;
+  title: string;
+  salesUnitSize?: string;
+  priceBeforeBonus?: number;
+  currentPrice?: number;
+  price?: { now?: { amount?: number } };
+  isBonus?: boolean;
+  bonusMechanism?: string;
+  bonus?: { segmentDescription?: string; startDate?: string; endDate?: string };
+  discountLabels?: AHDiscountLabel[];
+  bonusStartDate?: string;
+  bonusEndDate?: string;
+  mainCategory?: string;
+  subCategory?: string;
+  brand?: string;
+  images?: { url?: string }[];
+  availability?: { orderable?: string };
+  isExclusivelySoldOnline?: boolean;
+}
+
+interface AHSearchResponse {
+  products?: AHRawProduct[];
+  cards?: { products: AHRawProduct[] }[];
+}
+
+/** The detail endpoint wraps the product in `productCard`; fall back to the body itself. */
+type AHDetailResponse = AHRawProduct & { productCard?: AHRawProduct };
+
+let tokenData: { token: string; expiresAt: number } | null = null;
+
+async function getToken(): Promise<string> {
   if (tokenData && tokenData.expiresAt > Date.now()) {
     return tokenData.token;
   }
@@ -13,7 +60,7 @@ async function getToken() {
     body: JSON.stringify({ clientId: 'appie' }),
   });
   if (!res.ok) throw new Error(`AH auth failed: ${res.status}`);
-  const data = await res.json();
+  const data = (await res.json()) as AHTokenResponse;
   tokenData = {
     token: data.access_token,
     expiresAt: Date.now() + (data.expires_in - 60) * 1000,
@@ -21,7 +68,7 @@ async function getToken() {
   return tokenData.token;
 }
 
-async function ahFetch(path, retried = false) {
+async function ahFetch<T>(path: string, retried = false): Promise<T> {
   const token = await getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
@@ -32,29 +79,35 @@ async function ahFetch(path, retried = false) {
   });
   if (res.status === 401 && !retried) {
     tokenData = null;
-    return ahFetch(path, true);
+    return ahFetch<T>(path, true);
   }
   if (!res.ok) throw new Error(`AH API error: ${res.status}`);
-  return res.json();
+  return (await res.json()) as T;
 }
 
-function parseBonusMechanism(mechanism, priceBeforeBonus) {
+/**
+ * The price per item under a bonus mechanism, or null when the mechanism is
+ * not recognised. Percentage and "gratis" mechanisms need the regular price;
+ * without one they yield null too.
+ */
+function parseBonusMechanism(mechanism: string | null, priceBeforeBonus: number | null): number | null {
   if (!mechanism) return null;
   const m = mechanism.toLowerCase();
+  const discounted = (factor: number) => (priceBeforeBonus == null ? null : priceBeforeBonus * factor);
 
   if (m === '2e gratis' || m === '1 + 1 gratis' || m === '2 + 2 gratis') {
-    return priceBeforeBonus * 0.5;
+    return discounted(0.5);
   }
   if (m === '2 + 1 gratis') {
-    return priceBeforeBonus * (2 / 3);
+    return discounted(2 / 3);
   }
   if (m === '2e halve prijs') {
-    return priceBeforeBonus * 0.75;
+    return discounted(0.75);
   }
 
   const pctMatch = m.match(/(\d+)%/);
   if (pctMatch) {
-    return priceBeforeBonus * (1 - parseInt(pctMatch[1]) / 100);
+    return discounted(1 - parseInt(pctMatch[1]) / 100);
   }
 
   const bundleMatch = m.match(/(\d+)\s*voor\s*(\d+(?:[.,]\d+)?)\s*euro/);
@@ -78,9 +131,8 @@ class AHAdapter extends StoreAdapter {
     super('ah');
   }
 
-  /** @returns {import('../types.ts').Product} */
-  normalize(product) {
-    const price = product.priceBeforeBonus ?? product.currentPrice ?? product.price?.now?.amount;
+  normalize(product: AHRawProduct): Product {
+    const price = product.priceBeforeBonus ?? product.currentPrice ?? product.price?.now?.amount ?? null;
 
     // Bonus mechanism: check multiple possible locations
     const discountLabel = product.discountLabels?.[0]?.defaultDescription;
@@ -96,7 +148,7 @@ class AHAdapter extends StoreAdapter {
       salesUnitSize: product.salesUnitSize || '',
       bonusMechanism: bonusMech || '',
       priceBeforeBonus: price,
-      currentPrice: Math.round(currentPrice * 100) / 100,
+      currentPrice: currentPrice == null ? null : Math.round(currentPrice * 100) / 100,
       bonusStartDate: product.bonusStartDate || product.bonus?.startDate || '',
       bonusEndDate: product.bonusEndDate || product.bonus?.endDate || '',
       mainCategory: product.mainCategory || '',
@@ -109,24 +161,24 @@ class AHAdapter extends StoreAdapter {
     };
   }
 
-  async searchProducts(query) {
-    const data = await ahFetch(`/mobile-services/product/search/v2?query=${encodeURIComponent(query)}&page=0&size=25`);
+  async searchProducts(query: string): Promise<Product[]> {
+    const data = await ahFetch<AHSearchResponse>(`/mobile-services/product/search/v2?query=${encodeURIComponent(query)}&page=0&size=25`);
     const products = data.products || data.cards?.flatMap(c => c.products) || [];
     return products.map(p => this.normalize(p)).filter(p => !p.isOnlineOnly);
   }
 
-  async getProductDetail(storeProductId) {
-    const data = await ahFetch(`/mobile-services/product/detail/v4/fir/${storeProductId}`);
+  async getProductDetail(storeProductId: string): Promise<Product> {
+    const data = await ahFetch<AHDetailResponse>(`/mobile-services/product/detail/v4/fir/${storeProductId}`);
     const product = data.productCard || data;
     return this.normalize(product);
   }
 
-  async checkBonus(savedProducts) {
-    const results = [];
-    const notFound = [];
+  async checkBonus(savedProducts: SavedProduct[]): Promise<BonusCheckResult> {
+    const results: BonusProduct[] = [];
+    const notFound: string[] = [];
     for (const saved of savedProducts) {
       try {
-        const data = await ahFetch(`/mobile-services/product/detail/v4/fir/${saved.storeProductId}`);
+        const data = await ahFetch<AHDetailResponse>(`/mobile-services/product/detail/v4/fir/${saved.storeProductId}`);
         const product = data.productCard || data;
         const normalized = this.normalize(product);
         if (normalized.isBonus && !normalized.isOnlineOnly) {

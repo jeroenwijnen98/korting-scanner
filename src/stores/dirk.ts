@@ -1,3 +1,4 @@
+import type { BonusCheckResult, BonusProduct, Product, SavedProduct } from '../types.ts';
 import { StoreAdapter } from './base.ts';
 
 const GRAPHQL_URL = 'https://web-gateway.dirk.nl/graphql';
@@ -5,12 +6,62 @@ const GRAPHQL_API_KEY = '6d3a42a3-6d93-4f98-838d-bcc0ab2307fd';
 const DEFAULT_STORE_ID = 36;
 const IMAGE_BASE_URL = 'https://web-fileserver.dirk.nl/';
 
-function buildImageUrl(image) {
+// Raw Dirk GraphQL shapes: only the fields the queries below select.
+
+interface DirkGraphQLResponse<T> {
+  data: T;
+  errors?: { message: string }[];
+}
+
+/** `listProducts` / `product` fields. */
+interface DirkRawProduct {
+  productId: number;
+  headerText: string | null;
+  packaging: string | null;
+  brand: string | null;
+  department: string | null;
+  webgroup: string | null;
+  image: string | null;
+}
+
+interface DirkProductOffer {
+  productOfferId: number;
+  /** The bonus mechanism label, with underscores for spaces. */
+  textPriceSign: string | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+/** `productAssortment` for one product in one store. */
+interface DirkAssortment {
+  productId: number;
+  normalPrice: number | null;
+  /** The final price while on offer. */
+  offerPrice: number | null;
+  productOffer: DirkProductOffer | null;
+}
+
+interface DirkSearchData {
+  newSearchProducts: { productId: number }[] | null;
+}
+
+interface DirkListProductsData {
+  listProducts: { products: DirkRawProduct[] | null } | null;
+}
+
+interface DirkProductData {
+  product: DirkRawProduct | null;
+}
+
+/** One aliased `productAssortment` per product: `p0`, `p1`, … */
+type DirkAssortmentBatchData = Record<string, DirkAssortment | null>;
+
+function buildImageUrl(image: string | null): string | null {
   if (!image) return null;
   return IMAGE_BASE_URL + encodeURIComponent(image);
 }
 
-async function graphqlQuery(query) {
+async function graphqlQuery<T>(query: string): Promise<T> {
   const res = await fetch(GRAPHQL_URL, {
     method: 'POST',
     headers: {
@@ -20,19 +71,19 @@ async function graphqlQuery(query) {
     body: JSON.stringify({ query }),
   });
   if (!res.ok) throw new Error(`Dirk GraphQL error: ${res.status}`);
-  const data = await res.json();
+  const data = (await res.json()) as DirkGraphQLResponse<T>;
   if (data.errors) throw new Error(data.errors[0].message);
   return data.data;
 }
 
 // Batch fetch assortment (pricing + offer) for multiple product IDs using aliases
-async function fetchAssortmentBatch(productIds) {
+async function fetchAssortmentBatch(productIds: number[]): Promise<Map<number, DirkAssortment>> {
   if (productIds.length === 0) return new Map();
   const aliases = productIds.map((id, i) =>
     `p${i}: productAssortment(productId: ${id}, storeId: ${DEFAULT_STORE_ID}) { productId normalPrice offerPrice productOffer { productOfferId textPriceSign startDate endDate } }`
   );
-  const data = await graphqlQuery(`{ ${aliases.join(' ')} }`);
-  const map = new Map();
+  const data = await graphqlQuery<DirkAssortmentBatchData>(`{ ${aliases.join(' ')} }`);
+  const map = new Map<number, DirkAssortment>();
   for (let i = 0; i < productIds.length; i++) {
     const a = data[`p${i}`];
     if (a) map.set(a.productId, a);
@@ -45,12 +96,12 @@ class DirkAdapter extends StoreAdapter {
     super('dirk');
   }
 
-  /** @returns {import('../types.ts').Product} */
-  normalizeProduct(product, assortment) {
-    const hasOffer = assortment?.productOffer != null;
+  normalizeProduct(product: DirkRawProduct, assortment: DirkAssortment | undefined): Product {
+    const offer = assortment?.productOffer ?? null;
+    const hasOffer = offer != null;
     const normalPrice = assortment?.normalPrice ?? null;
     const offerPrice = assortment?.offerPrice ?? null;
-    const mechanism = (assortment?.productOffer?.textPriceSign || '').replace(/[_\s]+/g, ' ').trim();
+    const mechanism = (offer?.textPriceSign || '').replace(/[_\s]+/g, ' ').trim();
 
     return {
       productId: String(product.productId),
@@ -59,8 +110,8 @@ class DirkAdapter extends StoreAdapter {
       bonusMechanism: hasOffer ? mechanism : '',
       priceBeforeBonus: hasOffer ? normalPrice : null,
       currentPrice: hasOffer ? offerPrice : normalPrice,
-      bonusStartDate: hasOffer ? (assortment.productOffer.startDate || '') : '',
-      bonusEndDate: hasOffer ? (assortment.productOffer.endDate || '') : '',
+      bonusStartDate: offer?.startDate || '',
+      bonusEndDate: offer?.endDate || '',
       mainCategory: product.department || '',
       subCategory: product.webgroup || '',
       brand: product.brand || '',
@@ -70,8 +121,8 @@ class DirkAdapter extends StoreAdapter {
     };
   }
 
-  async searchProducts(query) {
-    const searchData = await graphqlQuery(`{
+  async searchProducts(query: string): Promise<Product[]> {
+    const searchData = await graphqlQuery<DirkSearchData>(`{
       newSearchProducts(query: { searchTerm: "${query.replace(/"/g, '\\"')}", limit: 25 }) {
         productId
       }
@@ -81,7 +132,7 @@ class DirkAdapter extends StoreAdapter {
     if (ids.length === 0) return [];
 
     // Batch fetch product details
-    const productData = await graphqlQuery(`{
+    const productData = await graphqlQuery<DirkListProductsData>(`{
       listProducts(productIds: [${ids.join(',')}]) {
         products { productId headerText packaging brand department webgroup image }
       }
@@ -94,11 +145,11 @@ class DirkAdapter extends StoreAdapter {
     return products.map(p => this.normalizeProduct(p, assortmentMap.get(p.productId)));
   }
 
-  async getProductDetail(storeProductId) {
+  async getProductDetail(storeProductId: string): Promise<Product | null> {
     const id = parseInt(storeProductId, 10);
     if (isNaN(id)) return null;
 
-    const data = await graphqlQuery(`{
+    const data = await graphqlQuery<DirkProductData>(`{
       product(productId: ${id}) {
         productId headerText packaging brand department webgroup image
       }
@@ -109,7 +160,7 @@ class DirkAdapter extends StoreAdapter {
     return this.normalizeProduct(data.product, assortmentMap.get(id));
   }
 
-  async checkBonus(savedProducts) {
+  async checkBonus(savedProducts: SavedProduct[]): Promise<BonusCheckResult> {
     const validProducts = savedProducts.filter(p => !isNaN(parseInt(p.storeProductId, 10)));
     const invalidProducts = savedProducts.filter(p => isNaN(parseInt(p.storeProductId, 10)));
     if (validProducts.length === 0) return { results: [], notFound: invalidProducts.map(p => p.id) };
@@ -132,7 +183,7 @@ class DirkAdapter extends StoreAdapter {
     const offerIds = onOffer.map(p => parseInt(p.storeProductId, 10));
 
     // Batch fetch product details for those on offer
-    const productData = await graphqlQuery(`{
+    const productData = await graphqlQuery<DirkListProductsData>(`{
       listProducts(productIds: [${offerIds.join(',')}]) {
         products { productId headerText packaging brand department webgroup image }
       }
@@ -140,7 +191,7 @@ class DirkAdapter extends StoreAdapter {
     const products = productData.listProducts?.products || [];
     const productMap = new Map(products.map(p => [p.productId, p]));
 
-    const results = [];
+    const results: BonusProduct[] = [];
     for (const saved of onOffer) {
       const id = parseInt(saved.storeProductId, 10);
       const product = productMap.get(id);

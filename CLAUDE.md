@@ -32,7 +32,7 @@ server.js              → Express entry, mounts /api and static public/
 src/config.js          → Port config (3001)
 src/types.ts           → Domain types (product, saved product, price snapshot), shared with the page
 src/routes/api.js      → All REST endpoints
-src/stores/            → Store adapters (base.ts, index.ts, ah.js, dirk.js, etos.js, kruidvat.js)
+src/stores/            → Store adapters (base.ts, index.ts, ah.ts, dirk.ts, etos.js, kruidvat.js)
 src/services/
   productStore.js      → JSON file CRUD for saved products (src/data/products.json)
   priceHistory.js      → Price snapshot storage (src/data/price-history.json)
@@ -60,7 +60,7 @@ Each store extends `StoreAdapter` (src/stores/base.ts) and implements:
 - `getProductDetail(storeProductId)` → single normalized product
 - `checkBonus(savedProducts)` → `{ results, notFound }`: normalized products where `isBonus: true` (with `savedId`), plus saved ids the store did not know
 
-Register in `src/stores/index.ts`. All methods normalize to the common schema below; its type (`Product`) and the other domain types live in `src/types.ts`. Adapters still in `.js` annotate their normalize method with JSDoc `@returns {import('../types.ts').Product}`.
+Register in `src/stores/index.ts`. All methods normalize to the common schema below; its type (`Product`) and the other domain types live in `src/types.ts`. Adapters in `.ts` type their raw API responses next to the adapter; those still in `.js` (Etos, Kruidvat) annotate their normalize method with JSDoc `@returns {import('../types.ts').Product}`.
 
 ## Backend API Routes
 
@@ -97,7 +97,7 @@ Register in `src/stores/index.ts`. All methods normalize to the common schema be
 
 ## Bonus Mechanisms
 
-### AH (`parseBonusMechanism` in src/stores/ah.js)
+### AH (`parseBonusMechanism` in src/stores/ah.ts)
 - `2e gratis` / `1 + 1 gratis` / `2 + 2 gratis` → 50% off (× 0.5)
 - `2 + 1 gratis` → 33% off (× 2/3)
 - `2e halve prijs` → 25% off (× 0.75)
