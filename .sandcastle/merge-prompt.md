@@ -12,7 +12,7 @@ For each branch:
    one is missing it here. If the merge touched `package.json` or `package-lock.json`,
    run `npm ci --no-audit --no-fund`. A `Cannot find module` after a merge is this,
    not a bug on the branch.
-4. Then run the smoke boot from `.sandcastle/implement-prompt.md` once, saving output (`2>&1 | tee /tmp/merge-checks.log`)
+4. Then run `npm run typecheck` (if the script exists) and the smoke boot from `.sandcastle/implement-prompt.md` once, saving output (`2>&1 | tee /tmp/merge-checks.log`)
    and reading that file again instead of rerunning.
 5. If a check fails, fix the issues before proceeding to the next branch
 

@@ -34,19 +34,22 @@ Explore the repo and fill your context window with relevant information that wil
 
 # EXECUTION
 
-There is no test suite. Your check is a smoke boot.
+There is no test suite. Your checks are the type checker and a smoke boot.
 
 Frontend files in `public/` are served to the browser as they are: never add a
-build step, a bundler or emitted files there.
+build step, a bundler or emitted files there. Backend TypeScript runs through
+Node's own type stripping, so use erasable syntax only.
 
 # FEEDBACK LOOPS
 
-Smoke boot: `PORT=3999 node server.js > /tmp/boot.log 2>&1 &`, then
-`curl -s -o /dev/null -w '%{http_code}\n'` against `/` and `/api/products`. Expect
-200 and 200. Do not curl `/api/search`, `/api/product/*` or `/api/bonus` (they reach
-the stores) or `/api/session` (it never ends). Kill the server afterwards.
+1. If `package.json` has a `typecheck` script, `npm run typecheck` must pass.
+2. Smoke boot: `PORT=3999 node <server entry> > /tmp/boot.log 2>&1 &`, then
+   `curl -s -o /dev/null -w '%{http_code}\n'` against `/` and `/api/products`.
+   Expect 200 and 200. Do not curl `/api/search`, `/api/product/*` or `/api/bonus`
+   (they reach the stores) or `/api/session` (it never ends). Kill the server
+   afterwards.
 
-Save the output with `2>&1 | tee /tmp/<name>.log` and read that file instead of
+Save each check's output with `2>&1 | tee /tmp/<name>.log` and read that file instead of
 rerunning the check.
 
 # COMMIT
