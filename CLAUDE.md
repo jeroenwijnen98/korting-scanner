@@ -143,8 +143,8 @@ The adapter has never worked: the OCAPI site ID `etos` does not exist, the clien
 
 ### AH and Kruidvat (`parseBonusMechanism` in src/stores/bonusMechanism.ts)
 The one shared parser: label + regular price → price per item (or null). Case-insensitive; spaces around `+` are optional (`1+1 gratis`) and so is `euro` in `X voor Y`.
-- `2e gratis` / `1 + 1 gratis` / `2 + 2 gratis` → 50% off (× 0.5)
-- `2 + 1 gratis` → 33% off (× 2/3)
+- `X + Y gratis` → pay X of X + Y (× X/(X+Y)): `1 + 1` → × 0.5, `2 + 1` → × 2/3, `2 + 3` → × 0.4
+- `Ne gratis` → pay N − 1 of N (× (N−1)/N): `2e gratis` → × 0.5
 - `2e halve prijs` → 25% off (× 0.75)
 - `XX%` → dynamic percentage
 - `X voor Y euro` / `X voor Y` → bundle price (total / count)

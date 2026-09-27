@@ -22,6 +22,13 @@ const cases: [label: string | null, priceBeforeBonus: number | null, expected: n
   ['2 voor 4,50', 3, 2.25],
   ['VOOR 16.99', 20, 16.99],
   ['2E HALVE PRIJS', 4, 3],
+  // Any "X + Y gratis" (pay X of X + Y) and "Ne gratis" (pay N - 1 of N)
+  ['2 + 3 gratis', 5, 2],
+  ['2+3 GRATIS', 5, 2],
+  ['3 + 1 gratis', 4, 3],
+  ['1 + 2 gratis', 3, 1],
+  ['3e gratis', 3, 2],
+  ['2 + 3 gratis', null, null],
   // Mechanisms that need a regular price but have none
   ['1 + 1 gratis', null, null],
   ['25%', null, null],

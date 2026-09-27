@@ -11,11 +11,17 @@ export function parseBonusMechanism(label: string | null, priceBeforeBonus: numb
   const m = label.toLowerCase().replace(/\s*\+\s*/g, ' + ');
   const discounted = (factor: number) => (priceBeforeBonus == null ? null : priceBeforeBonus * factor);
 
-  if (m === '2e gratis' || m === '1 + 1 gratis' || m === '2 + 2 gratis') {
-    return discounted(0.5);
+  // "X + Y gratis": pay for X of X + Y
+  const plusMatch = m.match(/^(\d+) \+ (\d+) gratis$/);
+  if (plusMatch) {
+    const paid = parseInt(plusMatch[1]);
+    return discounted(paid / (paid + parseInt(plusMatch[2])));
   }
-  if (m === '2 + 1 gratis') {
-    return discounted(2 / 3);
+  // "2e gratis" / "3e gratis": pay for N - 1 of N
+  const nthMatch = m.match(/^(\d+)e gratis$/);
+  if (nthMatch) {
+    const n = parseInt(nthMatch[1]);
+    return discounted((n - 1) / n);
   }
   if (m === '2e halve prijs') {
     return discounted(0.75);
