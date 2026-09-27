@@ -22,4 +22,4 @@ else
   exit 1
 fi
 
-"$NODE" src/scripts/sendBonusEmail.js > "$LOG_FILE" 2>&1
+"$NODE" src/scripts/sendBonusEmail.ts > "$LOG_FILE" 2>&1
