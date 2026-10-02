@@ -40,3 +40,26 @@ export function splitPaused(products) {
 export function pausedLast(items) {
   return [...items.filter(p => !p.paused), ...items.filter(p => p.paused)];
 }
+
+/**
+ * How the cards of one section read on Mijn Producten. In a mixed group (some
+ * but not all members paused) the paused members hide behind a row with their
+ * count, and show under it while the group is expanded. A section without
+ * paused members, or with only paused members (it sits under Gepauzeerd),
+ * shows everything and has no row.
+ * @template {Pausable} P
+ * @param {P[]} items the section's members, paused ones last (`pausedLast`)
+ * @param {boolean} expanded whether the user opened this group's row
+ * @returns {{ shown: P[], row: string | null, underRow: P[] }} `row` is the
+ *   row's text, or null when the section has none
+ */
+export function mixedGroupLayout(items, expanded) {
+  const unpaused = items.filter(p => !p.paused);
+  const paused = items.filter(p => p.paused);
+  if (unpaused.length === 0 || paused.length === 0) return { shown: items, row: null, underRow: [] };
+  return {
+    shown: unpaused,
+    row: `${paused.length} gepauzeerd`,
+    underRow: expanded ? paused : [],
+  };
+}

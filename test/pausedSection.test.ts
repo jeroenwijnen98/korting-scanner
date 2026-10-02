@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { splitPaused, pausedLast } from '../public/js/utils/pausedSection.js';
+import { splitPaused, pausedLast, mixedGroupLayout } from '../public/js/utils/pausedSection.js';
 import type { SavedProduct } from '../src/types.ts';
 
 function saved(id: string, productGroup: string | null, paused?: boolean): SavedProduct {
@@ -48,4 +48,35 @@ test('pausedLast puts paused members after the unpaused ones, each kept in order
   const members = [saved('ah-1', 'zon', true), saved('ah-2', 'zon'), saved('ah-3', 'zon', true), saved('ah-4', 'zon', false)];
   assert.deepEqual(ids(pausedLast(members)), ['ah-2', 'ah-4', 'ah-1', 'ah-3']);
   assert.deepEqual(ids(members), ['ah-1', 'ah-2', 'ah-3', 'ah-4'], 'the input is left as it is');
+});
+
+test('a mixed group hides its paused members behind a row until it is expanded', () => {
+  const members = [saved('ah-1', 'zon'), saved('ah-2', 'zon', true), saved('ah-3', 'zon', true)];
+  const collapsed = mixedGroupLayout(members, false);
+  assert.deepEqual(ids(collapsed.shown), ['ah-1']);
+  assert.equal(collapsed.row, '2 gepauzeerd');
+  assert.deepEqual(ids(collapsed.underRow), []);
+});
+
+test('an expanded mixed group shows its paused members under the row, in order', () => {
+  const members = [saved('ah-1', 'zon'), saved('ah-2', 'zon', true), saved('ah-3', 'zon', true)];
+  const expanded = mixedGroupLayout(members, true);
+  assert.deepEqual(ids(expanded.shown), ['ah-1']);
+  assert.equal(expanded.row, '2 gepauzeerd');
+  assert.deepEqual(ids(expanded.underRow), ['ah-2', 'ah-3']);
+});
+
+test('a group without paused members, or with only paused members, has no row', () => {
+  for (const expanded of [false, true]) {
+    const active = mixedGroupLayout([saved('ah-1', 'zon'), saved('ah-2', 'zon', false)], expanded);
+    assert.deepEqual(ids(active.shown), ['ah-1', 'ah-2']);
+    assert.equal(active.row, null);
+    assert.deepEqual(ids(active.underRow), []);
+
+    // Under Gepauzeerd every member is paused, and all of them show
+    const allPaused = mixedGroupLayout([saved('ah-1', 'zon', true), saved('ah-2', 'zon', true)], expanded);
+    assert.deepEqual(ids(allPaused.shown), ['ah-1', 'ah-2']);
+    assert.equal(allPaused.row, null);
+    assert.deepEqual(ids(allPaused.underRow), []);
+  }
 });

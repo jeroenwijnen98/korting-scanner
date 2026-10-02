@@ -557,6 +557,12 @@
 .group-section-count { font-size: 0.8125rem; color: var(--text-secondary); }
 .group-section-pause { margin-left: auto; flex-shrink: 0; font-size: 0.75rem; }
 
+/* "N gepauzeerd": the row that hides a mixed group's paused members */
+.paused-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 16px; background: none; border: 1px dashed var(--border-light); border-radius: var(--radius-lg); color: var(--text-secondary); font: inherit; font-size: 0.8125rem; text-align: left; cursor: pointer; transition: color var(--transition), border-color var(--transition); }
+.paused-row:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+.paused-row::before { content: '▸'; transition: transform var(--transition); }
+.paused-row[aria-expanded="true"]::before { transform: rotate(90deg); }
+
 /* Gepauzeerd: collapsed section under Mijn Producten */
 .paused-section { margin-top: 32px; padding-top: 16px; border-top: 2px solid var(--border-light); }
 .paused-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer; list-style: none; }
