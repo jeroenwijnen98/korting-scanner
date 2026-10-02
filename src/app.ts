@@ -1,6 +1,6 @@
 import express from 'express';
 import type { Express } from 'express';
-import { AUTOQUIT } from './config.ts';
+import { AUTOQUIT, GROCER_URL } from './config.ts';
 import { createApiRouter, errorHandler } from './routes/api.ts';
 import type { StoreRegistry } from './routes/api.ts';
 import { attachIdleShutdown } from './services/idleShutdown.ts';
@@ -12,10 +12,12 @@ export interface AppDeps {
   stores?: StoreRegistry;
   /** Idle shutdown options; `enabled` defaults to KORTING_AUTOQUIT. */
   idleShutdown?: Partial<IdleShutdownOptions>;
+  /** grocer's address; GROCER_URL by default. */
+  grocerUrl?: string | null;
 }
 
 // Builds the app without listening; server.ts does the listen.
-export function createApp({ stores = defaultStores, idleShutdown = {} }: AppDeps = {}): Express {
+export function createApp({ stores = defaultStores, idleShutdown = {}, grocerUrl = GROCER_URL }: AppDeps = {}): Express {
   const app = express();
 
   app.use(express.json());
@@ -25,7 +27,7 @@ export function createApp({ stores = defaultStores, idleShutdown = {} }: AppDeps
 
   attachIdleShutdown(app, { enabled: AUTOQUIT, ...idleShutdown });
 
-  app.use('/api', createApiRouter(stores));
+  app.use('/api', createApiRouter(stores, { grocerUrl }));
   app.use(errorHandler);
 
   return app;

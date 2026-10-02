@@ -119,6 +119,10 @@
   margin-top: 8px;
 }
 
+.product-card-action {
+  margin-left: auto;
+}
+
 .product-card-prices {
   display: flex;
   align-items: baseline;

@@ -5,7 +5,7 @@ import * as priceHistory from '../services/priceHistory.ts';
 import { checkSavedProducts } from '../services/priceCheck.ts';
 import { cheapestPerDate } from '../services/groupHistory.ts';
 import type { StoreAdapter } from '../stores/base.ts';
-import type { StoreName } from '../types.ts';
+import type { BonusAnswer, StoreName } from '../types.ts';
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
 import { savedProductId } from '../../public/js/utils/savedProductId.js';
 
@@ -14,7 +14,10 @@ export type StoreRegistry = Partial<Record<StoreName, StoreAdapter>>;
 
 // Express 5 passes a rejected handler promise on to `errorHandler` below, so
 // the handlers need no try/catch of their own for the generic 500.
-export function createApiRouter(stores: StoreRegistry): Router {
+export function createApiRouter(
+  stores: StoreRegistry,
+  { grocerUrl = null }: { grocerUrl?: string | null } = {},
+): Router {
   const router = Router();
 
   /** The store adapter for a store name from the request, if there is one. */
@@ -102,9 +105,10 @@ export function createApiRouter(stores: StoreRegistry): Router {
     res.json(await priceHistory.getHistory(req.params.productId));
   });
 
-  // Check bonus status for saved products
+  // Check bonus status for saved products; grocerUrl rides along for Toevoegen
   router.get('/bonus', async (req, res) => {
-    res.json(await checkSavedProducts(stores));
+    const answer: BonusAnswer = { ...await checkSavedProducts(stores), grocerUrl };
+    res.json(answer);
   });
 
   // Edit a saved product: only the fields the body sends change (null clears)

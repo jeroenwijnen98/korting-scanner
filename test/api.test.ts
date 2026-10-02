@@ -21,7 +21,7 @@ let server: Server;
 let base: string;
 
 before(async () => {
-  server = createApp({ stores: { ah, dirk }, idleShutdown: { enabled: false } }).listen(0);
+  server = createApp({ stores: { ah, dirk }, idleShutdown: { enabled: false }, grocerUrl: null }).listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   base = `http://localhost:${(server.address() as AddressInfo).port}/api`;
 });
@@ -172,6 +172,26 @@ test('bonus: a paused product on bonus is left out, and back once resumed', asyn
   assert.deepEqual(resumed.json.bonusProducts.map((p: any) => p.savedId), ['ah-1', 'ah-3']);
 
   for (const id of ['ah-1', 'ah-3']) await api('DELETE', `/products/${id}`);
+});
+
+test('bonus: the answer carries GROCER_URL, or null without it', async () => {
+  await api('POST', '/products', koffie);
+
+  assert.equal((await api('GET', '/bonus')).json.grocerUrl, null);
+
+  const grocer = createApp({ stores: { ah }, idleShutdown: { enabled: false }, grocerUrl: 'https://grocer.example.nl' }).listen(0);
+  await new Promise(resolve => grocer.once('listening', resolve));
+  try {
+    const res = await fetch(`http://localhost:${(grocer.address() as AddressInfo).port}/api/bonus`);
+    const json: any = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(json.grocerUrl, 'https://grocer.example.nl');
+    assert.deepEqual(json.bonusProducts.map((p: any) => p.savedId), ['ah-1']);
+  } finally {
+    await new Promise(resolve => grocer.close(resolve));
+  }
+
+  await api('DELETE', '/products/ah-1');
 });
 
 test('product detail: unknown store, not found, and a price snapshot', async () => {

@@ -18,10 +18,11 @@ import { pauseControlText } from '../utils/pauseControl.js';
 /**
  * @template {DisplayedProduct} P
  * @param {P} product
- * @param {{ onRemove?: (product: P) => void, onTogglePause?: (product: P) => void, isPaused?: boolean, showBonus?: boolean, isUnavailable?: boolean }} options
+ * @param {{ onRemove?: (product: P) => void, onTogglePause?: (product: P) => void, isPaused?: boolean, showBonus?: boolean, isUnavailable?: boolean, bonusAction?: HTMLElement | null }} options
+ *   `bonusAction`: a button at the end of the bonus row (Toevoegen or Bestel)
  * @returns {HTMLDivElement}
  */
-export function createProductCard(product, { onRemove, onTogglePause, isPaused = false, showBonus = false, isUnavailable = false }) {
+export function createProductCard(product, { onRemove, onTogglePause, isPaused = false, showBonus = false, isUnavailable = false, bonusAction = null }) {
   const el = document.createElement('div');
   el.className = `product-card${isPaused ? ' is-paused' : ''}`;
 
@@ -132,6 +133,7 @@ export function createProductCard(product, { onRemove, onTogglePause, isPaused =
       prices.appendChild(before);
     }
     bonusRow.appendChild(prices);
+    if (bonusAction) bonusRow.appendChild(bonusAction);
     content.appendChild(bonusRow);
 
     if (product.bonusEndDate) {

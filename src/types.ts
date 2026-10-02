@@ -98,10 +98,18 @@ export interface SavedProductView {
 /** A bonus product in the bonus overview, with its saved product's view. */
 export interface OverviewProduct extends BonusProduct, SavedProductView {}
 
-/** What `GET /api/bonus` returns: every saved product on bonus, across stores. */
+/** Every saved product on bonus, across stores. */
 export interface BonusOverview {
   bonusProducts: OverviewProduct[];
   notFound: string[];
+}
+
+/**
+ * What `GET /api/bonus` returns: the bonus overview and GROCER_URL, from which
+ * the On sale view builds its Toevoegen links (none when it is null).
+ */
+export interface BonusAnswer extends BonusOverview {
+  grocerUrl: string | null;
 }
 
 /** The unit a unit price is expressed per (see public/js/utils/unitPrice.js). */

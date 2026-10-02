@@ -5,7 +5,7 @@
  * @typedef {import('../../src/types.ts').Product} Product
  * @typedef {import('../../src/types.ts').SavedProduct} SavedProduct
  * @typedef {import('../../src/types.ts').PriceSnapshot} PriceSnapshot
- * @typedef {import('../../src/types.ts').BonusOverview} BonusOverview
+ * @typedef {import('../../src/types.ts').BonusAnswer} BonusAnswer
  * @typedef {import('../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
  */
 
@@ -88,7 +88,7 @@ export function getProductHistory(productId) {
   return request(`/history/${encodeURIComponent(productId)}`);
 }
 
-/** @returns {Promise<BonusOverview>} */
+/** @returns {Promise<BonusAnswer>} */
 export function getBonus() {
   return request('/bonus');
 }

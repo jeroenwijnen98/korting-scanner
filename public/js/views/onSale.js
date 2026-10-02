@@ -2,6 +2,7 @@
 import { getBonus, getProducts, getProductHistory, getGroupHistory } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
+import { createBonusAction } from '../components/bonusAction.js';
 import { showToast } from '../components/toast.js';
 import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
@@ -28,12 +29,12 @@ export async function initOnSale() {
     const [bonusData, savedProducts] = await Promise.all([getBonus(), getProducts()]);
     refreshBtn.classList.remove('refreshing');
 
-    const { bonusProducts, notFound } = bonusData;
+    const { bonusProducts, notFound, grocerUrl } = bonusData;
 
     // Share notFound ids with myProducts view for unavailability indicators
     setUnavailableIds(notFound);
 
-    render(bonusProducts, savedProducts, notFound);
+    render(bonusProducts, savedProducts, notFound, grocerUrl);
   } catch (err) {
     refreshBtn.classList.remove('refreshing');
     showToast('Kon bonus niet laden', 'error');
@@ -52,8 +53,9 @@ export async function initOnSale() {
  * @param {OverviewProduct[]} allProducts
  * @param {SavedProduct[]} savedProducts
  * @param {string[]} [notFound]
+ * @param {string | null} [grocerUrl]
  */
-async function showDetail(product, allProducts, savedProducts, notFound = []) {
+async function showDetail(product, allProducts, savedProducts, notFound = [], grocerUrl = null) {
   panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
 
   /** @type {PriceSnapshot[]} */
@@ -95,9 +97,9 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
 
       // Re-open detail with updated product
       const updatedProduct = idx !== -1 ? allProducts[idx] : { ...product, productGroup: groupName || null };
-      showDetail(updatedProduct, allProducts, savedProducts, notFound);
+      showDetail(updatedProduct, allProducts, savedProducts, notFound, grocerUrl);
     },
-    onBack: () => render(allProducts, savedProducts, notFound),
+    onBack: () => render(allProducts, savedProducts, notFound, grocerUrl),
   });
   panel.appendChild(detail);
 }
@@ -106,8 +108,9 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
  * @param {OverviewProduct[]} products
  * @param {SavedProduct[]} savedProducts
  * @param {string[]} [notFound]
+ * @param {string | null} [grocerUrl] GROCER_URL; without it no Toevoegen
  */
-function render(products, savedProducts, notFound = []) {
+function render(products, savedProducts, notFound = [], grocerUrl = null) {
   panel.innerHTML = '';
 
   // Warning banner for unavailable products
@@ -133,8 +136,11 @@ function render(products, savedProducts, notFound = []) {
   }
 
   renderGroupedSections(panel, products, product => {
-    const card = createProductCard(product, { showBonus: true });
-    card.addEventListener('click', () => showDetail(product, products, savedProducts, notFound));
+    const card = createProductCard(product, {
+      showBonus: true,
+      bonusAction: createBonusAction(product, grocerUrl),
+    });
+    card.addEventListener('click', () => showDetail(product, products, savedProducts, notFound, grocerUrl));
     return card;
   });
 }
