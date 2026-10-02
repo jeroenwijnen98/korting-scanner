@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBonusMechanism } from '../src/stores/bonusMechanism.ts';
+import { bonusPrice, parseBonusMechanism } from '../src/stores/bonusMechanism.ts';
 
 const cases: [label: string | null, priceBeforeBonus: number | null, expected: number | null][] = [
   // Every form in CLAUDE.md
@@ -60,5 +60,30 @@ for (const [label, price, expected] of cases) {
     } else {
       assert.ok(actual !== null && Math.abs(actual - expected) < 1e-9, `got ${actual}`);
     }
+  });
+}
+
+const priceCases: [mechanism: string | null, regularPrice: number | null, expected: number | null][] = [
+  // Rounded to cents when the price per item does not divide evenly
+  ['2e product voor 1.00', 19.99, 10.5],
+  ['3 voor 5', 2, 1.67],
+  ['2 + 1 gratis', 1, 0.67],
+  ['25%', 3.99, 2.99],
+  ['1 + 1 gratis', 3, 1.5],
+  // Unrecognised labels
+  ['OP=OP', 3, null],
+  ['', 3, null],
+  [null, 3, null],
+  // Percentage and "gratis" mechanisms without a regular price
+  ['25%', null, null],
+  ['1 + 1 gratis', null, null],
+  ['2e gratis', null, null],
+  // A bundle or fixed price does not need one
+  ['3 voor 5', null, 1.67],
+];
+
+for (const [mechanism, price, expected] of priceCases) {
+  test(`bonusPrice(${JSON.stringify(mechanism)}, ${price}) → ${expected}`, () => {
+    assert.equal(bonusPrice(mechanism, price), expected);
   });
 }

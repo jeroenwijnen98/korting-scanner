@@ -1,6 +1,6 @@
 import type { Product } from '../types.ts';
 import { StoreAdapter } from './base.ts';
-import { parseBonusMechanism } from './bonusMechanism.ts';
+import { bonusPrice } from './bonusMechanism.ts';
 
 const BASE_URL = 'https://app.kruidvat.nl/api/v2/kvn-spa';
 const IMAGE_HOST = 'https://www.kruidvat.nl';
@@ -63,9 +63,7 @@ class KruidvatAdapter extends StoreAdapter {
     const bonusMechanism = isPriceReducing ? rawMechanism : '';
     const isBonus = !!bonusMechanism;
     const normalPrice = product.price?.value ?? null;
-    const computedPrice = isBonus
-      ? (parseBonusMechanism(bonusMechanism, normalPrice) ?? normalPrice)
-      : normalPrice;
+    const currentPrice = isBonus ? bonusPrice(bonusMechanism, normalPrice) ?? normalPrice : normalPrice;
 
     const hierarchyCats = product.categoriesHierarchy?.[0]?.categories || [];
     const mainCategory = hierarchyCats[0]?.name || '';
@@ -82,7 +80,7 @@ class KruidvatAdapter extends StoreAdapter {
       salesUnitSize: product.shortDescription || '',
       bonusMechanism: bonusMechanism,
       priceBeforeBonus: isBonus ? normalPrice : null,
-      currentPrice: computedPrice != null ? Math.round(computedPrice * 100) / 100 : null,
+      currentPrice,
       bonusStartDate: promo?.startDate || '',
       bonusEndDate: promo?.endDate || '',
       mainCategory,

@@ -1,9 +1,20 @@
 /**
+ * The bonus price per item, rounded to cents: what a store adapter whose API
+ * gives only the bonus mechanism label, not the bonus price, shows as the
+ * current price. Null when the mechanism is not recognised or cannot be applied
+ * (a percentage or "gratis" mechanism without a regular price).
+ */
+export function bonusPrice(mechanism: string | null, regularPrice: number | null): number | null {
+  const price = parseBonusMechanism(mechanism, regularPrice);
+  return price == null ? null : Math.round(price * 100) / 100;
+}
+
+/**
  * The price per item under a bonus mechanism (a Dutch promo label such as
  * "1 + 1 gratis", "25%" or "2 voor 3 euro"), or null when the mechanism is not
  * recognised. Percentage and "gratis" mechanisms need the regular price;
- * without one they yield null too. Shared by the store adapters whose API
- * gives only the label, not the bonus price.
+ * without one they yield null too. Not rounded: the store adapters use
+ * bonusPrice instead.
  */
 export function parseBonusMechanism(label: string | null, priceBeforeBonus: number | null): number | null {
   if (!label) return null;

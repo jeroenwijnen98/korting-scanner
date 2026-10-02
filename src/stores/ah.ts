@@ -1,6 +1,6 @@
 import type { Product } from '../types.ts';
 import { StoreAdapter } from './base.ts';
-import { parseBonusMechanism } from './bonusMechanism.ts';
+import { bonusPrice } from './bonusMechanism.ts';
 
 const BASE_URL = 'https://api.ah.nl';
 
@@ -102,7 +102,7 @@ class AHAdapter extends StoreAdapter {
     // Bonus mechanism: check multiple possible locations
     const discountLabel = product.discountLabels?.[0]?.defaultDescription;
     const bonusMech = product.bonusMechanism ?? product.bonus?.segmentDescription ?? discountLabel ?? null;
-    const currentPrice = product.isBonus ? parseBonusMechanism(bonusMech, price) ?? price : price;
+    const currentPrice = product.isBonus ? bonusPrice(bonusMech, price) ?? price : price;
 
     // Use webshopId as productId — the detail API requires it
     const productId = product.webshopId ?? product.hqId;
@@ -113,7 +113,7 @@ class AHAdapter extends StoreAdapter {
       salesUnitSize: product.salesUnitSize || '',
       bonusMechanism: bonusMech || '',
       priceBeforeBonus: price,
-      currentPrice: currentPrice == null ? null : Math.round(currentPrice * 100) / 100,
+      currentPrice,
       bonusStartDate: product.bonusStartDate || product.bonus?.startDate || '',
       bonusEndDate: product.bonusEndDate || product.bonus?.endDate || '',
       mainCategory: product.mainCategory || '',
