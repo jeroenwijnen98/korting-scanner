@@ -7,6 +7,7 @@ import { showToast } from '../components/toast.js';
 import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
+import { savedProductId } from '../utils/savedProductId.js';
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
@@ -193,7 +194,7 @@ function renderSaved() {
 /** @param {SavedProduct} product */
 async function showProductDetail(product) {
   panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
-  const productId = product.id || `${product.store}-${product.storeProductId}`;
+  const productId = product.id || savedProductId(product.store, product.storeProductId);
 
   /** @type {PriceSnapshot[]} */
   let history = [];
@@ -268,7 +269,7 @@ function renderSearchResults(results, container) {
   results.forEach(product => {
     const savedIds = savedProducts.map(p => p.id);
     const store = activeStore === 'alle' ? 'ah' : activeStore;
-    const productId = `${store}-${product.productId}`;
+    const productId = savedProductId(store, product.productId);
     const isSaved = savedIds.includes(productId);
 
     const row = createSearchResult(product, {
