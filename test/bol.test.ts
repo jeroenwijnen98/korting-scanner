@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { bol, pageData } from '../src/stores/bol.ts';
+import { bol, pageData, type BolRawProduct } from '../src/stores/bol.ts';
 import { createApp } from '../src/app.ts';
 import { useTempDataDir } from './tempDataDir.ts';
 import type { SavedProduct } from '../src/types.ts';
@@ -90,6 +90,17 @@ test('bol: Outlet is never a bonus, nor an adviesprijs on its own', async (t) =>
   assert.equal(outlet?.bonusMechanism, '');
   assert.equal(outlet?.currentPrice, 7.55);
   assert.equal(outlet?.salesUnitSize, ''); // no "Inhoud" spec
+});
+
+test('bol: without an "Inhoud" spec, the size is the piece count', async () => {
+  const product = pageData(await page('bol-product-outlet.html'))['routes/product'].content.productPageData.product;
+  const pieces = (specifications: BolRawProduct['specifications']) => bol.normalize({ ...product, specifications }).salesUnitSize;
+  assert.equal(pieces({ groups: [{ attributes: [{ key: 'Number Pieces In Package', name: 'Aantal artikelen in verpakking', textValues: ['4 stuk(s)'] }] }] }), '4 stuks');
+  assert.equal(pieces({ detailedSummary: { attributes: [{ textValues: ['1 mesjes'] }, { textValues: ['3 stuk(s)'] }] } }), '3 stuks');
+  assert.equal(pieces({ detailedSummary: { attributes: [{ textValues: ['1 stuk(s)'] }] } }), '1 stuk');
+  assert.equal(pieces({
+    groups: [{ attributes: [{ key: 'Number Pieces In Package', textValues: ['2 stuk(s)'] }, { name: 'Inhoud', textValues: ['500 ml'] }] }],
+  }), '500 ml');
 });
 
 test('bol: a redirected id is the product the page shows', async (t) => {

@@ -117,18 +117,26 @@ function amount(money: { amount?: number | string | null } | null | undefined): 
   return Number.isFinite(n) ? n : null;
 }
 
-/** The content size, from the "Inhoud" spec; '' when there is none. */
+/**
+ * The content size, from the "Inhoud" spec, or else the piece count ("4 stuks")
+ * from "Aantal artikelen in verpakking"; '' when there is neither.
+ */
 function salesUnitSize(specs: BolRawProduct['specifications']): string {
-  for (const group of specs?.groups ?? []) {
-    for (const attr of group.attributes ?? []) {
-      if (attr.key === 'Capacity' || attr.name === 'Inhoud') return attr.textValues?.[0] ?? '';
-    }
+  const attributes = (specs?.groups ?? []).flatMap(group => group.attributes ?? []);
+  const summary = (specs?.detailedSummary?.attributes ?? []).map(attr => attr.textValues?.[0] ?? '');
+
+  const content = attributes.find(attr => attr.key === 'Capacity' || attr.name === 'Inhoud');
+  if (content) return content.textValues?.[0] ?? '';
+  for (const line of summary) {
+    const match = line.match(/^Inhoud:\s*(.+)$/);
+    if (match) return match[1];
   }
-  for (const attr of specs?.detailedSummary?.attributes ?? []) {
-    const line = attr.textValues?.[0] ?? '';
-    const summary = line.match(/^Inhoud:\s*(.+)$/);
-    if (summary) return summary[1];
-  }
+
+  // "4 stuk(s)", as a spec value and as a bare summary line.
+  const pieces = [attributes.find(attr => attr.key === 'Number Pieces In Package')?.textValues?.[0] ?? '', ...summary]
+    .map(value => value.match(/^(\d+)\s*stuk\(s\)$/)?.[1])
+    .find(Boolean);
+  if (pieces) return pieces === '1' ? '1 stuk' : `${pieces} stuks`;
   return '';
 }
 
