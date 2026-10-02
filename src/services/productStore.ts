@@ -12,7 +12,7 @@ export type NewSavedProduct = Pick<SavedProduct, 'store' | 'storeProductId' | 't
 export type SavedProductFields = Partial<Pick<SavedProduct, 'imageUrl' | 'productGroup'>>;
 
 /** Fields a client may edit through `update`; any other key is ignored. */
-const EDITABLE_FIELDS = ['productGroup'] as const;
+const EDITABLE_FIELDS = ['productGroup', 'paused'] as const;
 
 /**
  * A partial edit of a saved product: a missing field stays unchanged and

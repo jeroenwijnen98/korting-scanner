@@ -1,5 +1,5 @@
 // @ts-check
-import { getProducts, addProduct, removeProduct, searchProducts, getProductDetail, getProductHistory, getGroupHistory, syncProductImages } from '../api.js';
+import { getProducts, addProduct, removeProduct, updateProduct, searchProducts, getProductDetail, getProductHistory, getGroupHistory, syncProductImages } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { createSearchResult } from '../components/searchResult.js';
@@ -175,6 +175,18 @@ function renderSaved() {
   renderGroupedSections(container, filtered, product => {
     const card = createProductCard(product, {
       isUnavailable: unavailableIds.includes(product.id),
+      isPaused: Boolean(product.paused),
+      onTogglePause: async (p) => {
+        const paused = !p.paused;
+        try {
+          const updated = await updateProduct(p.id, { paused });
+          savedProducts = savedProducts.map(s => (s.id === updated.id ? updated : s));
+          renderSaved();
+          showToast(paused ? 'Product gepauzeerd' : 'Product hervat', 'success');
+        } catch (err) {
+          showToast(errorMessage(err), 'error');
+        }
+      },
       onRemove: async (p) => {
         try {
           await removeProduct(p.id);

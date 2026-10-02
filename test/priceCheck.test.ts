@@ -88,6 +88,21 @@ test('bonus products carry their saved product\'s productGroup, joined on savedI
   ]);
 });
 
+test('a paused product is observed and snapshotted but left out of the bonus overview', async () => {
+  await save('ah', '51');
+  const paused = await save('ah', '52');
+  await productStore.update(paused.id, { paused: true });
+  const store = new FakeStore('ah', [
+    product('ah', '51', onBonus()),
+    product('ah', '52', onBonus({ currentPrice: 5 })),
+  ]);
+
+  const overview = await checkSavedProducts({ ah: store });
+  assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-51']);
+  assert.deepEqual(overview.notFound, []);
+  assert.deepEqual((await priceHistory.getHistory('ah-52')).map(s => [s.currentPrice, s.isBonus]), [[5, true]]);
+});
+
 test('group history goes back to the regular price once a bonus ends', async () => {
   const koffie = await save('ah', '31', 'Koffie', 'koffie');
   const thee = await save('dirk', '32', 'Thee', 'koffie');

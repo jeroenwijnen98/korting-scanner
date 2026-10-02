@@ -95,7 +95,7 @@ export function getBonus() {
 
 /**
  * @param {string} id
- * @param {{ productGroup: string | null }} data
+ * @param {{ productGroup?: string | null, paused?: boolean }} data
  * @returns {Promise<SavedProduct>}
  */
 export function updateProduct(id, data) {

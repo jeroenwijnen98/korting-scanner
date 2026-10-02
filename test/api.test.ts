@@ -1,6 +1,6 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -60,11 +60,11 @@ test('saved products: save, duplicate, list, patch, delete', async () => {
   assert.equal((await api('PATCH', '/products/ah-1', {})).json.productGroup, 'koffie');
   assert.equal((await api('PATCH', '/products/ah-1')).json.productGroup, 'koffie');
   // Keys outside the editable fields are ignored
-  const ignored = await api('PATCH', '/products/ah-1', { title: 'Anders', id: 'ah-9', paused: true });
+  const ignored = await api('PATCH', '/products/ah-1', { title: 'Anders', id: 'ah-9', addedAt: 'gisteren' });
   assert.equal(ignored.status, 200);
   assert.equal(ignored.json.title, 'Koffie bonen');
   assert.equal(ignored.json.id, 'ah-1');
-  assert.equal(ignored.json.paused, undefined);
+  assert.notEqual(ignored.json.addedAt, 'gisteren');
   assert.equal(ignored.json.productGroup, 'koffie');
   // null clears the group
   assert.equal((await api('PATCH', '/products/ah-1', { productGroup: null })).json.productGroup, null);
@@ -73,6 +73,15 @@ test('saved products: save, duplicate, list, patch, delete', async () => {
   assert.equal((await api('PATCH', '/products/ah-1', { productGroup: 'thee' })).json.productGroup, 'thee');
   assert.equal((await api('GET', '/products')).json[0].productGroup, 'thee');
   assert.equal((await api('PATCH', '/products/ah-404', { productGroup: 'x' })).status, 404);
+
+  // Pause: missing means not paused; set, kept by other edits, written to disk, cleared
+  assert.equal((await api('GET', '/products')).json[0].paused, undefined);
+  assert.equal((await api('PATCH', '/products/ah-1', { paused: true })).json.paused, true);
+  assert.equal((await api('PATCH', '/products/ah-1', { productGroup: 'koffie' })).json.paused, true);
+  const onDisk = JSON.parse(await readFile(join(dir, 'products.json'), 'utf8'));
+  assert.deepEqual(onDisk.map((p: any) => [p.id, p.paused, p.productGroup]), [['ah-1', true, 'koffie']]);
+  assert.equal((await api('PATCH', '/products/ah-1', { paused: false })).json.paused, false);
+  assert.equal((await api('GET', '/products')).json[0].paused, false);
 
   assert.deepEqual((await api('DELETE', '/products/ah-1')).json, { ok: true });
   assert.equal((await api('DELETE', '/products/ah-1')).status, 404);
@@ -137,6 +146,22 @@ test('bonus: each bonus product carries its saved product\'s productGroup', asyn
     ['ah-1', 'koffie'],
     ['ah-3', null],
   ]);
+
+  for (const id of ['ah-1', 'ah-3']) await api('DELETE', `/products/${id}`);
+});
+
+test('bonus: a paused product on bonus is left out, and back once resumed', async () => {
+  await api('POST', '/products', koffie);
+  await api('POST', '/products', { store: 'ah', storeProductId: '3', title: 'Melk' });
+  await api('PATCH', '/products/ah-1', { paused: true });
+
+  const paused = await api('GET', '/bonus');
+  assert.deepEqual(paused.json.bonusProducts.map((p: any) => p.savedId), ['ah-3']);
+  assert.deepEqual(paused.json.notFound, []);
+
+  await api('PATCH', '/products/ah-1', { paused: false });
+  const resumed = await api('GET', '/bonus');
+  assert.deepEqual(resumed.json.bonusProducts.map((p: any) => p.savedId), ['ah-1', 'ah-3']);
 
   for (const id of ['ah-1', 'ah-3']) await api('DELETE', `/products/${id}`);
 });

@@ -75,6 +75,20 @@
   background: var(--bg-card-hover);
 }
 
+/* Paused: greyed out in place, the pause control stays readable */
+.product-card.is-paused .product-card-body > :not(.product-card-content),
+.product-card.is-paused .product-card-content > :not(.product-card-header),
+.product-card.is-paused .product-card-title {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.product-card-pause {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
 .product-card-header {
   display: flex;
   align-items: flex-start;

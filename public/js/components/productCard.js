@@ -17,12 +17,12 @@ import { storeBadge } from './storeBadge.js';
 /**
  * @template {DisplayedProduct} P
  * @param {P} product
- * @param {{ onRemove?: (product: P) => void, showBonus?: boolean, isUnavailable?: boolean }} options
+ * @param {{ onRemove?: (product: P) => void, onTogglePause?: (product: P) => void, isPaused?: boolean, showBonus?: boolean, isUnavailable?: boolean }} options
  * @returns {HTMLDivElement}
  */
-export function createProductCard(product, { onRemove, showBonus = false, isUnavailable = false }) {
+export function createProductCard(product, { onRemove, onTogglePause, isPaused = false, showBonus = false, isUnavailable = false }) {
   const el = document.createElement('div');
-  el.className = 'product-card';
+  el.className = `product-card${isPaused ? ' is-paused' : ''}`;
 
   // Outer body: image + content side-by-side
   const body = document.createElement('div');
@@ -57,6 +57,18 @@ export function createProductCard(product, { onRemove, showBonus = false, isUnav
     badge.textContent = '!';
     badge.title = 'Niet meer beschikbaar';
     header.appendChild(badge);
+  }
+
+  if (onTogglePause) {
+    const pauseBtn = document.createElement('button');
+    pauseBtn.className = 'btn btn-ghost btn-sm product-card-pause';
+    pauseBtn.textContent = isPaused ? 'Hervatten' : 'Pauzeren';
+    pauseBtn.title = isPaused ? 'Bonus weer melden' : 'Bonus voorlopig niet melden';
+    pauseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onTogglePause(product);
+    });
+    header.appendChild(pauseBtn);
   }
 
   if (onRemove) {

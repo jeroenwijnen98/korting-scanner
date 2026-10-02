@@ -9,7 +9,8 @@ import * as productStore from './productStore.ts';
  * records a price snapshot for each one observed, on bonus or not, so a
  * regular price shows up again once a bonus ends. The overview lists only
  * those the store adapter counts as a bonus, each with its saved product's
- * view (`productGroup`). A store whose check throws does not sink the others:
+ * view (`productGroup`); a paused saved product is observed and snapshotted
+ * like any other but left out of the overview. A store whose check throws does not sink the others:
  * its saved products go to `notFound`.
  */
 export async function checkSavedProducts(
@@ -28,7 +29,9 @@ export async function checkSavedProducts(
       }))).catch((err) => {
         console.error(`Error recording ${storeName} snapshots:`, errorMessage(err));
       });
-      const bonusProducts = observed.filter(product => adapter.countsAsBonus(product));
+      const pausedIds = new Set(storeProducts.filter(p => p.paused).map(p => p.id));
+      const bonusProducts = observed.filter(product =>
+        adapter.countsAsBonus(product) && !pausedIds.has(product.savedId));
       overview.bonusProducts.push(...productStore.withSavedProductView(bonusProducts, storeProducts));
       overview.notFound.push(...notFound);
     } catch (err) {

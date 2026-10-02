@@ -67,6 +67,11 @@ export interface SavedProduct {
   /** ISO timestamp. */
   addedAt: string;
   productGroup?: string | null;
+  /**
+   * Paused: still observed and snapshotted, but left out of the bonus
+   * overview. Missing (or null/false) means not paused.
+   */
+  paused?: boolean | null;
 }
 
 /**
