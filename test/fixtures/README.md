@@ -11,6 +11,11 @@ whole response body) and adjust the expected values in the test.
 - `dirk-list-products.json`: GraphQL `listProducts` response
 - `dirk-assortment.json`: GraphQL aliased `productAssortment` response (`p0`, `p1`, …)
 - `kruidvat-search.json`: `GET /search?fields=FULL` body
+- `trekpleister-search.json`: `GET /search?fields=FULL` body (site `kvtp`), stub `topPromotion` as on every search result
+- `trekpleister-detail.json`: `GET /products/{code}?fields=FULL` body, "Aquafresh 2+2 gratis" promotion
+- `trekpleister-detail-no-promotion.json`: detail with a stub `topPromotion`, no title
+- `trekpleister-detail-gratis-artikel.json`: detail with a "gratis artikel" promotion
+- `trekpleister-detail-percentage.json`: detail whose title has no mechanism, only a `PERCENT_DISCOUNT` reward
 
 bol.com pages (`test/bol.test.ts`) are real captures (2026-10-02). Each page
 embeds its React Router loader data as a turbo-stream; the `.html` files carry

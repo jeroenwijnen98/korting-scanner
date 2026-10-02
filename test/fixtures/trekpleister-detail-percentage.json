@@ -1,0 +1,15 @@
+{
+  "code": "4567893",
+  "name": "Nivea Douchegel Creme Soft",
+  "shortDescription": "250 ml",
+  "manufacturer": "Nivea",
+  "price": { "value": 3.49 },
+  "topPromotion": {
+    "title": "Nivea douche actie",
+    "badge": { "image": { "url": "/medias/badge-25.png" } },
+    "startDate": "2026-09-28T00:00:00+0200",
+    "endDate": "2026-10-11T23:59:59+0200",
+    "reward": { "rewardType": "PERCENT_DISCOUNT", "formattedRewardValue": "25%" }
+  },
+  "images": [{ "imageType": "PRIMARY", "url": "/medias/nivea.jpg" }]
+}

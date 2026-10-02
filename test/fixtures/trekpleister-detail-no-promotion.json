@@ -1,0 +1,9 @@
+{
+  "code": "4567891",
+  "name": "Trekpleister Wattenstaafjes",
+  "shortDescription": "200 stuks",
+  "manufacturer": "Trekpleister",
+  "price": { "value": 1.19 },
+  "topPromotion": { "badge": {}, "reward": {} },
+  "images": [{ "imageType": "PRIMARY", "url": "/medias/wattenstaafjes.jpg" }]
+}

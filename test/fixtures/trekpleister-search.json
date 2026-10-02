@@ -1,0 +1,26 @@
+{
+  "products": [
+    {
+      "code": "4567890",
+      "name": "Aquafresh Tandpasta Triple Protection",
+      "shortDescription": "75 ml",
+      "manufacturer": "Aquafresh",
+      "price": { "value": 2.39 },
+      "topPromotion": { "badge": {}, "reward": {} },
+      "categoriesHierarchy": [{ "categories": [{ "name": "Verzorging" }, { "name": "Mondverzorging" }] }],
+      "images": [
+        { "imageType": "GALLERY", "url": "/medias/aquafresh-gallery.jpg" },
+        { "imageType": "PRIMARY", "url": "/medias/aquafresh-primary.jpg" }
+      ]
+    },
+    {
+      "code": "4567891",
+      "name": "Trekpleister Wattenstaafjes",
+      "shortDescription": "200 stuks",
+      "manufacturer": "Trekpleister",
+      "price": { "value": 1.19 },
+      "topPromotion": { "badge": {}, "reward": {} },
+      "images": [{ "url": "https://cdn.trekpleister.nl/wattenstaafjes.jpg" }]
+    }
+  ]
+}

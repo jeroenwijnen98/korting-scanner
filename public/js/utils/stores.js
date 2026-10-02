@@ -21,5 +21,6 @@ export const STORES = {
   dirk: { label: 'Dirk', name: 'Dirk', color: '#ED1C24' },
   kruidvat: { label: 'Kruidvat', name: 'Kruidvat', color: '#FF5500' },
   etos: { label: 'Etos', name: 'Etos', color: '#7B2D8B' },
+  trekpleister: { label: 'Trekpleister', name: 'Trekpleister', color: '#26348B' },
   bol: { label: 'bol', name: 'bol.com', color: '#0000A4' },
 };

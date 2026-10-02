@@ -1,0 +1,21 @@
+{
+  "code": "4567890",
+  "name": "Aquafresh Tandpasta Triple Protection",
+  "shortDescription": "75 ml",
+  "manufacturer": "Aquafresh",
+  "price": { "value": 2.39 },
+  "topPromotion": {
+    "name": "Aquafresh 2+2 gratis",
+    "title": "Aquafresh 2+2 gratis",
+    "description": "Aquafresh 2+2 gratis",
+    "badge": { "image": { "url": "/medias/badge-2plus2.png" } },
+    "startDate": "2026-09-28T00:00:00+0200",
+    "endDate": "2026-10-11T23:59:59+0200",
+    "reward": { "rewardType": "PERCENT_DISCOUNT", "formattedRewardValue": "50%" }
+  },
+  "categoriesHierarchy": [{ "categories": [{ "name": "Verzorging" }, { "name": "Mondverzorging" }] }],
+  "images": [
+    { "imageType": "GALLERY", "url": "/medias/aquafresh-gallery.jpg" },
+    { "imageType": "PRIMARY", "url": "/medias/aquafresh-primary.jpg" }
+  ]
+}

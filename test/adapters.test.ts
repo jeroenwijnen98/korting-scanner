@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { ah } from '../src/stores/ah.ts';
 import { dirk } from '../src/stores/dirk.ts';
 import { kruidvat } from '../src/stores/kruidvat.ts';
+import { trekpleister } from '../src/stores/trekpleister.ts';
 import type { SavedProduct } from '../src/types.ts';
 
 // Raw responses; see fixtures/README.md. `any`, as the adapters' own
@@ -173,4 +174,89 @@ test('Kruidvat: a "gratis artikel" promotion is not a bonus; a missing price sta
   assert.equal(w.currentPrice, null);
   assert.equal(w.title, 'Kruidvat Wattenschijfjes');
   assert.equal(w.imageUrl, null);
+});
+
+test('Trekpleister: a detail promotion title gives the mechanism without the brand, priced by it', async () => {
+  assert.deepEqual(trekpleister.normalize(await fixture('trekpleister-detail.json')), {
+    productId: '4567890',
+    title: 'Aquafresh Tandpasta Triple Protection',
+    salesUnitSize: '75 ml',
+    bonusMechanism: '2+2 gratis',
+    priceBeforeBonus: 2.39,
+    currentPrice: 1.2,
+    bonusStartDate: '2026-09-28T00:00:00+0200',
+    bonusEndDate: '2026-10-11T23:59:59+0200',
+    mainCategory: 'Verzorging',
+    subCategory: 'Mondverzorging',
+    brand: 'Aquafresh',
+    isBonus: true,
+    imageUrl: 'https://www.trekpleister.nl/medias/aquafresh-primary.jpg',
+    store: 'trekpleister',
+  });
+});
+
+test('Trekpleister: a detail without a promotion title is not a bonus', async () => {
+  const p = trekpleister.normalize(await fixture('trekpleister-detail-no-promotion.json'));
+  assert.equal(p.isBonus, false);
+  assert.equal(p.bonusMechanism, '');
+  assert.equal(p.priceBeforeBonus, null);
+  assert.equal(p.currentPrice, 1.19);
+  assert.equal(p.bonusStartDate, '');
+  assert.equal(p.bonusEndDate, '');
+});
+
+test('Trekpleister: a "gratis artikel" promotion is not a bonus', async () => {
+  const p = trekpleister.normalize(await fixture('trekpleister-detail-gratis-artikel.json'));
+  assert.equal(p.isBonus, false);
+  assert.equal(p.bonusMechanism, '');
+  assert.equal(p.priceBeforeBonus, null);
+  assert.equal(p.currentPrice, 4.99);
+});
+
+test('Trekpleister: a title without a mechanism falls back to the percentage reward', async () => {
+  const p = trekpleister.normalize(await fixture('trekpleister-detail-percentage.json'));
+  assert.equal(p.isBonus, true);
+  assert.equal(p.bonusMechanism, '25%');
+  assert.equal(p.priceBeforeBonus, 3.49);
+  assert.equal(p.currentPrice, 2.62);
+  assert.equal(p.bonusEndDate, '2026-10-11T23:59:59+0200');
+});
+
+test('Trekpleister: search results carry a promotion stub, so none is a bonus', async () => {
+  const [aquafresh, watten] = (await fixture('trekpleister-search.json')).products;
+  assert.deepEqual(trekpleister.normalize(aquafresh), {
+    productId: '4567890',
+    title: 'Aquafresh Tandpasta Triple Protection',
+    salesUnitSize: '75 ml',
+    bonusMechanism: '',
+    priceBeforeBonus: null,
+    currentPrice: 2.39,
+    bonusStartDate: '',
+    bonusEndDate: '',
+    mainCategory: 'Verzorging',
+    subCategory: 'Mondverzorging',
+    brand: 'Aquafresh',
+    isBonus: false,
+    imageUrl: 'https://www.trekpleister.nl/medias/aquafresh-primary.jpg',
+    store: 'trekpleister',
+  });
+  const w = trekpleister.normalize(watten);
+  assert.equal(w.isBonus, false);
+  assert.equal(w.imageUrl, 'https://cdn.trekpleister.nl/wattenstaafjes.jpg');
+});
+
+test('Trekpleister: search and detail use the kvtp site on the Kruidvat app host', async t => {
+  const urls: string[] = [];
+  t.mock.method(globalThis, 'fetch', async (url: string) => {
+    urls.push(String(url));
+    const body = url.includes('/search') ? await fixture('trekpleister-search.json') : await fixture('trekpleister-detail.json');
+    return new Response(JSON.stringify(body));
+  });
+  const results = await trekpleister.searchProducts('tand pasta');
+  assert.deepEqual(results.map(p => p.isBonus), [false, false]);
+  assert.equal((await trekpleister.getProductDetail('4567890')).bonusMechanism, '2+2 gratis');
+  assert.deepEqual(urls, [
+    'https://app.kruidvat.nl/api/v2/kvtp/search?fields=FULL&lang=nl&query=tand%20pasta',
+    'https://app.kruidvat.nl/api/v2/kvtp/products/4567890?fields=FULL&lang=nl',
+  ]);
 });

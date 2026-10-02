@@ -1,0 +1,15 @@
+{
+  "code": "4567892",
+  "name": "Andrélon Shampoo Glans",
+  "shortDescription": "300 ml",
+  "manufacturer": "Andrélon",
+  "price": { "value": 4.99 },
+  "topPromotion": {
+    "title": "Andrélon gratis artikel bij aankoop van 2",
+    "badge": { "image": { "url": "/medias/badge-gratis-artikel.png" } },
+    "startDate": "2026-09-28T00:00:00+0200",
+    "endDate": "2026-10-11T23:59:59+0200",
+    "reward": { "rewardType": "FREE_GIFT" }
+  },
+  "images": [{ "imageType": "PRIMARY", "url": "/medias/andrelon.jpg" }]
+}
