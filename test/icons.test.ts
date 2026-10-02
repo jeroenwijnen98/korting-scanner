@@ -46,9 +46,9 @@ test('there is no separate favicon', async () => {
 test('the page links the source icon, a PNG fallback and an apple-touch-icon', async () => {
   const html = await (await fetch(`${base}/`)).text();
   const head = html.slice(0, html.indexOf('</head>'));
-  assert.ok(head.includes('<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">'));
-  assert.ok(head.includes('<link rel="icon" href="/assets/icon.png" type="image/png" sizes="512x512">'));
-  assert.ok(head.includes('<link rel="apple-touch-icon" href="/assets/icon.png">'));
+  assert.ok(head.includes('<link rel="icon" href="/assets/icon.svg?v=2" type="image/svg+xml">'));
+  assert.ok(head.includes('<link rel="icon" href="/assets/icon.png?v=2" type="image/png" sizes="512x512">'));
+  assert.ok(head.includes('<link rel="apple-touch-icon" href="/assets/icon.png?v=2">'));
 });
 
 const has = (cmd: string) => spawnSync('sh', ['-c', `command -v ${cmd}`]).status === 0;
