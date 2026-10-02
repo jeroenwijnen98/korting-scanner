@@ -7,6 +7,7 @@ import { cheapestPerDate } from '../services/groupHistory.ts';
 import type { StoreAdapter } from '../stores/base.ts';
 import type { StoreName } from '../types.ts';
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
+import { savedProductId } from '../../public/js/utils/savedProductId.js';
 
 /** The store adapter per store name; tests pass fakes. */
 export type StoreRegistry = Partial<Record<StoreName, StoreAdapter>>;
@@ -70,7 +71,7 @@ export function createApiRouter(stores: StoreRegistry): Router {
     if (!detail) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    priceHistory.recordSnapshot(`${store}-${storeProductId}`, detail).catch(() => {});
+    priceHistory.recordSnapshot(savedProductId(store, storeProductId), detail).catch(() => {});
     res.json(detail);
   });
 

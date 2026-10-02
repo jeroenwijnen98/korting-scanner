@@ -1,6 +1,7 @@
 import type { SavedProduct } from '../types.ts';
 import { readJson, updateJson } from './jsonFile.ts';
 import { dataFile } from '../config.ts';
+import { savedProductId } from '../../public/js/utils/savedProductId.js';
 
 /** What a client posts to save a product: a product from search or detail. */
 export type NewSavedProduct = Pick<SavedProduct, 'store' | 'storeProductId' | 'title'>
@@ -27,7 +28,7 @@ export async function getAll(): Promise<SavedProduct[]> {
 
 export async function add(product: NewSavedProduct): Promise<SavedProduct | null> {
   return updateJson<SavedProduct[], SavedProduct | null>(dataFile(FILE), [], (products) => {
-    const id = `${product.store}-${product.storeProductId}`;
+    const id = savedProductId(product.store, product.storeProductId);
     if (products.find(p => p.id === id)) {
       return { changed: false, result: null };
     }

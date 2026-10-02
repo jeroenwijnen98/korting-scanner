@@ -6,6 +6,7 @@ import { showToast } from '../components/toast.js';
 import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
 import { escapeHtml } from '../utils/format.js';
+import { savedProductId } from '../utils/savedProductId.js';
 import { setUnavailableIds } from './myProducts.js';
 
 /**
@@ -40,7 +41,7 @@ export async function initOnSale() {
 
     // Enrich bonus products with productGroup from matching saved product
     const enriched = bonusProducts.map(p => {
-      const savedId = `${p.store}-${p.productId}`;
+      const savedId = savedProductId(p.store, p.productId);
       const match = savedProducts.find(s => s.id === savedId);
       return match?.productGroup ? { ...p, productGroup: match.productGroup } : p;
     });
@@ -67,7 +68,7 @@ export async function initOnSale() {
  */
 async function showDetail(product, allProducts, savedProducts, notFound = []) {
   panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
-  const productId = product.savedId || `${product.store}-${product.productId}`;
+  const productId = product.savedId || savedProductId(product.store, product.productId);
 
   /** @type {PriceSnapshot[]} */
   let history = [];
@@ -84,7 +85,7 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
     savedProducts.map(s => s.productGroup).filter(Boolean)
   )];
 
-  const savedId = `${product.store}-${product.productId}`;
+  const savedId = savedProductId(product.store, product.productId);
   const savedProduct = savedProducts.find(s => s.id === savedId) || null;
 
   panel.innerHTML = '';
@@ -97,7 +98,7 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
     onProductGroupChange: (id, groupName) => {
       // Update in allProducts (enriched bonus list)
       const idx = allProducts.findIndex(p => {
-        const sid = `${p.store}-${p.productId}`;
+        const sid = savedProductId(p.store, p.productId);
         return sid === id || p.savedId === id;
       });
       if (idx !== -1) {
