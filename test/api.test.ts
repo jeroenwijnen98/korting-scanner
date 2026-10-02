@@ -83,6 +83,14 @@ test('saved products: save, duplicate, list, patch, delete', async () => {
   assert.equal((await api('PATCH', '/products/ah-1', { paused: false })).json.paused, false);
   assert.equal((await api('GET', '/products')).json[0].paused, false);
 
+  // A product added to a fully paused group starts out unpaused
+  await api('PATCH', '/products/ah-1', { paused: true });
+  await api('POST', '/products', { store: 'ah', storeProductId: '5', title: 'Koffie 2' });
+  const joined = await api('PATCH', '/products/ah-5', { productGroup: 'koffie' });
+  assert.equal(joined.json.paused, undefined);
+  assert.equal((await api('GET', '/products')).json[0].paused, true);
+  await api('DELETE', '/products/ah-5');
+
   assert.deepEqual((await api('DELETE', '/products/ah-1')).json, { ok: true });
   assert.equal((await api('DELETE', '/products/ah-1')).status, 404);
   assert.deepEqual((await api('GET', '/products')).json, []);
