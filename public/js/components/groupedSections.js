@@ -13,8 +13,10 @@ import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
  * @param {HTMLElement} container sections are appended to it
  * @param {P[]} products
  * @param {(product: P) => HTMLElement} makeCard
+ * @param {(groupName: string) => HTMLElement} [makeGroupAction] an extra
+ *   control for the header of each product group (not "Niet gecategoriseerd")
  */
-export function renderGroupedSections(container, products, makeCard) {
+export function renderGroupedSections(container, products, makeCard, makeGroupAction) {
   /** @type {Map<string, P[]>} */
   const groups = new Map();
   /** @type {P[]} */
@@ -44,7 +46,7 @@ export function renderGroupedSections(container, products, makeCard) {
     container.appendChild(createSection('Niet gecategoriseerd', withoutGroup, makeCard));
   }
   for (const [groupName, items] of groups) {
-    container.appendChild(createSection(groupName, items, makeCard));
+    container.appendChild(createSection(groupName, items, makeCard, makeGroupAction?.(groupName)));
   }
 }
 
@@ -53,9 +55,10 @@ export function renderGroupedSections(container, products, makeCard) {
  * @param {string} name
  * @param {P[]} items
  * @param {(product: P) => HTMLElement} makeCard
+ * @param {HTMLElement} [action] goes at the end of the header
  * @returns {HTMLDivElement}
  */
-function createSection(name, items, makeCard) {
+function createSection(name, items, makeCard, action) {
   const section = document.createElement('div');
   section.className = 'group-section';
 
@@ -68,6 +71,7 @@ function createSection(name, items, makeCard) {
   countEl.className = 'group-section-count';
   countEl.textContent = `${items.length} product${items.length !== 1 ? 'en' : ''}`;
   header.append(nameEl, countEl);
+  if (action) header.appendChild(action);
   section.appendChild(header);
 
   const list = document.createElement('div');

@@ -8,6 +8,7 @@ import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
 import { savedProductId } from '../utils/savedProductId.js';
+import { groupPauseAction } from '../utils/groupPause.js';
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
@@ -200,7 +201,44 @@ function renderSaved() {
     });
     card.addEventListener('click', () => showProductDetail(product));
     return card;
+  }, createGroupPauseButton);
+}
+
+/**
+ * The header button that pauses or resumes a whole product group. It acts on,
+ * and takes its label from, every member across all stores, not only the ones
+ * the store filter shows.
+ * @param {string} productGroup
+ * @returns {HTMLButtonElement}
+ */
+function createGroupPauseButton(productGroup) {
+  const { paused: willPause } = groupPauseAction(savedProducts, productGroup);
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-ghost btn-sm group-section-pause';
+  btn.textContent = willPause ? 'Pauzeren' : 'Hervatten';
+  btn.title = willPause ? 'Bonus van de hele groep voorlopig niet melden' : 'Bonus van de hele groep weer melden';
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    // Taken again on click: the list may have changed since this render
+    const action = groupPauseAction(savedProducts, productGroup);
+    const results = await Promise.allSettled(
+      action.ids.map(id => updateProduct(id, { paused: action.paused })),
+    );
+    /** @type {Map<string, SavedProduct>} */
+    const updated = new Map();
+    for (const r of results) {
+      if (r.status === 'fulfilled') updated.set(r.value.id, r.value);
+    }
+    savedProducts = savedProducts.map(s => updated.get(s.id) || s);
+    renderSaved();
+    const failed = results.find(r => r.status === 'rejected');
+    if (failed) {
+      showToast(errorMessage(/** @type {PromiseRejectedResult} */ (failed).reason), 'error');
+    } else {
+      showToast(action.paused ? 'Groep gepauzeerd' : 'Groep hervat', 'success');
+    }
   });
+  return btn;
 }
 
 /** @param {SavedProduct} product */
