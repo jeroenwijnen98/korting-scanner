@@ -1,5 +1,5 @@
 import type { StoreAdapter } from '../stores/base.ts';
-import type { BonusOverview, StoreName } from '../types.ts';
+import type { BonusOverview, BonusProduct, SavedProduct, StoreName } from '../types.ts';
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
 import * as priceHistory from './priceHistory.ts';
 import * as productStore from './productStore.ts';
@@ -10,8 +10,10 @@ import * as productStore from './productStore.ts';
  * regular price shows up again once a bonus ends. The overview lists only
  * those the store adapter counts as a bonus, each with its saved product's
  * view (`productGroup`); a paused saved product is observed and snapshotted
- * like any other but left out of the overview. A store whose check throws
- * does not sink the others: its saved products go to `notFound`.
+ * like any other but left out of the overview. A saved product whose observed
+ * image differs takes the new `imageUrl`: stores replace images and the old
+ * URL stops working. A store whose check throws does not sink the others: its
+ * saved products go to `notFound`.
  */
 export async function checkSavedProducts(
   stores: Partial<Record<StoreName, StoreAdapter>>,
@@ -29,6 +31,9 @@ export async function checkSavedProducts(
       }))).catch((err) => {
         console.error(`Error recording ${storeName} snapshots:`, errorMessage(err));
       });
+      await syncImages(observed, storeProducts).catch((err) => {
+        console.error(`Error syncing ${storeName} images:`, errorMessage(err));
+      });
       const pausedIds = new Set(storeProducts.filter(p => p.paused).map(p => p.id));
       const bonusProducts = observed.filter(product =>
         adapter.countsAsBonus(product) && !pausedIds.has(product.savedId),
@@ -41,4 +46,12 @@ export async function checkSavedProducts(
     }
   }
   return overview;
+}
+
+async function syncImages(observed: BonusProduct[], saved: SavedProduct[]): Promise<void> {
+  const savedImages = new Map(saved.map(p => [p.id, p.imageUrl]));
+  const updates = observed
+    .filter(p => p.imageUrl && p.imageUrl !== savedImages.get(p.savedId))
+    .map(p => ({ id: p.savedId, fields: { imageUrl: p.imageUrl! } }));
+  if (updates.length > 0) await productStore.bulkUpdate(updates);
 }
