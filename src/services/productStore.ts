@@ -10,6 +10,15 @@ export type NewSavedProduct = Pick<SavedProduct, 'store' | 'storeProductId' | 't
 /** Fields that may change on a saved product after it is saved. */
 export type SavedProductFields = Partial<Pick<SavedProduct, 'imageUrl' | 'productGroup'>>;
 
+/** Fields a client may edit through `update`; any other key is ignored. */
+const EDITABLE_FIELDS = ['productGroup'] as const;
+
+/**
+ * A partial edit of a saved product: a missing field stays unchanged and
+ * `null` clears it.
+ */
+export type SavedProductPatch = Partial<Pick<SavedProduct, typeof EDITABLE_FIELDS[number]>>;
+
 const FILE = 'products.json';
 
 export async function getAll(): Promise<SavedProduct[]> {
@@ -48,12 +57,28 @@ export async function remove(id: string): Promise<boolean> {
   });
 }
 
-export async function update(id: string, fields: SavedProductFields): Promise<SavedProduct | null> {
+/** The allowlisted fields of `patch` that it actually sets. */
+function editableFields(patch: object): SavedProductPatch {
+  const fields: Record<string, unknown> = {};
+  for (const key of EDITABLE_FIELDS) {
+    const value = (patch as Record<string, unknown>)[key];
+    if (Object.hasOwn(patch, key) && value !== undefined) fields[key] = value;
+  }
+  return fields as SavedProductPatch;
+}
+
+/**
+ * Apply a partial patch to a saved product. Only the editable fields are
+ * taken from `patch` (a request body may carry anything); a missing field
+ * stays unchanged and `null` clears it.
+ */
+export async function update(id: string, patch: SavedProductPatch): Promise<SavedProduct | null> {
+  const fields = editableFields(patch);
   return updateJson<SavedProduct[], SavedProduct | null>(dataFile(FILE), [], (products) => {
     const product = products.find(p => p.id === id);
     if (!product) return { changed: false, result: null };
     Object.assign(product, fields);
-    return { changed: true, result: product };
+    return { changed: Object.keys(fields).length > 0, result: product };
   });
 }
 
