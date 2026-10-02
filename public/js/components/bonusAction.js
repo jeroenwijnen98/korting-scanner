@@ -38,9 +38,9 @@ export function createBonusAction(product, grocerUrl) {
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     // `at` is the click, so grocer can tell this add from an older one.
-    const now = bonusLink(product, { grocerUrl, at: Date.now() });
-    if (!now) return;
-    window.open(now.url, 'grocer-add', POPUP);
+    const clicked = bonusLink(product, { grocerUrl, at: Date.now() });
+    if (!clicked) return;
+    window.open(clicked.url, 'grocer-add', POPUP);
     added.add(product.savedId);
     btn.textContent = 'Toegevoegd';
   });
