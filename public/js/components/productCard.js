@@ -2,6 +2,7 @@
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
 import { storeBadge } from './storeBadge.js';
+import { pauseControlText } from '../utils/pauseControl.js';
 
 /**
  * @typedef {import('../../../src/types.ts').Product} Product
@@ -62,8 +63,9 @@ export function createProductCard(product, { onRemove, onTogglePause, isPaused =
   if (onTogglePause) {
     const pauseBtn = document.createElement('button');
     pauseBtn.className = 'btn btn-ghost btn-sm product-card-pause';
-    pauseBtn.textContent = isPaused ? 'Hervatten' : 'Pauzeren';
-    pauseBtn.title = isPaused ? 'Bonus weer melden' : 'Bonus voorlopig niet melden';
+    const { label, title } = pauseControlText(isPaused);
+    pauseBtn.textContent = label;
+    pauseBtn.title = title;
     pauseBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       onTogglePause(product);

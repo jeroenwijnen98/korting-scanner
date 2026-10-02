@@ -581,3 +581,6 @@
 .group-selector { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .group-select, .group-new-input { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; font-size: 0.9375rem; outline: none; width: 100%; transition: border-color var(--transition); }
 .group-select:focus, .group-new-input:focus { border-color: var(--accent); }
+
+/* Product detail pause control */
+.product-detail-pause { margin-bottom: 4px; }

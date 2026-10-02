@@ -256,6 +256,10 @@ async function showProductDetail(product) {
         : { ...product, productGroup: groupName || null };
       showProductDetail(updatedProduct);
     },
+    onPauseChange: (updated) => {
+      // The card picks this up when the list is rendered again
+      savedProducts = savedProducts.map(s => (s.id === updated.id ? updated : s));
+    },
     onBack: () => initMyProducts(),
   });
   panel.appendChild(detailEl);
