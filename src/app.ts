@@ -20,6 +20,8 @@ export function createApp({ stores = defaultStores, idleShutdown = {} }: AppDeps
 
   app.use(express.json());
   app.use(express.static('public'));
+  // The source app icon and its renders double as the favicon.
+  app.use('/assets', express.static('assets'));
 
   attachIdleShutdown(app, { enabled: AUTOQUIT, ...idleShutdown });
 

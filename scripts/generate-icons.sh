@@ -1,18 +1,22 @@
 #!/bin/bash
 # Regenerates every derived icon from the single source of truth, assets/icon.svg.
 #
-# The browser tab serves public/favicon.svg (hand-drawn, 32px-specific); the PNG
-# and .icns below — including the copy inside the .app bundle, which must be a
-# real file because `cp -R` into /Applications would leave a symlink dangling —
-# are build artifacts. Edit the SVG, run this, commit the result.
+# The PNG and .icns below — including the copy inside the .app bundle, which must
+# be a real file because `cp -R` into /Applications would leave a symlink dangling —
+# are build artifacts; the browser tab uses the SVG and PNG from /assets. Edit the
+# SVG, run this, commit the result.
+#
+# ICON_OUT_DIR sets where the outputs go (default: the repo root); the staleness
+# test renders into a temp dir and compares against the committed files.
 #
 # Requires rsvg-convert (brew install librsvg) plus macOS iconutil.
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
-SRC="assets/icon.svg"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUT="$(mkdir -p "${ICON_OUT_DIR:-$ROOT}" && cd "${ICON_OUT_DIR:-$ROOT}" && pwd)"
+SRC="$ROOT/assets/icon.svg"
 BUNDLE_ICNS="KortingScanner.app/Contents/Resources/icon.icns"
-mkdir -p assets "$(dirname "$BUNDLE_ICNS")"
+mkdir -p "$OUT/assets" "$OUT/$(dirname "$BUNDLE_ICNS")"
 
 RSVG="$(command -v rsvg-convert || true)"
 # miniforge ships one but isn't always on PATH for a double-clicked shell.
@@ -33,12 +37,12 @@ for size in 16 32 128 256 512; do
   render "$((size * 2))" "$ICONSET/icon_${size}x${size}@2x.png"
 done
 
-render 512 assets/icon.png
-iconutil -c icns "$ICONSET" -o assets/icon.icns
-cp assets/icon.icns "$BUNDLE_ICNS"
+render 512 "$OUT/assets/icon.png"
+iconutil -c icns "$ICONSET" -o "$OUT/assets/icon.icns"
+cp "$OUT/assets/icon.icns" "$OUT/$BUNDLE_ICNS"
 rm -rf "$(dirname "$ICONSET")"
 
-echo "Regenerated from $SRC:"
+echo "Regenerated from assets/icon.svg into $OUT:"
 echo "  assets/icon.png"
 echo "  assets/icon.icns"
 echo "  $BUNDLE_ICNS"
