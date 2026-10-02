@@ -1,8 +1,7 @@
 import dotenv from 'dotenv';
 import { createTransport } from 'nodemailer';
 import { join } from 'node:path';
-import * as productStore from '../services/productStore.ts';
-import { checkAllBonuses } from '../services/bonusCheck.ts';
+import { checkSavedProducts } from '../services/priceCheck.ts';
 import { stores } from '../stores/index.ts';
 import { parseUnitSize, calcPricePerUnit } from '../../public/js/utils/unitPrice.js';
 import { formatPrice, formatDate, escapeHtml } from '../../public/js/utils/format.js';
@@ -101,16 +100,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Load saved products
-  const saved = await productStore.getAll();
-  if (saved.length === 0) {
-    console.log('No saved products, skipping email.');
-    return;
-  }
-
-  // Check bonus status per store
-  console.log(`Checking bonus for ${saved.length} products...`);
-  const { bonusProducts } = await checkAllBonuses(saved, stores);
+  console.log('Checking saved products...');
+  const { bonusProducts } = await checkSavedProducts(stores);
 
   console.log(`Found ${bonusProducts.length} bonus products.`);
 

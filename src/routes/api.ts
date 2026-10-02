@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { ErrorRequestHandler } from 'express';
 import * as productStore from '../services/productStore.ts';
 import * as priceHistory from '../services/priceHistory.ts';
-import { checkAllBonuses } from '../services/bonusCheck.ts';
+import { checkSavedProducts } from '../services/priceCheck.ts';
 import { cheapestPerDate } from '../services/groupHistory.ts';
 import type { StoreAdapter } from '../stores/base.ts';
 import type { StoreName } from '../types.ts';
@@ -104,8 +104,7 @@ export function createApiRouter(stores: StoreRegistry): Router {
 
   // Check bonus status for saved products
   router.get('/bonus', async (req, res) => {
-    const saved = await productStore.getAll();
-    res.json(await checkAllBonuses(saved, stores));
+    res.json(await checkSavedProducts(stores));
   });
 
   // Edit a saved product: only the fields the body sends change (null clears)
