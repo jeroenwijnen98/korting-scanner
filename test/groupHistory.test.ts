@@ -38,7 +38,7 @@ test('the cheapest per unit on each date, carrying each product\'s last snapshot
 
 test('a null price is skipped on its date', () => {
   const a = saved('ah', '1', 'A', '1 kg');
-  const b = saved('etos', '2', 'B', 'per pak');
+  const b = saved('trekpleister', '2', 'B', 'per pak');
   const result = cheapestPerDate([
     { saved: a, history: [snap('2026-03-02', 5), snap('2026-03-01', null)] },
     { saved: b, history: [snap('2026-03-01', 6)] },

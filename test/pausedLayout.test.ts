@@ -30,7 +30,7 @@ test('a paused product without a group always goes to Gepauzeerd', () => {
 });
 
 test('only the products the store filter shows decide whether a group stays listed', () => {
-  const all = [saved('ah-1', 'zon', true), saved('etos-2', 'zon')];
+  const all = [saved('ah-1', 'zon', true), saved('trekpleister-2', 'zon')];
   const ahOnly = all.filter(p => p.store === 'ah');
   assert.deepEqual(ids(splitPaused(all).paused), []);
   assert.deepEqual(ids(splitPaused(ahOnly).paused), ['ah-1']);

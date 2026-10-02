@@ -15,7 +15,7 @@ store adapters, the common product schema and the bonus mechanisms; follow its
 names (store adapter, saved product, price snapshot, bonus mechanism).
 
 You are in a sandbox, not on the Mac that runs Korting Scanner. There is no `.env`
-and no `src/data/`: never call the store APIs (AH, Dirk, Etos, Kruidvat) and never
+and no `src/data/`: never call the store APIs (AH, Dirk, Kruidvat, Trekpleister, bol) and never
 run `src/scripts/sendBonusEmail.ts`. The .app launcher, `install-app.command`,
 `restart.command`, `run.sh` and sleepwatcher cannot be exercised here either; edit
 them if the issue asks, but you cannot run them.

@@ -10,7 +10,7 @@ async function css(name: string): Promise<string> {
 }
 
 test('the store catalogue lists the stores in pill order, each with a store adapter', () => {
-  assert.deepEqual(Object.keys(STORES), ['ah', 'dirk', 'kruidvat', 'etos', 'trekpleister', 'bol']);
+  assert.deepEqual(Object.keys(STORES), ['ah', 'dirk', 'kruidvat', 'trekpleister', 'bol']);
   assert.deepEqual(Object.keys(stores).sort(), Object.keys(STORES).sort());
   for (const [key, adapter] of Object.entries(stores)) assert.equal(adapter.name, key);
 });
