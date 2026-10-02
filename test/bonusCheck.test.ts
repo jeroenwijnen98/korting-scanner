@@ -5,6 +5,7 @@ import { cheapestPerDate } from '../src/services/groupHistory.ts';
 import * as priceHistory from '../src/services/priceHistory.ts';
 import { ah } from '../src/stores/ah.ts';
 import type { Product, SavedProduct, StoreName } from '../src/types.ts';
+import { savedProductId } from '../public/js/utils/savedProductId.js';
 import { useTempDataDir } from './tempDataDir.ts';
 import { BrokenStore, FakeStore, product } from './fakeStore.ts';
 
@@ -14,7 +15,7 @@ afterEach(() => mock.timers.reset());
 
 function saved(store: StoreName, storeProductId: string, fields: Partial<SavedProduct> = {}): SavedProduct {
   return {
-    id: `${store}-${storeProductId}`, store, storeProductId, title: `Product ${storeProductId}`, brand: '',
+    id: savedProductId(store, storeProductId), store, storeProductId, title: `Product ${storeProductId}`, brand: '',
     salesUnitSize: '1 kg', mainCategory: '', subCategory: '', imageUrl: '', addedAt: '2026-01-01T00:00:00.000Z',
     ...fields,
   };

@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cheapestPerDate } from '../src/services/groupHistory.ts';
+import { savedProductId } from '../public/js/utils/savedProductId.js';
 import type { PriceSnapshot, SavedProduct, StoreName } from '../src/types.ts';
 
 function saved(store: StoreName, storeProductId: string, title: string, salesUnitSize: string): SavedProduct {
   return {
-    id: `${store}-${storeProductId}`, store, storeProductId, title, brand: '', salesUnitSize,
+    id: savedProductId(store, storeProductId), store, storeProductId, title, brand: '', salesUnitSize,
     mainCategory: '', subCategory: '', imageUrl: '', addedAt: '2026-01-01T00:00:00.000Z', productGroup: 'koffie',
   };
 }
