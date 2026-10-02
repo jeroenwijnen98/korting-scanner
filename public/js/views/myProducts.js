@@ -9,6 +9,7 @@ import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
 import { savedProductId } from '../utils/savedProductId.js';
 import { groupPauseAction } from '../utils/groupPause.js';
+import { splitPaused } from '../utils/pausedSection.js';
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
@@ -28,6 +29,8 @@ let activeStore = 'ah';
 let searchTimeout;
 /** @type {string[]} */
 let unavailableIds = [];
+/** Whether the Gepauzeerd section is open; not stored, so closed after a reload */
+let pausedSectionOpen = false;
 
 /** @param {string[]} ids saved product ids the last bonus check could not find */
 export function setUnavailableIds(ids) {
@@ -173,35 +176,72 @@ function renderSaved() {
     return;
   }
 
-  renderGroupedSections(container, filtered, product => {
-    const card = createProductCard(product, {
-      isUnavailable: unavailableIds.includes(product.id),
-      isPaused: Boolean(product.paused),
-      onTogglePause: async (p) => {
-        const paused = !p.paused;
-        try {
-          const updated = await updateProduct(p.id, { paused });
-          savedProducts = savedProducts.map(s => (s.id === updated.id ? updated : s));
-          renderSaved();
-          showToast(paused ? 'Product gepauzeerd' : 'Product hervat', 'success');
-        } catch (err) {
-          showToast(errorMessage(err), 'error');
-        }
-      },
-      onRemove: async (p) => {
-        try {
-          await removeProduct(p.id);
-          savedProducts = savedProducts.filter(s => s.id !== p.id);
-          renderSaved();
-          showToast('Product verwijderd', 'success');
-        } catch (err) {
-          showToast(errorMessage(err), 'error');
-        }
-      },
-    });
-    card.addEventListener('click', () => showProductDetail(product));
-    return card;
-  }, createGroupPauseButton);
+  const { above, paused } = splitPaused(filtered);
+  renderGroupedSections(container, above, createSavedCard, createGroupPauseButton);
+  if (paused.length > 0) container.appendChild(createPausedSection(paused));
+}
+
+/**
+ * The collapsed Gepauzeerd section under the list. Its open state lasts while
+ * the page is open, so it stays as it is when the list re-renders.
+ * @param {SavedProduct[]} paused
+ * @returns {HTMLDetailsElement}
+ */
+function createPausedSection(paused) {
+  const section = document.createElement('details');
+  section.className = 'paused-section';
+  section.open = pausedSectionOpen;
+  section.addEventListener('toggle', () => { pausedSectionOpen = section.open; });
+
+  const summary = document.createElement('summary');
+  summary.className = 'paused-section-header';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'paused-section-name';
+  nameEl.textContent = 'Gepauzeerd';
+  const countEl = document.createElement('span');
+  countEl.className = 'group-section-count';
+  countEl.textContent = `${paused.length} product${paused.length !== 1 ? 'en' : ''}`;
+  summary.append(nameEl, countEl);
+  section.appendChild(summary);
+
+  const body = document.createElement('div');
+  renderGroupedSections(body, paused, createSavedCard, createGroupPauseButton);
+  section.appendChild(body);
+  return section;
+}
+
+/**
+ * @param {SavedProduct} product
+ * @returns {HTMLElement}
+ */
+function createSavedCard(product) {
+  const card = createProductCard(product, {
+    isUnavailable: unavailableIds.includes(product.id),
+    isPaused: Boolean(product.paused),
+    onTogglePause: async (p) => {
+      const paused = !p.paused;
+      try {
+        const updated = await updateProduct(p.id, { paused });
+        savedProducts = savedProducts.map(s => (s.id === updated.id ? updated : s));
+        renderSaved();
+        showToast(paused ? 'Product gepauzeerd' : 'Product hervat', 'success');
+      } catch (err) {
+        showToast(errorMessage(err), 'error');
+      }
+    },
+    onRemove: async (p) => {
+      try {
+        await removeProduct(p.id);
+        savedProducts = savedProducts.filter(s => s.id !== p.id);
+        renderSaved();
+        showToast('Product verwijderd', 'success');
+      } catch (err) {
+        showToast(errorMessage(err), 'error');
+      }
+    },
+  });
+  card.addEventListener('click', () => showProductDetail(product));
+  return card;
 }
 
 /**
