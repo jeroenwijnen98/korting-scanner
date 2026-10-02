@@ -85,18 +85,18 @@ export function createProductDetail(product, {
     let isPaused = Boolean(savedProduct.paused);
     const pauseBtn = document.createElement('button');
     pauseBtn.className = 'btn btn-secondary btn-sm product-detail-pause';
-    const showPaused = () => {
+    const renderPauseControl = () => {
       const { label, title } = pauseControlText(isPaused);
       pauseBtn.textContent = label;
       pauseBtn.title = title;
     };
-    showPaused();
+    renderPauseControl();
     pauseBtn.addEventListener('click', async () => {
       pauseBtn.disabled = true;
       try {
         const updated = await updateProduct(savedProduct.id, { paused: !isPaused });
         isPaused = Boolean(updated.paused);
-        showPaused();
+        renderPauseControl();
         onPauseChange(updated);
         showToast(isPaused ? 'Product gepauzeerd' : 'Product hervat', 'success');
       } catch (err) {
