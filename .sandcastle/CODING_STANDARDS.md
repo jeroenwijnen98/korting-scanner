@@ -21,7 +21,8 @@ where they differ, those win.
   `StoreAdapter` and returns the common product schema from `CLAUDE.md`. The
   frontend only talks to this server, through `public/js/api.js`.
 - A new store is one entry in the store catalogue (`STORES` in
-  `public/js/utils/stores.js`: label, name, colour, display order), one line in
+  `public/js/utils/stores.js`: label, name, colour, display order, online or
+  not), one line in
   the registry in `src/stores/index.ts`, and a section in `CLAUDE.md` for its
   API and bonus mechanism. `StoreName` is derived from the catalogue, so a
   missing catalogue entry or registry line fails the typecheck.

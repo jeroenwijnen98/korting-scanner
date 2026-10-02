@@ -55,7 +55,10 @@ export function bonusLink(product, { grocerUrl, at }) {
   /** @type {import('./stores.js').StoreInfo | undefined} */
   const store = STORES[product.store];
   if (!store) return null;
-  if (store.online) return store.productUrl ? { kind: 'order', url: store.productUrl(product.productId) } : null;
+  if (store.online) {
+    if (!store.productUrl) return null;
+    return { kind: 'order', url: store.productUrl(product.productId) };
+  }
   if (!grocerUrl) return null;
 
   /** @type {[string, string | number | null][]} */
