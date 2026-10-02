@@ -13,6 +13,7 @@ const dir = await useTempDataDir();
 const ah = new FakeStore('ah', [
   product('ah', '1', { title: 'Koffie bonen', salesUnitSize: '500 g', isBonus: true, bonusMechanism: '25%', priceBeforeBonus: 8, currentPrice: 6 }),
   product('ah', '2', { title: 'Thee', currentPrice: 1.5 }),
+  product('ah', '3', { title: 'Melk', isBonus: true, bonusMechanism: '2e halve prijs', currentPrice: 1 }),
 ]);
 const dirk = new BrokenStore('dirk');
 
@@ -123,6 +124,21 @@ test('bonus: one throwing store does not sink the others', async () => {
   assert.deepEqual(regular.json.map((s: any) => [s.currentPrice, s.isBonus]), [[1.5, false]]);
 
   for (const id of ['ah-1', 'ah-2', 'ah-999', 'dirk-5']) await api('DELETE', `/products/${id}`);
+});
+
+test('bonus: each bonus product carries its saved product\'s productGroup', async () => {
+  await api('POST', '/products', koffie);
+  await api('POST', '/products', { store: 'ah', storeProductId: '3', title: 'Melk' });
+  await api('PATCH', '/products/ah-1', { productGroup: 'koffie' });
+
+  const { status, json } = await api('GET', '/bonus');
+  assert.equal(status, 200);
+  assert.deepEqual(json.bonusProducts.map((p: any) => [p.savedId, p.productGroup]), [
+    ['ah-1', 'koffie'],
+    ['ah-3', null],
+  ]);
+
+  for (const id of ['ah-1', 'ah-3']) await api('DELETE', `/products/${id}`);
 });
 
 test('product detail: unknown store, not found, and a price snapshot', async () => {

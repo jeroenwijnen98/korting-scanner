@@ -82,9 +82,20 @@ export interface PriceSnapshot {
   bonusMechanism: string;
 }
 
+/**
+ * The saved product's own fields that ride along on each of its bonus products
+ * in the bonus overview, joined on `savedId` by the saved-product store.
+ */
+export interface SavedProductView {
+  productGroup: string | null;
+}
+
+/** A bonus product in the bonus overview, with its saved product's view. */
+export interface OverviewProduct extends BonusProduct, SavedProductView {}
+
 /** What `GET /api/bonus` returns: every saved product on bonus, across stores. */
 export interface BonusOverview {
-  bonusProducts: BonusProduct[];
+  bonusProducts: OverviewProduct[];
   notFound: string[];
 }
 

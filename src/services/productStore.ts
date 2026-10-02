@@ -1,4 +1,4 @@
-import type { SavedProduct } from '../types.ts';
+import type { BonusProduct, OverviewProduct, SavedProduct, SavedProductView } from '../types.ts';
 import { readJson, updateJson } from './jsonFile.ts';
 import { dataFile } from '../config.ts';
 import { savedProductId } from '../../public/js/utils/savedProductId.js';
@@ -24,6 +24,20 @@ const FILE = 'products.json';
 
 export async function getAll(): Promise<SavedProduct[]> {
   return readJson<SavedProduct[]>(dataFile(FILE), []);
+}
+
+/** The fields of a saved product that ride along on its bonus products. */
+function savedProductView(product: SavedProduct | undefined): SavedProductView {
+  return { productGroup: product?.productGroup ?? null };
+}
+
+/**
+ * Join bonus products with the saved products they were observed for, on
+ * `savedId`: each gets its saved product's view (`productGroup`).
+ */
+export function withSavedProductView(bonusProducts: BonusProduct[], saved: SavedProduct[]): OverviewProduct[] {
+  const byId = new Map(saved.map(p => [p.id, p]));
+  return bonusProducts.map(p => ({ ...p, ...savedProductView(byId.get(p.savedId)) }));
 }
 
 export async function add(product: NewSavedProduct): Promise<SavedProduct | null> {

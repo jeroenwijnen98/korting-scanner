@@ -74,6 +74,20 @@ test('a store that throws puts its saved products in notFound; the others still 
   assert.deepEqual(overview.notFound, ['dirk-22']);
 });
 
+test('bonus products carry their saved product\'s productGroup, joined on savedId', async () => {
+  await save('ah', '41', 'Koffie', 'koffie');
+  await save('ah', '42', 'Thee');
+  // Like an AH detail without a webshopId: the observed productId is not the saved storeProductId
+  const store = new FakeStore('ah', [product('ah', 'hq-41', onBonus()), product('ah', '42', onBonus())]);
+  store.getProductDetail = async id => store.products.find(p => p.productId === (id === '41' ? 'hq-41' : id)) ?? null;
+
+  const overview = await checkSavedProducts({ ah: store });
+  assert.deepEqual(overview.bonusProducts.map(p => [p.savedId, p.productId, p.productGroup]), [
+    ['ah-41', 'hq-41', 'koffie'],
+    ['ah-42', '42', null],
+  ]);
+});
+
 test('group history goes back to the regular price once a bonus ends', async () => {
   const koffie = await save('ah', '31', 'Koffie', 'koffie');
   const thee = await save('dirk', '32', 'Thee', 'koffie');

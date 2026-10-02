@@ -6,19 +6,13 @@ import { showToast } from '../components/toast.js';
 import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
 import { escapeHtml } from '../utils/format.js';
-import { savedProductId } from '../utils/savedProductId.js';
 import { setUnavailableIds } from './myProducts.js';
 
 /**
- * @typedef {import('../../../src/types.ts').BonusProduct} BonusProduct
+ * @typedef {import('../../../src/types.ts').OverviewProduct} OverviewProduct
  * @typedef {import('../../../src/types.ts').SavedProduct} SavedProduct
  * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
  * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
- */
-
-/**
- * A product on bonus, with the productgroup of its saved product.
- * @typedef {BonusProduct & { productGroup?: string | null }} OnSaleProduct
  */
 
 const panel = document.getElementById('panel-on-sale');
@@ -39,14 +33,7 @@ export async function initOnSale() {
     // Share notFound ids with myProducts view for unavailability indicators
     setUnavailableIds(notFound);
 
-    // Enrich bonus products with productGroup from matching saved product
-    const enriched = bonusProducts.map(p => {
-      const savedId = savedProductId(p.store, p.productId);
-      const match = savedProducts.find(s => s.id === savedId);
-      return match?.productGroup ? { ...p, productGroup: match.productGroup } : p;
-    });
-
-    render(enriched, savedProducts, notFound);
+    render(bonusProducts, savedProducts, notFound);
   } catch (err) {
     refreshBtn.classList.remove('refreshing');
     showToast('Kon bonus niet laden', 'error');
@@ -61,14 +48,13 @@ export async function initOnSale() {
 }
 
 /**
- * @param {OnSaleProduct} product
- * @param {OnSaleProduct[]} allProducts
+ * @param {OverviewProduct} product
+ * @param {OverviewProduct[]} allProducts
  * @param {SavedProduct[]} savedProducts
  * @param {string[]} [notFound]
  */
 async function showDetail(product, allProducts, savedProducts, notFound = []) {
   panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
-  const productId = product.savedId || savedProductId(product.store, product.productId);
 
   /** @type {PriceSnapshot[]} */
   let history = [];
@@ -76,7 +62,7 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
   let groupHistory = [];
   try {
     [history, groupHistory] = await Promise.all([
-      getProductHistory(productId),
+      getProductHistory(product.savedId),
       product.productGroup ? getGroupHistory(product.productGroup) : Promise.resolve([]),
     ]);
   } catch { /* ignore */ }
@@ -85,8 +71,7 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
     savedProducts.map(s => s.productGroup).filter(Boolean)
   )];
 
-  const savedId = savedProductId(product.store, product.productId);
-  const savedProduct = savedProducts.find(s => s.id === savedId) || null;
+  const savedProduct = savedProducts.find(s => s.id === product.savedId) || null;
 
   panel.innerHTML = '';
   const detail = createProductDetail(product, {
@@ -96,11 +81,8 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
     savedProduct,
     existingGroups,
     onProductGroupChange: (id, groupName) => {
-      // Update in allProducts (enriched bonus list)
-      const idx = allProducts.findIndex(p => {
-        const sid = savedProductId(p.store, p.productId);
-        return sid === id || p.savedId === id;
-      });
+      // Update in allProducts (the bonus list)
+      const idx = allProducts.findIndex(p => p.savedId === id);
       if (idx !== -1) {
         allProducts[idx] = { ...allProducts[idx], productGroup: groupName || null };
       }
@@ -121,7 +103,7 @@ async function showDetail(product, allProducts, savedProducts, notFound = []) {
 }
 
 /**
- * @param {OnSaleProduct[]} products
+ * @param {OverviewProduct[]} products
  * @param {SavedProduct[]} savedProducts
  * @param {string[]} [notFound]
  */

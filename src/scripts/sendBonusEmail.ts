@@ -6,7 +6,7 @@ import { stores } from '../stores/index.ts';
 import { parseUnitSize, calcPricePerUnit } from '../../public/js/utils/unitPrice.js';
 import { formatPrice, formatDate, escapeHtml } from '../../public/js/utils/format.js';
 import { STORES } from '../../public/js/utils/stores.js';
-import type { BonusProduct, StoreName } from '../types.ts';
+import type { OverviewProduct, StoreName } from '../types.ts';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 
@@ -20,8 +20,8 @@ function formatUnitPrice(price: number | null, salesUnitSize: string): string {
   return `${formatPrice(result.unitPrice)}/${result.standardUnit}`;
 }
 
-function buildHtml(bonusProducts: BonusProduct[], appUrl: string, today: string): string {
-  const grouped = new Map<StoreName, BonusProduct[]>();
+function buildHtml(bonusProducts: OverviewProduct[], appUrl: string, today: string): string {
+  const grouped = new Map<StoreName, OverviewProduct[]>();
   for (const p of bonusProducts) {
     const group = grouped.get(p.store);
     if (group) group.push(p);
