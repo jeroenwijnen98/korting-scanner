@@ -2,7 +2,7 @@
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 import { updateProduct } from '../api.js';
 import { showToast } from './toast.js';
-import { storeBadge } from './productCard.js';
+import { storeBadge } from './storeBadge.js';
 import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
 
 /**

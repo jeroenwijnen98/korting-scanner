@@ -3,8 +3,13 @@
 // imports them with `import type`; the page reaches them through JSDoc
 // `import('../../src/types.ts')`. Types only: nothing here survives stripping.
 
-/** Every store a store adapter exists for; also the prefix of a saved product id. */
-export type StoreName = 'ah' | 'dirk' | 'kruidvat' | 'etos';
+import type { STORES } from '../public/js/utils/stores.js';
+
+/**
+ * A key of the store catalogue (STORES); every one has a store adapter. Also
+ * the prefix of a saved product id.
+ */
+export type StoreName = keyof typeof STORES;
 
 /** The common product schema every store adapter normalizes to. */
 export interface Product {
