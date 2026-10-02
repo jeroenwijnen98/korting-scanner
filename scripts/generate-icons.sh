@@ -13,7 +13,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$(mkdir -p "${ICON_OUT_DIR:-$ROOT}" && cd "${ICON_OUT_DIR:-$ROOT}" && pwd)"
+OUT="${ICON_OUT_DIR:-$ROOT}"
+mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"
 SRC="$ROOT/assets/icon.svg"
 BUNDLE_ICNS="KortingScanner.app/Contents/Resources/icon.icns"
 mkdir -p "$OUT/assets" "$OUT/$(dirname "$BUNDLE_ICNS")"
