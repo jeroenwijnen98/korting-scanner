@@ -9,7 +9,8 @@ import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
 import { savedProductId } from '../utils/savedProductId.js';
 import { groupPauseAction } from '../utils/groupPause.js';
-import { splitPaused } from '../utils/pausedSection.js';
+import { splitPaused } from '../utils/pausedLayout.js';
+import { productCount } from '../utils/format.js';
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
@@ -29,8 +30,12 @@ let activeStore = 'ah';
 let searchTimeout;
 /** @type {string[]} */
 let unavailableIds = [];
-/** Whether the Gepauzeerd section is open; not stored, so closed after a reload */
+// What the user opened, kept while the page is open so it survives re-renders
+// (pausing, resuming), not stored: closed again after a reload.
+/** Whether the Gepauzeerd section is open */
 let pausedSectionOpen = false;
+/** @type {Set<string | null>} product groups whose "N gepauzeerd" row is open */
+const expandedPausedRows = new Set();
 
 /** @param {string[]} ids saved product ids the last bonus check could not find */
 export function setUnavailableIds(ids) {
@@ -176,14 +181,19 @@ function renderSaved() {
     return;
   }
 
-  const { above, paused } = splitPaused(filtered);
-  renderGroupedSections(container, above, createSavedCard, createGroupPauseButton);
+  const { listed, paused } = splitPaused(filtered);
+  if (listed.length === 0) {
+    const hint = document.createElement('p');
+    hint.className = 'paused-only-hint';
+    hint.textContent = 'Alle producten hier zijn gepauzeerd';
+    container.appendChild(hint);
+  }
+  renderGroupedSections(container, listed, createSavedCard, { makeGroupAction: createGroupPauseButton, expandedPausedRows });
   if (paused.length > 0) container.appendChild(createPausedSection(paused));
 }
 
 /**
- * The collapsed Gepauzeerd section under the list. Its open state lasts while
- * the page is open, so it stays as it is when the list re-renders.
+ * The collapsed Gepauzeerd section under the list.
  * @param {SavedProduct[]} paused
  * @returns {HTMLDetailsElement}
  */
@@ -200,12 +210,12 @@ function createPausedSection(paused) {
   nameEl.textContent = 'Gepauzeerd';
   const countEl = document.createElement('span');
   countEl.className = 'group-section-count';
-  countEl.textContent = `${paused.length} product${paused.length !== 1 ? 'en' : ''}`;
+  countEl.textContent = productCount(paused.length);
   summary.append(nameEl, countEl);
   section.appendChild(summary);
 
   const body = document.createElement('div');
-  renderGroupedSections(body, paused, createSavedCard, createGroupPauseButton);
+  renderGroupedSections(body, paused, createSavedCard, { makeGroupAction: createGroupPauseButton });
   section.appendChild(body);
   return section;
 }

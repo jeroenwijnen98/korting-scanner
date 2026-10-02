@@ -1,33 +1,30 @@
 // @ts-check
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
-import { pausedLast, mixedGroupLayout } from '../utils/pausedSection.js';
+import { sectionLayout } from '../utils/pausedLayout.js';
 
 /**
  * @typedef {import('./productCard.js').DisplayedProduct} DisplayedProduct
+ * @typedef {import('../utils/pausedLayout.js').Pausable} Pausable
  */
-
-/**
- * Names of the sections whose "N gepauzeerd" row the user opened. Kept for as
- * long as the page is open, so a group stays open while the list re-renders
- * (pausing, resuming); closed again after a reload.
- * @type {Set<string>}
- */
-const expandedPausedRows = new Set();
 
 /**
  * Render products as sections: "Niet gecategoriseerd" first, then one section
  * per productgroup (in first-seen order), each group sorted by unit price
- * ascending with unknown unit prices last, and paused members after the
- * unpaused ones. In a mixed group the paused members hide behind a
- * "N gepauzeerd" row that opens and closes them.
- * @template {DisplayedProduct & { productGroup?: string | null, paused?: boolean | null }} P
+ * ascending with unknown unit prices last. In a mixed group the paused members
+ * hide behind a "N gepauzeerd" row that opens and closes them.
+ * @template {DisplayedProduct & Pausable} P
  * @param {HTMLElement} container sections are appended to it
  * @param {P[]} products
  * @param {(product: P) => HTMLElement} makeCard
- * @param {(groupName: string) => HTMLElement} [makeGroupAction] an extra
- *   control for the header of each product group (not "Niet gecategoriseerd")
+ * @param {{
+ *   makeGroupAction?: (groupName: string) => HTMLElement,
+ *   expandedPausedRows?: Set<string | null>,
+ * }} [options] `makeGroupAction` makes an extra control for the header of
+ *   each product group (not "Niet gecategoriseerd"); `expandedPausedRows`
+ *   holds the product groups (null for "Niet gecategoriseerd") whose
+ *   "N gepauzeerd" row is open, and is updated as the user opens and closes them
  */
-export function renderGroupedSections(container, products, makeCard, makeGroupAction) {
+export function renderGroupedSections(container, products, makeCard, { makeGroupAction, expandedPausedRows = new Set() } = {}) {
   /** @type {Map<string, P[]>} */
   const groups = new Map();
   /** @type {P[]} */
@@ -42,7 +39,7 @@ export function renderGroupedSections(container, products, makeCard, makeGroupAc
     else groups.set(p.productGroup, [p]);
   }
 
-  for (const [groupName, items] of groups) {
+  for (const items of groups.values()) {
     items.sort((a, b) => {
       const ua = getUnitPriceForSort(a);
       const ub = getUnitPriceForSort(b);
@@ -51,26 +48,26 @@ export function renderGroupedSections(container, products, makeCard, makeGroupAc
       if (ub == null) return -1;
       return ua - ub;
     });
-    groups.set(groupName, pausedLast(items));
   }
 
   if (withoutGroup.length > 0) {
-    container.appendChild(createSection('Niet gecategoriseerd', pausedLast(withoutGroup), makeCard));
+    container.appendChild(createSection(null, withoutGroup, makeCard, expandedPausedRows));
   }
   for (const [groupName, items] of groups) {
-    container.appendChild(createSection(groupName, items, makeCard, makeGroupAction?.(groupName)));
+    container.appendChild(createSection(groupName, items, makeCard, expandedPausedRows, makeGroupAction?.(groupName)));
   }
 }
 
 /**
- * @template {{ paused?: boolean | null }} P
- * @param {string} name
+ * @template {Pausable} P
+ * @param {string | null} productGroup null for "Niet gecategoriseerd"
  * @param {P[]} items
  * @param {(product: P) => HTMLElement} makeCard
+ * @param {Set<string | null>} expandedPausedRows
  * @param {HTMLElement} [action] goes at the end of the header
  * @returns {HTMLDivElement}
  */
-function createSection(name, items, makeCard, action) {
+function createSection(productGroup, items, makeCard, expandedPausedRows, action) {
   const section = document.createElement('div');
   section.className = 'group-section';
 
@@ -78,17 +75,17 @@ function createSection(name, items, makeCard, action) {
   header.className = 'group-section-header';
   const nameEl = document.createElement('span');
   nameEl.className = 'group-section-name';
-  nameEl.textContent = name;
+  nameEl.textContent = productGroup ?? 'Niet gecategoriseerd';
   const countEl = document.createElement('span');
   countEl.className = 'group-section-count';
-  countEl.textContent = countLabel(items);
+  countEl.textContent = sectionLayout(items, false).countLabel;
   header.append(nameEl, countEl);
   if (action) header.appendChild(action);
   section.appendChild(header);
 
   const list = document.createElement('div');
   list.className = 'card-list';
-  fillCardList(list, name, items, makeCard);
+  fillCardList(list, productGroup, items, makeCard, expandedPausedRows);
   section.appendChild(list);
 
   return section;
@@ -97,42 +94,36 @@ function createSection(name, items, makeCard, action) {
 /**
  * The section's cards, and in a mixed group the row that hides or shows its
  * paused members. Clicking the row refills just this list.
- * @template {{ paused?: boolean | null }} P
+ * @template {Pausable} P
  * @param {HTMLElement} list emptied and filled
- * @param {string} name the section's name, which keys its open state
- * @param {P[]} items paused ones last
+ * @param {string | null} productGroup keys the row's open state
+ * @param {P[]} items
  * @param {(product: P) => HTMLElement} makeCard
+ * @param {Set<string | null>} expandedPausedRows
  */
-function fillCardList(list, name, items, makeCard) {
-  const expanded = expandedPausedRows.has(name);
-  const { shown, row, underRow } = mixedGroupLayout(items, expanded);
+function fillCardList(list, productGroup, items, makeCard, expandedPausedRows) {
+  const expanded = expandedPausedRows.has(productGroup);
+  const { shown, rowLabel, underRow } = sectionLayout(items, expanded);
   list.replaceChildren(...shown.map(makeCard));
-  if (row == null) return;
+  if (rowLabel == null) {
+    // No longer mixed: once it is again, its row starts closed
+    expandedPausedRows.delete(productGroup);
+    return;
+  }
 
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'paused-row';
-  button.textContent = row;
+  button.textContent = rowLabel;
   button.setAttribute('aria-expanded', String(expanded));
   button.addEventListener('click', () => {
-    if (expanded) expandedPausedRows.delete(name);
-    else expandedPausedRows.add(name);
-    fillCardList(list, name, items, makeCard);
+    if (expanded) expandedPausedRows.delete(productGroup);
+    else expandedPausedRows.add(productGroup);
+    fillCardList(list, productGroup, items, makeCard, expandedPausedRows);
     // The row is a new element now; keep keyboard focus on it
     /** @type {HTMLElement | null} */ (list.querySelector('.paused-row'))?.focus();
   });
   list.append(button, ...underRow.map(makeCard));
-}
-
-/**
- * "3 producten", or "3 producten · 1 gepauzeerd" when only some are paused (a
- * section that is all paused says nothing more: it sits under Gepauzeerd).
- * @param {{ paused?: boolean | null }[]} items
- */
-function countLabel(items) {
-  const total = `${items.length} product${items.length !== 1 ? 'en' : ''}`;
-  const paused = items.filter(p => p.paused).length;
-  return paused > 0 && paused < items.length ? `${total} · ${paused} gepauzeerd` : total;
 }
 
 /** @param {DisplayedProduct} product */

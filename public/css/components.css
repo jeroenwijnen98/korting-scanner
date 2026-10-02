@@ -560,16 +560,18 @@
 /* "N gepauzeerd": the row that hides a mixed group's paused members */
 .paused-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 16px; background: none; border: 1px dashed var(--border-light); border-radius: var(--radius-lg); color: var(--text-secondary); font: inherit; font-size: 0.8125rem; text-align: left; cursor: pointer; transition: color var(--transition), border-color var(--transition); }
 .paused-row:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
-.paused-row::before { content: '▸'; transition: transform var(--transition); }
-.paused-row[aria-expanded="true"]::before { transform: rotate(90deg); }
 
 /* Gepauzeerd: collapsed section under Mijn Producten */
 .paused-section { margin-top: 32px; padding-top: 16px; border-top: 2px solid var(--border-light); }
 .paused-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer; list-style: none; }
 .paused-section-header::-webkit-details-marker { display: none; }
-.paused-section-header::before { content: '▸'; color: var(--text-secondary); transition: transform var(--transition); }
-.paused-section[open] > .paused-section-header::before { transform: rotate(90deg); }
+.paused-section-header::before { color: var(--text-secondary); }
 .paused-section-name { font-size: 1.125rem; font-weight: 800; color: var(--text-secondary); }
+.paused-only-hint { font-size: 0.8125rem; color: var(--text-secondary); }
+
+/* The ▸ of the "N gepauzeerd" row and the Gepauzeerd heading; turns down when open */
+.paused-row::before, .paused-section-header::before { content: '▸'; transition: transform var(--transition); }
+.paused-row[aria-expanded="true"]::before, .paused-section[open] > .paused-section-header::before { transform: rotate(90deg); }
 
 /* Product card unit price */
 .product-card-unit-price { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 4px; }
