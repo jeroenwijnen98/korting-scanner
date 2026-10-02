@@ -1,7 +1,7 @@
 // @ts-check
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
 import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
-import { STORES } from '../utils/stores.js';
+import { storeBadge } from './storeBadge.js';
 
 /**
  * @typedef {import('../../../src/types.ts').Product} Product
@@ -132,14 +132,4 @@ export function createProductCard(product, { onRemove, showBonus = false, isUnav
   el.appendChild(body);
 
   return el;
-}
-
-/**
- * The store badge of a card or the detail: the store's short label.
- * @param {import('../../../src/types.ts').StoreName} store
- * @returns {string} markup
- */
-export function storeBadge(store) {
-  const label = STORES[store]?.label ?? store ?? '';
-  return `<span class="badge-store badge-store-${escapeHtml(store)}">${escapeHtml(label.toUpperCase())}</span>`;
 }

@@ -20,9 +20,14 @@ where they differ, those win.
 - Every outbound call lives in a store adapter in `src/stores/`, which extends
   `StoreAdapter` and returns the common product schema from `CLAUDE.md`. The
   frontend only talks to this server, through `public/js/api.js`.
-- A new store is registered in `src/stores/index.ts` and gets a section in
-  `CLAUDE.md` for its API and bonus mechanism.
-- Theme tokens live in `public/css/variables.css`; raw hex appears only there.
+- A new store is one entry in the store catalogue (`STORES` in
+  `public/js/utils/stores.js`: label, name, colour, display order), one line in
+  the registry in `src/stores/index.ts`, and a section in `CLAUDE.md` for its
+  API and bonus mechanism. `StoreName` is derived from the catalogue, so a
+  missing catalogue entry or registry line fails the typecheck.
+- Theme tokens live in `public/css/variables.css`; raw hex appears only there,
+  except store colours, which live in the store catalogue and reach the CSS
+  through `--store-color`.
 - User-facing text is Dutch.
 
 ## Data

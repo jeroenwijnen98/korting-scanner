@@ -151,22 +151,8 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.badge-store-ah {
-  color: var(--store-ah);
-}
-
-.badge-store-dirk {
-  color: var(--store-dirk);
-}
-
-.badge-store-kruidvat {
-  color: var(--store-kruidvat);
-}
-
-.badge-store-etos {
-  color: var(--store-etos);
+  /* Set inline per badge from the store catalogue (public/js/utils/stores.js). */
+  color: var(--store-color);
 }
 
 /* Store pills (filter) */
