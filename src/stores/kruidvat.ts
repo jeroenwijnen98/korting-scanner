@@ -35,7 +35,7 @@ class KruidvatAdapter extends StoreAdapter {
       productId: fields.productId,
       title: fields.title,
       salesUnitSize: fields.salesUnitSize,
-      bonusMechanism: bonusMechanism,
+      bonusMechanism,
       priceBeforeBonus: isBonus ? normalPrice : null,
       currentPrice,
       bonusStartDate: promo?.startDate || '',
