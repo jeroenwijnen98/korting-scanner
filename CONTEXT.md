@@ -4,6 +4,10 @@ Tracks a personal list of supermarket and drugstore products across stores and r
 
 ## Language
 
+**Bonus**:
+A temporary price reduction a store offers on a product, as that store labels it (AH "bonus", Kruidvat "actie", bol "deal" or "in prijs verlaagd"). A permanently low price, a list-price comparison (bol "adviesprijs") or a different-condition offer (bol "Outlet") is not a bonus.
+_Avoid_: Korting, deal, actie, promotion
+
 **Saved product**:
 A store product the user has chosen to track for bonus.
 _Avoid_: Watched product, favourite

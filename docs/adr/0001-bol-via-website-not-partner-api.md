@@ -1,0 +1,5 @@
+# bol.com prices come from the website, not the partner API
+
+bol.com has an official Marketing Catalog API, but we read prices from the public product and search pages instead. The API needs an approved affiliate account with a public website or social channel, and its terms are about driving traffic to bol, which a private tracker doesn't do. It also leaves out what decides a bonus: no deal labels ("deal", "in prijs verlaagd"), no adviesprijs, and no "Meestal" price, only a bare `strikethroughPrice`. The pages carry all of these, and plain `fetch` reaches them. The 403 that curl gets is caused by a missing `Accept-Encoding` header, not by bot protection.
+
+The cost is fragile parsing. Price, seller, EAN and image come from JSON-LD and are stable. The labels and the "Meestal" price come from embedded page data that bol can change without notice. Parsing is pinned by tests on saved HTML fixtures so that a layout change fails loudly. If scraping breaks for good or gets blocked, the partner API is the fallback, at the loss of the labels.
