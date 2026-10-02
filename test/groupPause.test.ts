@@ -1,16 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { groupPauseAction } from '../public/js/utils/groupPause.js';
-import type { SavedProduct } from '../src/types.ts';
-
-function saved(id: string, productGroup: string | null, paused?: boolean): SavedProduct {
-  const [store, storeProductId] = id.split('-');
-  return {
-    id, store: store as SavedProduct['store'], storeProductId, title: id, brand: '', salesUnitSize: '',
-    mainCategory: '', subCategory: '', imageUrl: '', addedAt: '2026-10-02T00:00:00.000Z',
-    productGroup, ...(paused === undefined ? {} : { paused }),
-  };
-}
+import { saved } from './savedProduct.ts';
 
 test('any member unpaused: pause the ones not paused yet', () => {
   const products = [saved('ah-1', 'zon', true), saved('etos-2', 'zon'), saved('kruidvat-3', 'zon', false)];

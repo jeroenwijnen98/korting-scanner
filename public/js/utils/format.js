@@ -46,3 +46,12 @@ export function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+/**
+ * A number of products, e.g. `1 product`, `3 producten`.
+ * @param {number} n
+ * @returns {string}
+ */
+export function productCount(n) {
+  return `${n} product${n !== 1 ? 'en' : ''}`;
+}
