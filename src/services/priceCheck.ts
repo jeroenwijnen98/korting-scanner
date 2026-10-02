@@ -1,19 +1,20 @@
 import type { StoreAdapter } from '../stores/base.ts';
-import type { BonusOverview, SavedProduct, StoreName } from '../types.ts';
+import type { BonusOverview, StoreName } from '../types.ts';
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
 import * as priceHistory from './priceHistory.ts';
+import * as productStore from './productStore.ts';
 
 /**
- * Observes every saved product, store by store, and records a price snapshot
- * for each one observed, on bonus or not, so a regular price shows up again
- * once a bonus ends. The overview lists only those the store adapter counts
- * as a bonus. A store whose check throws does not sink the others: its saved
- * products go to `notFound`.
+ * The price check: loads the saved products, observes them store by store and
+ * records a price snapshot for each one observed, on bonus or not, so a
+ * regular price shows up again once a bonus ends. The overview lists only
+ * those the store adapter counts as a bonus. A store whose check throws does
+ * not sink the others: its saved products go to `notFound`.
  */
-export async function checkAllBonuses(
-  saved: SavedProduct[],
+export async function checkSavedProducts(
   stores: Partial<Record<StoreName, StoreAdapter>>,
 ): Promise<BonusOverview> {
+  const saved = await productStore.getAll();
   const overview: BonusOverview = { bonusProducts: [], notFound: [] };
   for (const [storeName, adapter] of Object.entries(stores)) {
     const storeProducts = saved.filter(p => p.store === storeName);

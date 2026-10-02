@@ -1,8 +1,9 @@
 import { afterEach, mock, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkAllBonuses } from '../src/services/bonusCheck.ts';
+import { checkSavedProducts } from '../src/services/priceCheck.ts';
 import { cheapestPerDate } from '../src/services/groupHistory.ts';
 import * as priceHistory from '../src/services/priceHistory.ts';
+import * as productStore from '../src/services/productStore.ts';
 import { ah } from '../src/stores/ah.ts';
 import type { Product, SavedProduct, StoreName } from '../src/types.ts';
 import { useTempDataDir } from './tempDataDir.ts';
@@ -10,14 +11,16 @@ import { BrokenStore, FakeStore, product } from './fakeStore.ts';
 
 await useTempDataDir();
 
-afterEach(() => mock.timers.reset());
+afterEach(async () => {
+  mock.timers.reset();
+  for (const p of await productStore.getAll()) await productStore.remove(p.id);
+});
 
-function saved(store: StoreName, storeProductId: string, fields: Partial<SavedProduct> = {}): SavedProduct {
-  return {
-    id: `${store}-${storeProductId}`, store, storeProductId, title: `Product ${storeProductId}`, brand: '',
-    salesUnitSize: '1 kg', mainCategory: '', subCategory: '', imageUrl: '', addedAt: '2026-01-01T00:00:00.000Z',
-    ...fields,
-  };
+/** Saves a product, as the user would; the price check loads it from there. */
+async function save(store: StoreName, storeProductId: string, title = `Product ${storeProductId}`, productGroup?: string): Promise<SavedProduct> {
+  const entry = await productStore.add({ store, storeProductId, title, salesUnitSize: '1 kg' });
+  assert.ok(entry);
+  return productGroup === undefined ? entry : (await productStore.update(entry.id, { productGroup }))!;
 }
 
 const onBonus = (fields: Partial<Product> = {}) =>
@@ -29,7 +32,9 @@ test('an observed product not on bonus gets a price snapshot but is not a bonus 
     product('ah', '2', { currentPrice: 1.5 }),
   ]);
 
-  const overview = await checkAllBonuses([saved('ah', '1'), saved('ah', '2'), saved('ah', '404')], { ah: store });
+  for (const id of ['1', '2', '404']) await save('ah', id);
+
+  const overview = await checkSavedProducts({ ah: store });
 
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-1']);
   assert.deepEqual(overview.notFound, ['ah-404']);
@@ -49,15 +54,20 @@ test('the store adapter\'s countsAsBonus filters the overview: AH leaves out onl
   ]);
   store.countsAsBonus = ah.countsAsBonus;
 
-  const overview = await checkAllBonuses([saved('ah', '11'), saved('ah', '12')], { ah: store });
+  await save('ah', '11');
+  await save('ah', '12');
+
+  const overview = await checkSavedProducts({ ah: store });
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-11']);
   // Observed all the same
   assert.deepEqual((await priceHistory.getHistory('ah-12')).map(s => s.currentPrice), [5]);
 });
 
 test('a store that throws puts its saved products in notFound; the others still count', async () => {
-  const overview = await checkAllBonuses(
-    [saved('ah', '21'), saved('dirk', '22')],
+  await save('ah', '21');
+  await save('dirk', '22');
+
+  const overview = await checkSavedProducts(
     { ah: new FakeStore('ah', [product('ah', '21', onBonus())]), dirk: new BrokenStore('dirk') },
   );
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-21']);
@@ -65,11 +75,11 @@ test('a store that throws puts its saved products in notFound; the others still 
 });
 
 test('group history goes back to the regular price once a bonus ends', async () => {
-  const koffie = saved('ah', '31', { title: 'Koffie', productGroup: 'koffie' });
-  const thee = saved('dirk', '32', { title: 'Thee', productGroup: 'koffie' });
+  const koffie = await save('ah', '31', 'Koffie', 'koffie');
+  const thee = await save('dirk', '32', 'Thee', 'koffie');
   const ahStore = new FakeStore('ah', [product('ah', '31', onBonus())]);
   const dirkStore = new FakeStore('dirk', [product('dirk', '32', { currentPrice: 7 })]);
-  const check = () => checkAllBonuses([koffie, thee], { ah: ahStore, dirk: dirkStore });
+  const check = () => checkSavedProducts({ ah: ahStore, dirk: dirkStore });
 
   mock.timers.enable({ apis: ['Date'], now: new Date('2026-03-01T12:00:00Z') });
   await check();
