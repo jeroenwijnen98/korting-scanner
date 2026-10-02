@@ -137,7 +137,7 @@ class AHAdapter extends StoreAdapter {
   }
 
   // Like search: an online-only bonus is not one you can get in the shop
-  protected countsAsBonus(product: Product): boolean {
+  countsAsBonus(product: Product): boolean {
     return product.isBonus && !product.isOnlineOnly;
   }
 }

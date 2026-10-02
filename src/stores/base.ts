@@ -1,4 +1,4 @@
-import type { BonusCheckResult, BonusProduct, Product, SavedProduct, StoreName } from '../types.ts';
+import type { BonusProduct, ObservationResult, Product, SavedProduct, StoreName } from '../types.ts';
 
 export class StoreAdapter {
   name: StoreName;
@@ -12,12 +12,12 @@ export class StoreAdapter {
   }
 
   /**
-   * Fetches each saved product's detail in turn and keeps those on bonus. A
-   * detail that fails or comes back null puts the saved id in `notFound`.
-   * Stores that can check many products in one request override this.
+   * Fetches each saved product's detail in turn and reports every one found,
+   * on bonus or not. A detail that fails or comes back null puts the saved id
+   * in `notFound`. Stores that can fetch many products in one request override this.
    */
-  async checkBonus(savedProducts: SavedProduct[]): Promise<BonusCheckResult> {
-    const results: BonusProduct[] = [];
+  async observe(savedProducts: SavedProduct[]): Promise<ObservationResult> {
+    const observed: BonusProduct[] = [];
     const notFound: string[] = [];
     for (const saved of savedProducts) {
       let product: Product | null;
@@ -28,15 +28,15 @@ export class StoreAdapter {
       }
       if (!product) {
         notFound.push(saved.id);
-      } else if (this.countsAsBonus(product)) {
-        results.push({ ...product, savedId: saved.id });
+      } else {
+        observed.push({ ...product, savedId: saved.id });
       }
     }
-    return { results, notFound };
+    return { observed, notFound };
   }
 
-  /** Whether the default `checkBonus` reports this product. */
-  protected countsAsBonus(product: Product): boolean {
+  /** Whether an observed product belongs in the bonus overview. */
+  countsAsBonus(product: Product): boolean {
     return product.isBonus;
   }
 

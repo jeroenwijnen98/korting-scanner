@@ -102,9 +102,11 @@ test('bonus: one throwing store does not sink the others', async () => {
   assert.deepEqual(json.bonusProducts.map((p: any) => [p.savedId, p.currentPrice]), [['ah-1', 6]]);
   assert.deepEqual(json.notFound.sort(), ['ah-999', 'dirk-5']);
 
-  // The bonus check recorded a snapshot for the product on bonus
+  // The bonus check recorded a snapshot for every observed product, on bonus or not
   const history = await api('GET', '/history/ah-1');
   assert.deepEqual(history.json.map((s: any) => [s.currentPrice, s.isBonus]), [[6, true]]);
+  const regular = await api('GET', '/history/ah-2');
+  assert.deepEqual(regular.json.map((s: any) => [s.currentPrice, s.isBonus]), [[1.5, false]]);
 
   for (const id of ['ah-1', 'ah-2', 'ah-999', 'dirk-5']) await api('DELETE', `/products/${id}`);
 });

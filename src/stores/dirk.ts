@@ -1,4 +1,4 @@
-import type { BonusCheckResult, BonusProduct, Product, SavedProduct } from '../types.ts';
+import type { BonusProduct, ObservationResult, Product, SavedProduct } from '../types.ts';
 import { StoreAdapter } from './base.ts';
 
 const GRAPHQL_URL = 'https://web-gateway.dirk.nl/graphql';
@@ -165,42 +165,38 @@ class DirkAdapter extends StoreAdapter {
     return this.normalizeProduct(data.product, assortmentMap.get(id));
   }
 
-  async checkBonus(savedProducts: SavedProduct[]): Promise<BonusCheckResult> {
+  /**
+   * Batch-fetches the assortment and details of every saved product and
+   * reports each one found, on offer or not. An id that does not parse, or has
+   * no assortment or product entry, goes to `notFound`.
+   */
+  async observe(savedProducts: SavedProduct[]): Promise<ObservationResult> {
     const validProducts = savedProducts.filter(p => !isNaN(parseInt(p.storeProductId, 10)));
-    const invalidProducts = savedProducts.filter(p => isNaN(parseInt(p.storeProductId, 10)));
-    if (validProducts.length === 0) return { results: [], notFound: invalidProducts.map(p => p.id) };
+    const notFound = savedProducts.filter(p => isNaN(parseInt(p.storeProductId, 10))).map(p => p.id);
+    if (validProducts.length === 0) return { observed: [], notFound };
 
     const ids = validProducts.map(p => parseInt(p.storeProductId, 10));
-
-    // Batch fetch assortment to check for offers
     const assortmentMap = await fetchAssortmentBatch(ids);
 
-    // Products with no assortment entry at all are considered not found
-    const notFound = validProducts
-      .filter((p, i) => !assortmentMap.has(ids[i]))
-      .map(p => p.id);
-    notFound.push(...invalidProducts.map(p => p.id));
-
-    // Find which ones are on offer
-    const onOffer = validProducts.filter((_, i) => assortmentMap.get(ids[i])?.productOffer != null);
-    if (onOffer.length === 0) return { results: [], notFound };
-
-    const offerIds = onOffer.map(p => parseInt(p.storeProductId, 10));
-
-    // Batch fetch product details for those on offer
-    const products = await fetchProducts(offerIds);
+    // Products with no assortment entry at all are not found; skip their details
+    const found = validProducts.filter((_, i) => assortmentMap.has(ids[i]));
+    const products = found.length === 0
+      ? []
+      : await fetchProducts(found.map(p => parseInt(p.storeProductId, 10)));
     const productMap = new Map(products.map(p => [p.productId, p]));
 
-    const results: BonusProduct[] = [];
-    for (const saved of onOffer) {
+    const observed: BonusProduct[] = [];
+    for (const saved of validProducts) {
       const id = parseInt(saved.storeProductId, 10);
       const product = productMap.get(id);
       const assortment = assortmentMap.get(id);
       if (product && assortment) {
-        results.push({ ...this.normalizeProduct(product, assortment), savedId: saved.id });
+        observed.push({ ...this.normalizeProduct(product, assortment), savedId: saved.id });
+      } else {
+        notFound.push(saved.id);
       }
     }
-    return { results, notFound };
+    return { observed, notFound };
   }
 }
 

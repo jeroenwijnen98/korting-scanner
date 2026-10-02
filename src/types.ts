@@ -27,14 +27,20 @@ export interface Product {
   isOnlineOnly?: boolean;
 }
 
-/** A product on bonus, as returned by a bonus check: tied to its saved product. */
+/**
+ * A product as a store adapter observed it for a saved product, on bonus or
+ * not, tied to that saved product. The bonus overview holds only those on bonus.
+ */
 export interface BonusProduct extends Product {
   savedId: string;
 }
 
-/** What `checkBonus` returns: the saved products on bonus, and the ids it could not find. */
-export interface BonusCheckResult {
-  results: BonusProduct[];
+/**
+ * What a store adapter's `observe` returns: every saved product it found, on
+ * bonus or not, and the ids of those it could not find.
+ */
+export interface ObservationResult {
+  observed: BonusProduct[];
   notFound: string[];
 }
 

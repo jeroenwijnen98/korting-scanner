@@ -39,7 +39,7 @@ export class BrokenStore extends StoreAdapter {
     throw new Error('store down');
   }
 
-  async checkBonus(): Promise<never> {
+  async observe(): Promise<never> {
     throw new Error('store down');
   }
 }

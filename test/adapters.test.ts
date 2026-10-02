@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { ah } from '../src/stores/ah.ts';
 import { dirk } from '../src/stores/dirk.ts';
 import { kruidvat } from '../src/stores/kruidvat.ts';
+import type { SavedProduct } from '../src/types.ts';
 
 // Raw responses; see fixtures/README.md. `any`, as the adapters' own
 // `res.json()` is before its cast.
@@ -90,6 +91,52 @@ test('Dirk: a product without assortment has no price', async () => {
   const product = dirk.normalizeProduct(cola, undefined);
   assert.equal(product.currentPrice, null);
   assert.equal(product.isBonus, false);
+});
+
+function savedDirk(storeProductId: string): SavedProduct {
+  return {
+    id: `dirk-${storeProductId}`, store: 'dirk', storeProductId, title: '', brand: '', salesUnitSize: '',
+    mainCategory: '', subCategory: '', imageUrl: '', addedAt: '2026-01-01T00:00:00.000Z',
+  };
+}
+
+test('Dirk observe: every found saved product, on offer or not; the rest in notFound', async (t) => {
+  const listProducts = await fixture('dirk-list-products.json');
+  const assortment = await fixture('dirk-assortment.json');
+  const queries: string[] = [];
+  // The fixtures answer the batch queries: assortment for 101 and 202 only
+  // (none for 303), then the details of the products that have one.
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    assert.equal(url, 'https://web-gateway.dirk.nl/graphql');
+    const { query } = JSON.parse(init.body as string);
+    queries.push(query);
+    if (query.includes('productAssortment')) {
+      assert.match(query, /productId: 303/);
+      return Response.json(assortment);
+    }
+    assert.match(query, /listProducts\(productIds: \[101,202\]\)/);
+    return Response.json(listProducts);
+  });
+
+  const { observed, notFound } = await dirk.observe(
+    [savedDirk('101'), savedDirk('202'), savedDirk('303'), savedDirk('geen-id')],
+  );
+
+  assert.deepEqual(observed.map(p => [p.savedId, p.productId, p.isBonus, p.currentPrice]), [
+    ['dirk-101', '101', true, 1.79],
+    ['dirk-202', '202', false, 1.99],
+  ]);
+  assert.deepEqual(notFound.sort(), ['dirk-303', 'dirk-geen-id']);
+  assert.equal(queries.length, 2);
+  assert.deepEqual(observed.filter(p => dirk.countsAsBonus(p)).map(p => p.savedId), ['dirk-101']);
+});
+
+test('Dirk observe: no valid ids means no request', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => {
+    throw new Error('no request expected');
+  });
+  assert.deepEqual(await dirk.observe([savedDirk('x')]), { observed: [], notFound: ['dirk-x'] });
+  assert.equal(fetch.mock.callCount(), 0);
 });
 
 test('Kruidvat: a bonus priced by its mechanism, the primary image made absolute', async () => {
