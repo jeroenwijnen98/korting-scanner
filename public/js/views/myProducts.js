@@ -9,6 +9,7 @@ import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
 import { savedProductId } from '../utils/savedProductId.js';
 import { groupPauseAction } from '../utils/groupPause.js';
+import { prototypeVariant, renderPausedPrototype } from '../prototype/pausedSectionPrototype.js'; // PROTOTYPE
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
@@ -170,6 +171,12 @@ function renderSaved() {
         <p>Zoek hierboven om producten toe te voegen</p>
       </div>
     `;
+    return;
+  }
+
+  // PROTOTYPE: ?variant=A..D renders the paused-section variants instead
+  if (prototypeVariant()) {
+    renderPausedPrototype(container, filtered, savedProducts, renderSaved);
     return;
   }
 
