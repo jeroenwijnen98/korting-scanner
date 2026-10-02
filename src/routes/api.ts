@@ -107,12 +107,12 @@ export function createApiRouter(stores: StoreRegistry): Router {
     res.json(await checkAllBonuses(saved, stores));
   });
 
-  // Update a saved product (e.g. set productGroup)
+  // Edit a saved product: only the fields the body sends change (null clears)
   router.patch('/products/:id', async (req, res) => {
     const { id } = req.params;
-    // Express 5 leaves req.body undefined when the request has no JSON body.
-    const { productGroup } = req.body ?? {};
-    const updated = await productStore.update(id, { productGroup: productGroup ?? null });
+    // Express 5 leaves req.body undefined when the request has no JSON body;
+    // the store ignores keys outside its editable fields.
+    const updated = await productStore.update(id, req.body ?? {});
     if (!updated) {
       return res.status(404).json({ error: 'Product not found' });
     }

@@ -55,8 +55,22 @@ test('saved products: save, duplicate, list, patch, delete', async () => {
   const patched = await api('PATCH', '/products/ah-1', { productGroup: 'koffie' });
   assert.equal(patched.status, 200);
   assert.equal(patched.json.productGroup, 'koffie');
-  // Without a body the group is cleared
-  assert.equal((await api('PATCH', '/products/ah-1')).json.productGroup, null);
+  // Omitted: a PATCH without productGroup (or without a body) leaves the group
+  assert.equal((await api('PATCH', '/products/ah-1', {})).json.productGroup, 'koffie');
+  assert.equal((await api('PATCH', '/products/ah-1')).json.productGroup, 'koffie');
+  // Keys outside the editable fields are ignored
+  const ignored = await api('PATCH', '/products/ah-1', { title: 'Anders', id: 'ah-9', paused: true });
+  assert.equal(ignored.status, 200);
+  assert.equal(ignored.json.title, 'Koffie bonen');
+  assert.equal(ignored.json.id, 'ah-1');
+  assert.equal(ignored.json.paused, undefined);
+  assert.equal(ignored.json.productGroup, 'koffie');
+  // null clears the group
+  assert.equal((await api('PATCH', '/products/ah-1', { productGroup: null })).json.productGroup, null);
+  assert.equal((await api('GET', '/products')).json[0].productGroup, null);
+  // A string sets it again
+  assert.equal((await api('PATCH', '/products/ah-1', { productGroup: 'thee' })).json.productGroup, 'thee');
+  assert.equal((await api('GET', '/products')).json[0].productGroup, 'thee');
   assert.equal((await api('PATCH', '/products/ah-404', { productGroup: 'x' })).status, 404);
 
   assert.deepEqual((await api('DELETE', '/products/ah-1')).json, { ok: true });
