@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { STORES } from '../public/js/utils/stores.js';
+import { STORES, type StoreInfo } from '../public/js/utils/stores.js';
 import { stores } from '../src/stores/index.ts';
 import { storeBadge } from '../public/js/components/storeBadge.js';
 
@@ -37,4 +37,15 @@ test('the CSS has no per-store badge classes or colour variables left', async ()
   assert.doesNotMatch(all, /\.badge-store-/);
   assert.doesNotMatch(all, /--store-(?!color\b)/);
   assert.match(await css('components.css'), /\.badge-store \{[^}]*color: var\(--store-color\)/);
+});
+
+test('only bol is an online store, and every online store makes a product page URL', () => {
+  const entries: [string, StoreInfo][] = Object.entries(STORES);
+  const online = entries.filter(([, info]) => info.online);
+  assert.deepEqual(online.map(([key]) => key), ['bol']);
+  for (const [key, info] of online) {
+    assert.ok(info.productUrl, `${key} has no productUrl`);
+    assert.match(info.productUrl('123'), /^https:\/\/[^ ]*123/);
+  }
+  assert.equal(STORES.bol.productUrl('9300000238030673'), 'https://www.bol.com/nl/nl/p/x/9300000238030673/');
 });

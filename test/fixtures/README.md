@@ -29,3 +29,8 @@ to keep the decoder honest against bol's own encoder.
 - `bol-product-no-bonus.html`: `…/9200000011447768/`, no discount label
 - `bol-product-outlet.html`: `…/9300000127503207/`, "Outlet" label
 - `bol-product-no-offer.html`: `…/9200000104617870/`, no buy box
+
+The bonus email test (`test/bonusEmail.test.ts`) renders a bonus overview, not
+a store response:
+
+- `bonus-overview.json`: `GET /api/bonus`'s `bonusProducts`, one bonus per store, each store's end date in its adapter's shape

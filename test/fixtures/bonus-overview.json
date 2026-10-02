@@ -1,0 +1,33 @@
+[
+  {
+    "savedId": "ah-12345", "productId": "12345", "title": "AH Halfvolle melk", "salesUnitSize": "1 l",
+    "bonusMechanism": "2e halve prijs", "priceBeforeBonus": 1.29, "currentPrice": 0.97,
+    "bonusStartDate": "2026-09-21", "bonusEndDate": "2026-09-27", "mainCategory": "", "subCategory": "",
+    "brand": "AH", "isBonus": true, "imageUrl": null, "store": "ah", "productGroup": "Melk"
+  },
+  {
+    "savedId": "dirk-987", "productId": "987", "title": "Dirk Pindakaas", "salesUnitSize": "350 g",
+    "bonusMechanism": "1 + 1 gratis", "priceBeforeBonus": 2.49, "currentPrice": 1.25,
+    "bonusStartDate": "2026-09-23", "bonusEndDate": "2026-09-29", "mainCategory": "", "subCategory": "",
+    "brand": "Dirk", "isBonus": true, "imageUrl": null, "store": "dirk", "productGroup": null
+  },
+  {
+    "savedId": "kruidvat-2843021", "productId": "2843021", "title": "Zwitsal Baby Shampoo", "salesUnitSize": "400 ml",
+    "bonusMechanism": "1+1 gratis", "priceBeforeBonus": 4.99, "currentPrice": 2.5,
+    "bonusStartDate": "2026-09-22", "bonusEndDate": "2026-10-05", "mainCategory": "", "subCategory": "",
+    "brand": "Zwitsal", "isBonus": true, "imageUrl": null, "store": "kruidvat", "productGroup": "Zwitsal shampoo"
+  },
+  {
+    "savedId": "trekpleister-3127045", "productId": "3127045", "title": "Aquafresh Tandpasta", "salesUnitSize": "75 ml",
+    "bonusMechanism": "2+2 gratis", "priceBeforeBonus": 2.99, "currentPrice": 1.5,
+    "bonusStartDate": "2026-09-29T00:00:00+0200", "bonusEndDate": "2026-10-11T23:59:59+0200",
+    "mainCategory": "", "subCategory": "", "brand": "Aquafresh", "isBonus": true, "imageUrl": null,
+    "store": "trekpleister", "productGroup": "Tandpasta"
+  },
+  {
+    "savedId": "bol-9300000238030673", "productId": "9300000238030673", "title": "Philips Airfryer", "salesUnitSize": "",
+    "bonusMechanism": "Deal", "priceBeforeBonus": 129.99, "currentPrice": 99.99,
+    "bonusStartDate": "", "bonusEndDate": "", "mainCategory": "", "subCategory": "",
+    "brand": "Philips", "isBonus": true, "imageUrl": null, "store": "bol", "productGroup": "Airfryer"
+  }
+]
