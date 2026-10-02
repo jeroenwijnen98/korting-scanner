@@ -10,8 +10,8 @@ import * as productStore from './productStore.ts';
  * regular price shows up again once a bonus ends. The overview lists only
  * those the store adapter counts as a bonus, each with its saved product's
  * view (`productGroup`); a paused saved product is observed and snapshotted
- * like any other but left out of the overview. A store whose check throws does not sink the others:
- * its saved products go to `notFound`.
+ * like any other but left out of the overview. A store whose check throws
+ * does not sink the others: its saved products go to `notFound`.
  */
 export async function checkSavedProducts(
   stores: Partial<Record<StoreName, StoreAdapter>>,
@@ -31,7 +31,8 @@ export async function checkSavedProducts(
       });
       const pausedIds = new Set(storeProducts.filter(p => p.paused).map(p => p.id));
       const bonusProducts = observed.filter(product =>
-        adapter.countsAsBonus(product) && !pausedIds.has(product.savedId));
+        adapter.countsAsBonus(product) && !pausedIds.has(product.savedId),
+      );
       overview.bonusProducts.push(...productStore.withSavedProductView(bonusProducts, storeProducts));
       overview.notFound.push(...notFound);
     } catch (err) {
