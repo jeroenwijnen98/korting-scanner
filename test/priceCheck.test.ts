@@ -112,3 +112,17 @@ test('group history goes back to the regular price once a bonus ends', async () 
     ['2026-03-01', 'Koffie', 6, true],
   ]);
 });
+
+test('a saved product\'s imageUrl follows the store when its image changes', async () => {
+  await productStore.add({ store: 'ah', storeProductId: '51', title: 'Shampoo', imageUrl: 'https://img/old.jpg' });
+  await productStore.add({ store: 'ah', storeProductId: '52', title: 'Zeep', imageUrl: 'https://img/zeep.jpg' });
+  const store = new FakeStore('ah', [
+    product('ah', '51', { imageUrl: 'https://img/new.jpg' }),
+    product('ah', '52', { imageUrl: null }),
+  ]);
+
+  await checkSavedProducts({ ah: store });
+
+  const images = Object.fromEntries((await productStore.getAll()).map(p => [p.id, p.imageUrl]));
+  assert.deepEqual(images, { 'ah-51': 'https://img/new.jpg', 'ah-52': 'https://img/zeep.jpg' });
+});
