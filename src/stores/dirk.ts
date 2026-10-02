@@ -179,10 +179,8 @@ class DirkAdapter extends StoreAdapter {
     const assortmentMap = await fetchAssortmentBatch(ids);
 
     // Products with no assortment entry at all are not found; skip their details
-    const found = validProducts.filter((_, i) => assortmentMap.has(ids[i]));
-    const products = found.length === 0
-      ? []
-      : await fetchProducts(found.map(p => parseInt(p.storeProductId, 10)));
+    const foundIds = ids.filter(id => assortmentMap.has(id));
+    const products = foundIds.length === 0 ? [] : await fetchProducts(foundIds);
     const productMap = new Map(products.map(p => [p.productId, p]));
 
     const observed: BonusProduct[] = [];
