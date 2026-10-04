@@ -41,15 +41,6 @@ export function createSavedProductList(api) {
 
   const notify = () => listeners.forEach(listener => listener());
 
-  /** @param {SavedProduct[]} products */
-  const merge = (products) => {
-    const byId = new Map(products.map(p => [p.id, p]));
-    list = list.map(s => byId.get(s.id) || s);
-    const known = new Set(list.map(s => s.id));
-    list = [...list, ...products.filter(p => !known.has(p.id))];
-    notify();
-  };
-
   return {
     async load() {
       list = await api.getProducts();
@@ -68,7 +59,13 @@ export function createSavedProductList(api) {
       list = list.filter(s => s.id !== id);
       notify();
     },
-    merge,
+    merge(products) {
+      const byId = new Map(products.map(p => [p.id, p]));
+      list = list.map(s => byId.get(s.id) || s);
+      const known = new Set(list.map(s => s.id));
+      list = [...list, ...products.filter(p => !known.has(p.id))];
+      notify();
+    },
     onChange(listener) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };

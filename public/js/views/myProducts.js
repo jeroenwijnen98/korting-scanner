@@ -331,10 +331,11 @@ async function showProductDetail(product) {
     savedProduct,
     existingGroups,
     onProductGroupChange: (id, groupName) => {
+      const productGroup = groupName || null;
       const saved = savedList.get(id);
-      if (saved) savedList.merge([{ ...saved, productGroup: groupName || null }]);
+      if (saved) savedList.merge([{ ...saved, productGroup }]);
       // Re-open detail with updated product
-      showProductDetail(savedList.get(id) || { ...product, productGroup: groupName || null });
+      showProductDetail(savedList.get(id) || { ...product, productGroup });
     },
     onTogglePause: () => togglePause(productId),
     onBack: () => initMyProducts(),
