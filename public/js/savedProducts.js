@@ -37,6 +37,10 @@
  *   pauses every member while any is unpaused, else resumes them all; does
  *   not throw, failures are in the result
  * @property {(id: string) => Promise<void>} remove
+ * @property {(ids: string[]) => void} setUnavailable records the saved products
+ *   the last bonus check could not find
+ * @property {() => string[]} unavailableIds as recorded by the last bonus check
+ * @property {(id: string) => boolean} isUnavailable
  * @property {(products: SavedProduct[]) => void} merge puts server answers the
  *   list did not fetch itself (added products, images) in place by id, new
  *   ids at the end
@@ -54,6 +58,8 @@
 export function createSavedProductList(api) {
   /** @type {SavedProduct[]} */
   let list = [];
+  /** @type {string[]} */
+  let unavailable = [];
   /** @type {Set<() => void>} */
   const listeners = new Set();
 
@@ -118,6 +124,12 @@ export function createSavedProductList(api) {
       list = list.filter(s => s.id !== id);
       notify();
     },
+    setUnavailable(ids) {
+      unavailable = [...ids];
+      notify();
+    },
+    unavailableIds: () => unavailable,
+    isUnavailable: (id) => unavailable.includes(id),
     merge(products) {
       putInPlace(products);
       notify();
