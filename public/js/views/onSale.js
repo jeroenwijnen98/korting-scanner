@@ -58,10 +58,10 @@ function withListGroup(product) {
 
 /**
  * @param {OverviewProduct} bonusProduct
- * @param {OverviewProduct[]} allProducts
+ * @param {OverviewProduct[]} bonusProducts
  * @param {string | null} [grocerUrl]
  */
-async function showDetail(bonusProduct, allProducts, grocerUrl = null) {
+async function showDetail(bonusProduct, bonusProducts, grocerUrl = null) {
   panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
   const product = withListGroup(bonusProduct);
 
@@ -86,9 +86,9 @@ async function showDetail(bonusProduct, allProducts, grocerUrl = null) {
     onProductGroupChange: async (id, productGroup) => {
       await savedList.setProductGroup(id, productGroup);
       // Re-open detail with the product group from the list
-      showDetail(bonusProduct, allProducts, grocerUrl);
+      showDetail(bonusProduct, bonusProducts, grocerUrl);
     },
-    onBack: () => render(allProducts, grocerUrl),
+    onBack: () => render(bonusProducts, grocerUrl),
   });
   panel.appendChild(detail);
 }
