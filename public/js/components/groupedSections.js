@@ -11,8 +11,8 @@ import { sectionLayout } from '../utils/pausedLayout.js';
  * Render products as sections: "Niet gecategoriseerd" first, then one section
  * per productgroup (in first-seen order), each group sorted by unit price
  * ascending; members without a unit price (no price, or a size such as "0 g")
- * come last. In a mixed group the paused members
- * hide behind a "N gepauzeerd" row that opens and closes them.
+ * come last. In a mixed group the paused members hide behind a "N gepauzeerd"
+ * row that opens and closes them.
  * @template {DisplayedProduct & Pausable} P
  * @param {HTMLElement} container sections are appended to it
  * @param {P[]} products

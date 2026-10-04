@@ -22,11 +22,11 @@ export function cheapestPerDate(
     for (const { saved, history } of entries) {
       const snapshot = history.find(e => e.date <= date);
       if (!snapshot) continue;
-      const calc = unitPriceOf(snapshot.currentPrice, saved.salesUnitSize);
-      if (!calc) continue;
+      const pricePerUnit = unitPriceOf(snapshot.currentPrice, saved.salesUnitSize);
+      if (!pricePerUnit) continue;
 
-      if (calc.unitPrice < cheapestUnitPrice) {
-        cheapestUnitPrice = calc.unitPrice;
+      if (pricePerUnit.unitPrice < cheapestUnitPrice) {
+        cheapestUnitPrice = pricePerUnit.unitPrice;
         cheapest = {
           date,
           title: saved.title,
@@ -36,8 +36,8 @@ export function cheapestPerDate(
           priceBeforeBonus: snapshot.priceBeforeBonus,
           isBonus: snapshot.isBonus,
           bonusMechanism: snapshot.bonusMechanism,
-          unitPrice: calc.unitPrice,
-          standardUnit: calc.standardUnit,
+          unitPrice: pricePerUnit.unitPrice,
+          standardUnit: pricePerUnit.standardUnit,
         };
       }
     }
