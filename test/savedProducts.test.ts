@@ -143,6 +143,37 @@ test('a failed set product group leaves the list unchanged and throws the error'
   assert.equal(changes(), 1);
 });
 
+test('a product group set by one view is seen by a second listener (the other view)', async () => {
+  const { list } = await loaded([saved('ah-1', null), saved('dirk-2', 'koffie')]);
+  const seen: (string | null | undefined)[] = [];
+  list.onChange(() => { seen.push(list.get('ah-1')?.productGroup); });
+  await list.setProductGroup('ah-1', 'koffie');
+  assert.deepEqual(seen, ['koffie']);
+  assert.deepEqual(list.productGroups(), ['koffie']);
+});
+
+test('unavailable ids are none before a bonus check and reported after being set', async () => {
+  const { list, changes } = await loaded([saved('ah-1', null), saved('dirk-2', null)]);
+  assert.deepEqual(list.unavailableIds(), []);
+  assert.equal(list.isUnavailable('dirk-2'), false);
+
+  list.setUnavailable(['dirk-2']);
+  assert.deepEqual(list.unavailableIds(), ['dirk-2']);
+  assert.equal(list.isUnavailable('dirk-2'), true);
+  assert.equal(list.isUnavailable('ah-1'), false);
+  assert.equal(changes(), 2, 'listeners re-render the unavailable indicators');
+
+  list.setUnavailable([]);
+  assert.equal(list.isUnavailable('dirk-2'), false, 'the next bonus check replaces them');
+});
+
+test('unavailable ids survive a reload of the list', async () => {
+  const { list } = await loaded([saved('ah-1', null)]);
+  list.setUnavailable(['ah-1']);
+  await list.load();
+  assert.equal(list.isUnavailable('ah-1'), true);
+});
+
 test('product groups are the ones in use, each once, in list order', async () => {
   const { list } = await loaded([
     saved('ah-1', 'zon'), saved('ah-2', null), saved('dirk-3', 'koffie'), saved('bol-4', 'zon'),

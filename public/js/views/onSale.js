@@ -1,5 +1,5 @@
 // @ts-check
-import { getBonus, getProducts, updateProduct, getProductHistory, getGroupHistory } from '../api.js';
+import { getBonus, getProductHistory, getGroupHistory } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { createBonusAction } from '../components/bonusAction.js';
@@ -7,11 +7,10 @@ import { showToast } from '../components/toast.js';
 import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
 import { escapeHtml } from '../utils/format.js';
-import { setUnavailableIds } from './myProducts.js';
+import { savedList } from '../savedList.js';
 
 /**
  * @typedef {import('../../../src/types.ts').OverviewProduct} OverviewProduct
- * @typedef {import('../../../src/types.ts').SavedProduct} SavedProduct
  * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
  * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
  */
@@ -26,15 +25,13 @@ export async function initOnSale() {
   refreshBtn.classList.add('refreshing');
 
   try {
-    const [bonusData, savedProducts] = await Promise.all([getBonus(), getProducts()]);
+    const [bonusData] = await Promise.all([getBonus(), savedList.load()]);
     refreshBtn.classList.remove('refreshing');
 
     const { bonusProducts, notFound, grocerUrl } = bonusData;
+    savedList.setUnavailable(notFound);
 
-    // Share notFound ids with myProducts view for unavailability indicators
-    setUnavailableIds(notFound);
-
-    render(bonusProducts, savedProducts, notFound, grocerUrl);
+    render(bonusProducts, grocerUrl);
   } catch (err) {
     refreshBtn.classList.remove('refreshing');
     showToast('Kon bonus niet laden', 'error');
@@ -49,14 +46,24 @@ export async function initOnSale() {
 }
 
 /**
+ * The bonus product with its product group as the saved-product list has it
+ * now, which may have changed since the bonus check.
  * @param {OverviewProduct} product
- * @param {OverviewProduct[]} allProducts
- * @param {SavedProduct[]} savedProducts
- * @param {string[]} [notFound]
+ * @returns {OverviewProduct}
+ */
+function withListGroup(product) {
+  const saved = savedList.get(product.savedId);
+  return saved ? { ...product, productGroup: saved.productGroup || null } : product;
+}
+
+/**
+ * @param {OverviewProduct} bonusProduct
+ * @param {OverviewProduct[]} bonusProducts
  * @param {string | null} [grocerUrl]
  */
-async function showDetail(product, allProducts, savedProducts, notFound = [], grocerUrl = null) {
+async function showDetail(bonusProduct, bonusProducts, grocerUrl = null) {
   panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
+  const product = withListGroup(bonusProduct);
 
   /** @type {PriceSnapshot[]} */
   let history = [];
@@ -69,56 +76,35 @@ async function showDetail(product, allProducts, savedProducts, notFound = [], gr
     ]);
   } catch { /* ignore */ }
 
-  const existingGroups = [...new Set(
-    savedProducts.map(s => s.productGroup).filter(Boolean)
-  )];
-
-  const savedProduct = savedProducts.find(s => s.id === product.savedId) || null;
-
   panel.innerHTML = '';
   const detail = createProductDetail(product, {
     showBonus: true,
     history,
     groupHistory,
-    savedProduct,
-    existingGroups,
+    savedProduct: savedList.get(product.savedId),
+    existingGroups: savedList.productGroups(),
     onProductGroupChange: async (id, productGroup) => {
-      await updateProduct(id, { productGroup });
-
-      // Update in allProducts (the bonus list)
-      const idx = allProducts.findIndex(p => p.savedId === id);
-      if (idx !== -1) {
-        allProducts[idx] = { ...allProducts[idx], productGroup };
-      }
-
-      // Update in savedProducts
-      const sIdx = savedProducts.findIndex(s => s.id === id);
-      if (sIdx !== -1) {
-        savedProducts[sIdx] = { ...savedProducts[sIdx], productGroup };
-      }
-
-      // Re-open detail with updated product
-      const updatedProduct = idx !== -1 ? allProducts[idx] : { ...product, productGroup };
-      showDetail(updatedProduct, allProducts, savedProducts, notFound, grocerUrl);
+      await savedList.setProductGroup(id, productGroup);
+      // Re-open detail with the product group from the list
+      showDetail(bonusProduct, bonusProducts, grocerUrl);
     },
-    onBack: () => render(allProducts, savedProducts, notFound, grocerUrl),
+    onBack: () => render(bonusProducts, grocerUrl),
   });
   panel.appendChild(detail);
 }
 
 /**
- * @param {OverviewProduct[]} products
- * @param {SavedProduct[]} savedProducts
- * @param {string[]} [notFound]
+ * @param {OverviewProduct[]} bonusProducts
  * @param {string | null} [grocerUrl] GROCER_URL; without it no Toevoegen
  */
-function render(products, savedProducts, notFound = [], grocerUrl = null) {
+function render(bonusProducts, grocerUrl = null) {
   panel.innerHTML = '';
 
   // Warning banner for unavailable products
+  const notFound = savedList.unavailableIds();
   if (notFound.length > 0) {
     const unavailableNames = notFound
-      .map(id => savedProducts.find(s => s.id === id)?.title || id)
+      .map(id => savedList.get(id)?.title || id)
       .join(', ');
     const banner = document.createElement('div');
     banner.className = 'unavailable-banner';
@@ -126,7 +112,7 @@ function render(products, savedProducts, notFound = [], grocerUrl = null) {
     panel.appendChild(banner);
   }
 
-  if (products.length === 0) {
+  if (bonusProducts.length === 0) {
     panel.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">%</div>
@@ -137,12 +123,12 @@ function render(products, savedProducts, notFound = [], grocerUrl = null) {
     return;
   }
 
-  renderGroupedSections(panel, products, product => {
+  renderGroupedSections(panel, bonusProducts.map(withListGroup), product => {
     const card = createProductCard(product, {
       showBonus: true,
       bonusAction: createBonusAction(product, grocerUrl),
     });
-    card.addEventListener('click', () => showDetail(product, products, savedProducts, notFound, grocerUrl));
+    card.addEventListener('click', () => showDetail(product, bonusProducts, grocerUrl));
     return card;
   });
 }

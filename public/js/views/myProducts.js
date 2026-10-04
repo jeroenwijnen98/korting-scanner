@@ -1,5 +1,5 @@
 // @ts-check
-import { getProducts, addProduct, removeProduct, updateProduct, searchProducts, getProductDetail, getProductHistory, getGroupHistory, syncProductImages } from '../api.js';
+import { addProduct, searchProducts, getProductDetail, getProductHistory, getGroupHistory, syncProductImages } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { createSearchResult } from '../components/searchResult.js';
@@ -10,7 +10,7 @@ import { STORES } from '../utils/stores.js';
 import { savedProductId } from '../utils/savedProductId.js';
 import { splitPaused } from '../utils/pausedLayout.js';
 import { productCount } from '../utils/format.js';
-import { createSavedProductList } from '../savedProducts.js';
+import { savedList } from '../savedList.js';
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
@@ -22,26 +22,17 @@ import { createSavedProductList } from '../savedProducts.js';
  */
 
 const panel = document.getElementById('panel-my-products');
-const savedList = createSavedProductList({ getProducts, updateProduct, removeProduct });
 savedList.onChange(renderSaved);
 /** @type {StoreFilter} */
 let activeStore = 'ah';
 /** @type {number | undefined} */
 let searchTimeout;
-/** @type {string[]} */
-let unavailableIds = [];
 // What the user opened, kept while the page is open so it survives re-renders
 // (pausing, resuming), not stored: closed again after a reload.
 /** Whether the Gepauzeerd section is open */
 let pausedSectionOpen = false;
 /** @type {Set<string | null>} product groups whose "N gepauzeerd" row is open */
 const expandedPausedRows = new Set();
-
-/** @param {string[]} ids saved product ids the last bonus check could not find */
-export function setUnavailableIds(ids) {
-  unavailableIds = ids || [];
-  renderSaved();
-}
 
 export async function initMyProducts() {
   panel.innerHTML = '';
@@ -223,7 +214,7 @@ function createPausedSection(paused) {
  */
 function createSavedCard(product) {
   const card = createProductCard(product, {
-    isUnavailable: unavailableIds.includes(product.id),
+    isUnavailable: savedList.isUnavailable(product.id),
     isPaused: Boolean(product.paused),
     onTogglePause: (p) => { togglePause(p.id); },
     onRemove: async (p) => {
