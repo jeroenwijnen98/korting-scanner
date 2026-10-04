@@ -4,17 +4,20 @@ import { createSavedProductList } from '../public/js/savedProducts.js';
 import { saved } from './savedProduct.ts';
 import type { SavedProduct } from '../src/types.ts';
 
-/** A fake api.js over an in-memory server list; `fail` makes the edits throw. */
-function fakeApi(server: SavedProduct[], { fail = false } = {}) {
+/**
+ * A fake api.js over an in-memory server list; `fail` makes the edits throw,
+ * `failIds` only the PATCHes for those ids.
+ */
+function fakeApi(server: SavedProduct[], { fail = false, failIds = [] as string[] } = {}) {
   const calls: string[] = [];
   return {
     calls,
     async getProducts() {
       return server.map(p => ({ ...p }));
     },
-    async updateProduct(id: string, data: { paused?: boolean }) {
+    async updateProduct(id: string, data: { productGroup?: string | null, paused?: boolean }) {
       calls.push(`PATCH ${id} ${JSON.stringify(data)}`);
-      if (fail) throw new Error('Opslaan mislukt');
+      if (fail || failIds.includes(id)) throw new Error('Opslaan mislukt');
       const p = server.find(s => s.id === id);
       if (!p) throw new Error('Product not found');
       Object.assign(p, data);
@@ -29,7 +32,7 @@ function fakeApi(server: SavedProduct[], { fail = false } = {}) {
   };
 }
 
-async function loaded(server: SavedProduct[], options?: { fail?: boolean }) {
+async function loaded(server: SavedProduct[], options?: { fail?: boolean, failIds?: string[] }) {
   const api = fakeApi(server, options);
   const list = createSavedProductList(api);
   let changes = 0;
@@ -117,4 +120,104 @@ test('a stopped listener is no longer called', async () => {
   stop();
   await list.setPaused('ah-1', true);
   assert.equal(calls, 1);
+});
+
+test('setting the product group persists, puts the server answer in the list and notifies', async () => {
+  const { api, list, changes } = await loaded([saved('ah-1', null), saved('dirk-2', 'koffie')]);
+  const updated = await list.setProductGroup('ah-1', 'thee');
+  assert.deepEqual(api.calls, ['PATCH ah-1 {"productGroup":"thee"}']);
+  assert.equal(updated.productGroup, 'thee');
+  assert.equal(list.get('ah-1')?.productGroup, 'thee');
+  assert.equal(changes(), 2);
+
+  await list.setProductGroup('dirk-2', '');
+  assert.equal(api.calls[1], 'PATCH dirk-2 {"productGroup":null}', 'an empty name is no product group');
+  assert.equal(list.get('dirk-2')?.productGroup, null);
+});
+
+test('a failed set product group leaves the list unchanged and throws the error', async () => {
+  const { list, changes } = await loaded([saved('ah-1', 'koffie')], { fail: true });
+  await assert.rejects(list.setProductGroup('ah-1', 'thee'), { message: 'Opslaan mislukt' });
+  assert.equal(list.get('ah-1')?.productGroup, 'koffie');
+  assert.deepEqual(list.productGroups(), ['koffie']);
+  assert.equal(changes(), 1);
+});
+
+test('product groups are the ones in use, each once, in list order', async () => {
+  const { list } = await loaded([
+    saved('ah-1', 'zon'), saved('ah-2', null), saved('dirk-3', 'koffie'), saved('bol-4', 'zon'),
+  ]);
+  assert.deepEqual(list.productGroups(), ['zon', 'koffie']);
+
+  await list.setProductGroup('ah-2', 'thee');
+  await list.setProductGroup('dirk-3', 'zon');
+  assert.deepEqual(list.productGroups(), ['zon', 'thee']);
+});
+
+test('group pause, any member unpaused: pauses the ones not paused yet', async () => {
+  const { api, list, changes } = await loaded([saved('ah-1', 'zon', true), saved('trekpleister-2', 'zon'), saved('kruidvat-3', 'zon', false)]);
+  assert.equal(list.isGroupPaused('zon'), false);
+  const result = await list.toggleGroupPause('zon');
+  assert.deepEqual(api.calls, ['PATCH trekpleister-2 {"paused":true}', 'PATCH kruidvat-3 {"paused":true}']);
+  assert.equal(result.paused, true);
+  assert.deepEqual(result.updated.map(p => p.id), ['trekpleister-2', 'kruidvat-3']);
+  assert.deepEqual(result.failed, []);
+  assert.deepEqual(list.products().map(p => p.paused), [true, true, true]);
+  assert.equal(list.isGroupPaused('zon'), true);
+  assert.equal(changes(), 2);
+});
+
+test('group pause, all members paused: resumes them all', async () => {
+  const { api, list } = await loaded([saved('ah-1', 'zon', true), saved('trekpleister-2', 'zon', true)]);
+  assert.equal(list.isGroupPaused('zon'), true);
+  const result = await list.toggleGroupPause('zon');
+  assert.equal(result.paused, false);
+  assert.deepEqual(api.calls, ['PATCH ah-1 {"paused":false}', 'PATCH trekpleister-2 {"paused":false}']);
+  assert.equal(list.isGroupPaused('zon'), false);
+});
+
+test('group pause counts members from every store, not other groups or ungrouped', async () => {
+  // A store filter on AH would show only ah-1; the Trekpleister member still decides the label
+  const { api, list } = await loaded([
+    saved('ah-1', 'zon', true), saved('trekpleister-2', 'zon'),
+    saved('ah-4', 'koffie'), saved('ah-5', null),
+  ]);
+  assert.equal(list.isGroupPaused('zon'), false);
+  await list.toggleGroupPause('zon');
+  assert.deepEqual(api.calls, ['PATCH trekpleister-2 {"paused":true}']);
+  assert.equal(list.get('ah-4')?.paused, undefined);
+  assert.equal(list.get('ah-5')?.paused, undefined);
+});
+
+test('a product added to a fully paused group is unpaused, so the group pauses again', async () => {
+  const { api, list } = await loaded([saved('ah-1', 'zon', true), saved('trekpleister-2', 'zon', true), saved('kruidvat-3', 'zon')]);
+  assert.equal(list.isGroupPaused('zon'), false);
+  const result = await list.toggleGroupPause('zon');
+  assert.equal(result.paused, true);
+  assert.deepEqual(api.calls, ['PATCH kruidvat-3 {"paused":true}']);
+});
+
+test('a group pause where one PATCH fails keeps the others, notifies and reports the failure', async () => {
+  const { list, changes } = await loaded(
+    [saved('ah-1', 'zon'), saved('trekpleister-2', 'zon'), saved('kruidvat-3', 'zon')],
+    { failIds: ['trekpleister-2'] },
+  );
+  const result = await list.toggleGroupPause('zon');
+  assert.equal(result.paused, true);
+  assert.deepEqual(result.updated.map(p => p.id), ['ah-1', 'kruidvat-3']);
+  assert.deepEqual(result.failed.map(f => f.id), ['trekpleister-2']);
+  assert.equal((result.failed[0].error as Error).message, 'Opslaan mislukt');
+  assert.deepEqual(list.products().map(p => [p.id, p.paused]), [['ah-1', true], ['trekpleister-2', undefined], ['kruidvat-3', true]]);
+  assert.equal(list.isGroupPaused('zon'), false, 'the failed member still makes the button pause');
+  assert.equal(changes(), 2);
+});
+
+test('a group pause where every PATCH fails leaves the list unchanged and does not notify', async () => {
+  const { list, changes } = await loaded([saved('ah-1', 'zon'), saved('dirk-2', 'zon')], { fail: true });
+  const before = list.products();
+  const result = await list.toggleGroupPause('zon');
+  assert.deepEqual(result.failed.map(f => f.id), ['ah-1', 'dirk-2']);
+  assert.deepEqual(result.updated, []);
+  assert.equal(list.products(), before);
+  assert.equal(changes(), 1);
 });

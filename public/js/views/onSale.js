@@ -1,5 +1,5 @@
 // @ts-check
-import { getBonus, getProducts, getProductHistory, getGroupHistory } from '../api.js';
+import { getBonus, getProducts, updateProduct, getProductHistory, getGroupHistory } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { createBonusAction } from '../components/bonusAction.js';
@@ -82,7 +82,9 @@ async function showDetail(product, allProducts, savedProducts, notFound = [], gr
     groupHistory,
     savedProduct,
     existingGroups,
-    onProductGroupChange: (id, groupName) => {
+    onProductGroupChange: async (id, groupName) => {
+      await updateProduct(id, { productGroup: groupName });
+
       // Update in allProducts (the bonus list)
       const idx = allProducts.findIndex(p => p.savedId === id);
       if (idx !== -1) {

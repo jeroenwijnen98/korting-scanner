@@ -8,7 +8,6 @@ import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
 import { savedProductId } from '../utils/savedProductId.js';
-import { groupPauseAction } from '../utils/groupPause.js';
 import { splitPaused } from '../utils/pausedLayout.js';
 import { productCount } from '../utils/format.js';
 import { createSavedProductList } from '../savedProducts.js';
@@ -264,29 +263,19 @@ async function togglePause(id) {
  * @returns {HTMLButtonElement}
  */
 function createGroupPauseButton(productGroup) {
-  const { paused: willPause } = groupPauseAction(savedList.products(), productGroup);
+  const willPause = !savedList.isGroupPaused(productGroup);
   const btn = document.createElement('button');
   btn.className = 'btn btn-ghost btn-sm group-section-pause';
   btn.textContent = willPause ? 'Pauzeren' : 'Hervatten';
   btn.title = willPause ? 'Bonus van de hele groep voorlopig niet melden' : 'Bonus van de hele groep weer melden';
   btn.addEventListener('click', async () => {
     btn.disabled = true;
-    // Taken again on click: the list may have changed since this render
-    const action = groupPauseAction(savedList.products(), productGroup);
-    const results = await Promise.allSettled(
-      action.ids.map(id => updateProduct(id, { paused: action.paused })),
-    );
-    /** @type {SavedProduct[]} */
-    const updated = [];
-    for (const r of results) {
-      if (r.status === 'fulfilled') updated.push(r.value);
-    }
-    savedList.merge(updated);
-    const failed = results.find(r => r.status === 'rejected');
-    if (failed) {
-      showToast(errorMessage(/** @type {PromiseRejectedResult} */ (failed).reason), 'error');
+    // The list decides again on click: it may have changed since this render
+    const { paused, failed } = await savedList.toggleGroupPause(productGroup);
+    if (failed.length > 0) {
+      showToast(errorMessage(failed[0].error), 'error');
     } else {
-      showToast(action.paused ? 'Groep gepauzeerd' : 'Groep hervat', 'success');
+      showToast(paused ? 'Groep gepauzeerd' : 'Groep hervat', 'success');
     }
   });
   return btn;
@@ -317,10 +306,6 @@ async function showProductDetail(product) {
     ? { ...detail, id: product.id, productGroup: product.productGroup || null }
     : { ...product };
 
-  const existingGroups = [...new Set(
-    savedList.products().map(s => s.productGroup).filter(Boolean)
-  )];
-
   const savedProduct = savedList.get(productId);
 
   panel.innerHTML = '';
@@ -329,13 +314,11 @@ async function showProductDetail(product) {
     history,
     groupHistory,
     savedProduct,
-    existingGroups,
-    onProductGroupChange: (id, groupName) => {
-      const productGroup = groupName || null;
-      const saved = savedList.get(id);
-      if (saved) savedList.merge([{ ...saved, productGroup }]);
+    existingGroups: savedList.productGroups(),
+    onProductGroupChange: async (id, productGroup) => {
+      const updated = await savedList.setProductGroup(id, productGroup);
       // Re-open detail with updated product
-      showProductDetail(savedList.get(id) || { ...product, productGroup });
+      showProductDetail(updated);
     },
     onTogglePause: () => togglePause(productId),
     onBack: () => initMyProducts(),

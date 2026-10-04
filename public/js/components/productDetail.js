@@ -1,6 +1,5 @@
 // @ts-check
 import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
-import { updateProduct } from '../api.js';
 import { showToast } from './toast.js';
 import { storeBadge } from './storeBadge.js';
 import { pauseControlText } from '../utils/pauseControl.js';
@@ -20,7 +19,8 @@ import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
  * @property {PriceSnapshot[]} [history] newest first
  * @property {SavedProduct | null} [savedProduct] set when the product is saved; enables the productgroup selector
  * @property {string[]} [existingGroups]
- * @property {((id: string, productGroup: string | null) => void) | null} [onProductGroupChange]
+ * @property {((id: string, productGroup: string | null) => Promise<void>) | null} [onProductGroupChange] set to let the
+ *   productgroup selector change it; asks to set the saved product's productgroup (null for none) and rejects when that failed
  * @property {GroupHistoryEntry[]} [groupHistory] newest first
  * @property {(() => Promise<boolean>) | null} [onTogglePause] set to show the pause control for the saved product; asks to pause or resume it and resolves with whether it is paused afterwards
  */
@@ -159,6 +159,22 @@ export function createProductDetail(product, {
     groupSection.appendChild(groupSelector);
     el.appendChild(groupSection);
 
+    /**
+     * @param {string | null} productGroup
+     * @returns {Promise<boolean>} whether it was saved
+     */
+    const saveProductGroup = async (productGroup) => {
+      if (!onProductGroupChange) return false;
+      try {
+        await onProductGroupChange(savedProduct.id, productGroup);
+        showToast('Productgroep opgeslagen', 'success');
+        return true;
+      } catch {
+        showToast('Fout bij opslaan productgroep', 'error');
+        return false;
+      }
+    };
+
     select.addEventListener('change', async () => {
       const val = select.value;
       if (val === '__new__') {
@@ -167,37 +183,25 @@ export function createProductDetail(product, {
         return;
       }
       newRow.style.display = 'none';
-      try {
-        await updateProduct(savedProduct.id, { productGroup: val || null });
-        if (onProductGroupChange) onProductGroupChange(savedProduct.id, val || null);
-        showToast('Productgroep opgeslagen', 'success');
-      } catch (err) {
-        showToast('Fout bij opslaan productgroep', 'error');
-      }
+      await saveProductGroup(val || null);
     });
 
     saveBtn.addEventListener('click', async () => {
       const inputVal = newInput.value.trim();
       if (!inputVal) return;
-      try {
-        await updateProduct(savedProduct.id, { productGroup: inputVal });
-        if (onProductGroupChange) onProductGroupChange(savedProduct.id, inputVal);
-        showToast('Productgroep opgeslagen', 'success');
-        // Update select to show new group as selected
-        const existingOpt = [...select.options].find(o => o.value === inputVal);
-        if (!existingOpt) {
-          const opt = document.createElement('option');
-          opt.value = inputVal;
-          opt.textContent = inputVal;
-          // Insert before __new__ option
-          select.insertBefore(opt, newOption);
-        }
-        select.value = inputVal;
-        newRow.style.display = 'none';
-        newInput.value = '';
-      } catch (err) {
-        showToast('Fout bij opslaan productgroep', 'error');
+      if (!(await saveProductGroup(inputVal))) return;
+      // Update select to show new group as selected
+      const existingOpt = [...select.options].find(o => o.value === inputVal);
+      if (!existingOpt) {
+        const opt = document.createElement('option');
+        opt.value = inputVal;
+        opt.textContent = inputVal;
+        // Insert before __new__ option
+        select.insertBefore(opt, newOption);
       }
+      select.value = inputVal;
+      newRow.style.display = 'none';
+      newInput.value = '';
     });
   }
 
