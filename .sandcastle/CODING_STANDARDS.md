@@ -1,7 +1,7 @@
 # Coding Standards
 
 The reviewer agent loads this file via @.sandcastle/CODING_STANDARDS.md. It
-supplements `CLAUDE.md` (and `CONTEXT.md`, once there is one) in the repo root;
+supplements `CLAUDE.md` (and `GLOSSARY.md`, once there is one) in the repo root;
 where they differ, those win.
 
 ## Style

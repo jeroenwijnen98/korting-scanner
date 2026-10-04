@@ -10,7 +10,7 @@ Work on branch {{BRANCH}}. Make commits and run the checks below.
 
 # CONTEXT
 
-Read `CLAUDE.md` first, and `CONTEXT.md` if it exists. `CLAUDE.md` describes the
+Read `CLAUDE.md` first, and `GLOSSARY.md` if it exists. `CLAUDE.md` describes the
 store adapters, the common product schema and the bonus mechanisms; follow its
 names (store adapter, saved product, price snapshot, bonus mechanism).
 
