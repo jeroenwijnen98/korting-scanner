@@ -40,3 +40,14 @@ test('without GROCER_URL there is no Toevoegen, but bol still gets Bestel', () =
   assert.doesNotMatch(html, /Toevoegen|\/add\?/);
   assert.deepEqual(rowLinks(html), [['https://www.bol.com/nl/nl/p/x/9300000238030673/', 'Bestel']]);
 });
+
+test('each row shows its unit price and normal unit price as € 1,23 / kg', () => {
+  const rows = render(null).split('<tbody>').slice(1).join('');
+  const cells = [...rows.matchAll(/<td[^>]*>([^<]*)<\/td>/g)].map(m => m[1]);
+  // € and the amount are split by a no-break space (Intl, nl-NL)
+  for (const text of ['€\u00a00,97 / liter', '€\u00a01,29 / liter',
+    '€\u00a03,57 / kg', '€\u00a07,11 / kg', '€\u00a06,25 / liter', '€\u00a020,00 / liter',
+    '€\u00a099,99 / stuk', '€\u00a0129,99 / stuk']) {
+    assert.ok(cells.includes(text), text);
+  }
+});

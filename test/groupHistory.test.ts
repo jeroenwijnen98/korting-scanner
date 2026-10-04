@@ -56,3 +56,17 @@ test('a date where no product has a price gives no entry', () => {
   assert.deepEqual(cheapestPerDate([{ saved: a, history: [snap('2026-03-01', null)] }]), []);
   assert.deepEqual(cheapestPerDate([]), []);
 });
+
+test('a product whose size has a zero number has no unit price and is skipped', () => {
+  const a = saved('ah', '1', 'A', '0 g');
+  const b = saved('dirk', '2', 'B', '1 kg');
+  const result = cheapestPerDate([
+    { saved: a, history: [snap('2026-03-02', 1), snap('2026-03-01', 1)] },
+    { saved: b, history: [snap('2026-03-02', 9)] },
+  ]);
+
+  assert.deepEqual(result.map(r => [r.date, r.title, r.unitPrice, r.standardUnit]), [
+    // A's €1 does not compete against B's €9 per kg
+    ['2026-03-02', 'B', 9, 'kg'],
+  ]);
+});

@@ -1,6 +1,6 @@
 // The weekly bonus email's HTML, apart from sending it so a test can render it.
 
-import { parseUnitSize, calcPricePerUnit } from '../../public/js/utils/unitPrice.js';
+import { unitPriceOf, formatUnitPrice } from '../../public/js/utils/unitPrice.js';
 import { formatPrice, formatDate, escapeHtml } from '../../public/js/utils/format.js';
 import { STORES } from '../../public/js/utils/stores.js';
 import { bonusLink, type BonusLink } from '../../public/js/utils/bonusLink.js';
@@ -13,11 +13,9 @@ function linkCell(link: BonusLink | null): string {
   return `<a href="${escapeHtml(link.url)}" style="color:#FF6B00; font-weight:bold; text-decoration:none;">${LINK_LABELS[link.kind]}</a>`;
 }
 
-function formatUnitPrice(price: number | null, salesUnitSize: string): string {
-  const { volume, unit } = parseUnitSize(salesUnitSize);
-  const result = calcPricePerUnit(price, volume, unit);
-  if (!result) return '-';
-  return `${formatPrice(result.unitPrice)}/${result.standardUnit}`;
+function unitPriceCell(price: number | null, salesUnitSize: string): string {
+  const pricePerUnit = unitPriceOf(price, salesUnitSize);
+  return pricePerUnit ? formatUnitPrice(pricePerUnit) : '-';
 }
 
 export interface BonusEmailOptions {
@@ -87,8 +85,8 @@ export function buildHtml(
           <td style="padding: 8px; border: 1px solid #ddd;">${escapeHtml(p.salesUnitSize || '-')}</td>
           <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #FF6B00;">${escapeHtml(p.bonusMechanism || '-')}</td>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${formatPrice(p.currentPrice)}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #FF6B00;">${formatUnitPrice(p.currentPrice, p.salesUnitSize)}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #999;">${formatUnitPrice(p.priceBeforeBonus, p.salesUnitSize)}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #FF6B00;">${unitPriceCell(p.currentPrice, p.salesUnitSize)}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #999;">${unitPriceCell(p.priceBeforeBonus, p.salesUnitSize)}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(p.bonusEndDate)}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${linkCell(bonusLink(p, { grocerUrl, at }))}</td>
         </tr>`;

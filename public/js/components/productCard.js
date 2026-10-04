@@ -1,5 +1,5 @@
 // @ts-check
-import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { unitPriceOf, formatUnitPrice } from '../utils/unitPrice.js';
 import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
 import { storeBadge } from './storeBadge.js';
 import { pauseControlText } from '../utils/pauseControl.js';
@@ -95,15 +95,12 @@ export function createProductCard(product, { onRemove, onTogglePause, isPaused =
   content.appendChild(meta);
 
   // Unit price
-  if (product.currentPrice != null) {
-    const { volume, unit } = parseUnitSize(product.salesUnitSize);
-    const unitPriceData = calcPricePerUnit(product.currentPrice, volume, unit);
-    if (unitPriceData) {
-      const unitPriceEl = document.createElement('p');
-      unitPriceEl.className = 'product-card-unit-price';
-      unitPriceEl.textContent = `€${unitPriceData.unitPrice.toFixed(2)} per ${unitPriceData.standardUnit}`;
-      content.appendChild(unitPriceEl);
-    }
+  const pricePerUnit = unitPriceOf(product.currentPrice, product.salesUnitSize);
+  if (pricePerUnit) {
+    const unitPriceEl = document.createElement('p');
+    unitPriceEl.className = 'product-card-unit-price';
+    unitPriceEl.textContent = formatUnitPrice(pricePerUnit);
+    content.appendChild(unitPriceEl);
   }
 
   // Bonus info (only in bonus view)

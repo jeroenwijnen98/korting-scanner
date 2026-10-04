@@ -1,11 +1,12 @@
 import type { GroupHistoryEntry, PriceSnapshot, SavedProduct } from '../types.ts';
-import { parseUnitSize, calcPricePerUnit } from '../../public/js/utils/unitPrice.js';
+import { unitPriceOf } from '../../public/js/utils/unitPrice.js';
 
 /**
  * For each date in the combined price history of a product group, the saved
  * product with the lowest unit price that day, going by each product's most
- * recent snapshot on or before it. Products without a price that day are
- * skipped; one whose size does not parse competes on its plain price.
+ * recent snapshot on or before it. Products without a unit price that day are
+ * skipped: no price, or a size such as "0 g" (see unitPriceOf). One whose size
+ * does not parse competes per stuk, on its plain price.
  * `history` is newest-first (as `getHistory` returns it); so is the result.
  */
 export function cheapestPerDate(
@@ -20,14 +21,12 @@ export function cheapestPerDate(
 
     for (const { saved, history } of entries) {
       const snapshot = history.find(e => e.date <= date);
-      if (!snapshot || snapshot.currentPrice == null) continue;
+      if (!snapshot) continue;
+      const calc = unitPriceOf(snapshot.currentPrice, saved.salesUnitSize);
+      if (!calc) continue;
 
-      const { volume, unit } = parseUnitSize(saved.salesUnitSize);
-      const calc = calcPricePerUnit(snapshot.currentPrice, volume, unit);
-      const unitPrice = calc ? calc.unitPrice : snapshot.currentPrice;
-
-      if (unitPrice < cheapestUnitPrice) {
-        cheapestUnitPrice = unitPrice;
+      if (calc.unitPrice < cheapestUnitPrice) {
+        cheapestUnitPrice = calc.unitPrice;
         cheapest = {
           date,
           title: saved.title,
@@ -37,8 +36,8 @@ export function cheapestPerDate(
           priceBeforeBonus: snapshot.priceBeforeBonus,
           isBonus: snapshot.isBonus,
           bonusMechanism: snapshot.bonusMechanism,
-          unitPrice: calc ? calc.unitPrice : null,
-          standardUnit: calc ? calc.standardUnit : null,
+          unitPrice: calc.unitPrice,
+          standardUnit: calc.standardUnit,
         };
       }
     }
