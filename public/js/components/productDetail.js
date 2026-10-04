@@ -1,5 +1,5 @@
 // @ts-check
-import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { unitPriceOf, formatUnitPrice } from '../utils/unitPrice.js';
 import { showToast } from './toast.js';
 import { storeBadge } from './storeBadge.js';
 import { pauseControlText } from '../utils/pauseControl.js';
@@ -243,7 +243,6 @@ export function createProductDetail(product, {
   }
 
   // Unit prices section
-  const { volume, unit } = parseUnitSize(product.salesUnitSize);
   const unitSection = document.createElement('div');
   unitSection.className = 'product-detail-unit-prices';
 
@@ -253,31 +252,31 @@ export function createProductDetail(product, {
   unitSection.appendChild(unitTitle);
 
   if (showBonus && product.isBonus && product.currentPrice != null) {
-    const bonusUnit = calcPricePerUnit(product.currentPrice, volume, unit);
+    const bonusUnit = unitPriceOf(product.currentPrice, product.salesUnitSize);
     if (bonusUnit) {
       const row = document.createElement('div');
       row.className = 'unit-price-row unit-price-bonus';
-      row.innerHTML = `<span class="unit-price-label">Bonusprijs</span><span class="unit-price-value">${formatPrice(bonusUnit.unitPrice)} / ${bonusUnit.standardUnit}</span>`;
+      row.innerHTML = `<span class="unit-price-label">Bonusprijs</span><span class="unit-price-value">${formatUnitPrice(bonusUnit)}</span>`;
       unitSection.appendChild(row);
     }
 
     if (product.priceBeforeBonus != null && product.priceBeforeBonus !== product.currentPrice) {
-      const normalUnit = calcPricePerUnit(product.priceBeforeBonus, volume, unit);
+      const normalUnit = unitPriceOf(product.priceBeforeBonus, product.salesUnitSize);
       if (normalUnit) {
         const row = document.createElement('div');
         row.className = 'unit-price-row unit-price-normal';
-        row.innerHTML = `<span class="unit-price-label">Normaal</span><span class="unit-price-value strikethrough">${formatPrice(normalUnit.unitPrice)} / ${normalUnit.standardUnit}</span>`;
+        row.innerHTML = `<span class="unit-price-label">Normaal</span><span class="unit-price-value strikethrough">${formatUnitPrice(normalUnit)}</span>`;
         unitSection.appendChild(row);
       }
     }
   } else {
     // Not on bonus — show regular unit price
     const price = product.currentPrice ?? product.priceBeforeBonus;
-    const unitInfo = calcPricePerUnit(price, volume, unit);
+    const unitInfo = unitPriceOf(price, product.salesUnitSize);
     if (unitInfo) {
       const row = document.createElement('div');
       row.className = 'unit-price-row';
-      row.innerHTML = `<span class="unit-price-label">Prijs</span><span class="unit-price-value">${formatPrice(unitInfo.unitPrice)} / ${unitInfo.standardUnit}</span>`;
+      row.innerHTML = `<span class="unit-price-label">Prijs</span><span class="unit-price-value">${formatUnitPrice(unitInfo)}</span>`;
       unitSection.appendChild(row);
     }
   }
@@ -304,21 +303,19 @@ export function createProductDetail(product, {
     </tr></thead>`;
     const tbody = document.createElement('tbody');
 
-    const { volume, unit: sizeUnit } = parseUnitSize(product.salesUnitSize);
-
     for (const entry of history) {
       const tr = document.createElement('tr');
       if (entry.isBonus) tr.className = 'history-row-bonus';
 
-      const unitInfo = calcPricePerUnit(entry.currentPrice, volume, sizeUnit);
-      const normalUnitInfo = calcPricePerUnit(entry.priceBeforeBonus, volume, sizeUnit);
+      const unitInfo = unitPriceOf(entry.currentPrice, product.salesUnitSize);
+      const normalUnitInfo = unitPriceOf(entry.priceBeforeBonus, product.salesUnitSize);
 
       tr.innerHTML = `
         <td>${formatDate(entry.date)}</td>
         <td>${formatPrice(entry.currentPrice)}</td>
         <td>${escapeHtml(entry.bonusMechanism || '-')}</td>
-        <td>${unitInfo ? formatPrice(unitInfo.unitPrice) + ' / ' + unitInfo.standardUnit : '-'}</td>
-        <td>${entry.isBonus && normalUnitInfo ? formatPrice(normalUnitInfo.unitPrice) + ' / ' + normalUnitInfo.standardUnit : '-'}</td>
+        <td>${unitInfo ? formatUnitPrice(unitInfo) : '-'}</td>
+        <td>${entry.isBonus && normalUnitInfo ? formatUnitPrice(normalUnitInfo) : '-'}</td>
       `;
       tbody.appendChild(tr);
     }
@@ -348,17 +345,14 @@ export function createProductDetail(product, {
       const tr = document.createElement('tr');
       if (entry.isBonus) tr.className = 'history-row-bonus';
 
-      const { volume: gVol, unit: gUnit } = parseUnitSize(entry.salesUnitSize);
-      const gUnitInfo = calcPricePerUnit(entry.currentPrice, gVol, gUnit);
-
       tr.innerHTML = `
         <td>${formatDate(entry.date)}</td>
         <td>${escapeHtml(entry.title || '—')}</td>
         <td>${escapeHtml(entry.store || '—')}</td>
         <td>${escapeHtml(entry.salesUnitSize || '—')}</td>
-        <td>${entry.currentPrice != null ? `€${entry.currentPrice.toFixed(2)}` : '—'}</td>
+        <td>${formatPrice(entry.currentPrice)}</td>
         <td>${escapeHtml(entry.bonusMechanism || '—')}</td>
-        <td>${gUnitInfo ? `€${gUnitInfo.unitPrice.toFixed(2)} per ${gUnitInfo.standardUnit}` : '—'}</td>
+        <td>${formatUnitPrice(entry)}</td>
       `;
       groupTbody.appendChild(tr);
     }

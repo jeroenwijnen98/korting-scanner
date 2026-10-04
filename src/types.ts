@@ -129,7 +129,10 @@ export interface GroupHistoryEntry {
   priceBeforeBonus: number | null;
   isBonus: boolean;
   bonusMechanism: string;
-  /** Null when the sales unit size could not be parsed. */
-  unitPrice: number | null;
-  standardUnit: StandardUnit | null;
+  /**
+   * The unit price of `currentPrice` for `salesUnitSize` (see unitPriceOf).
+   * Always set: a snapshot without one never becomes an entry.
+   */
+  unitPrice: number;
+  standardUnit: StandardUnit;
 }

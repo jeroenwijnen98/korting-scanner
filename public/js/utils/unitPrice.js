@@ -1,6 +1,8 @@
 // @ts-check
-// Shared by the browser and the server (src/routes/api.ts, the bonus email), so
-// it stays plain JS that the browser can load as it is, typed with JSDoc.
+// Shared by the browser and the server (the group history service and the bonus
+// email), so it stays plain JS that the browser can load as it is, typed with
+// JSDoc. unitPriceOf and formatUnitPrice are its interface; parseUnitSize and
+// calcPricePerUnit are internal steps.
 
 import { formatPrice } from './format.js';
 
@@ -17,7 +19,7 @@ import { formatPrice } from './format.js';
  * @param {string | null | undefined} salesUnitSize
  * @returns {UnitSize}
  */
-export function parseUnitSize(salesUnitSize) {
+function parseUnitSize(salesUnitSize) {
   if (!salesUnitSize) return { volume: 1, unit: 'stuk' };
 
   const s = salesUnitSize.trim().toLowerCase();
@@ -44,7 +46,7 @@ export function parseUnitSize(salesUnitSize) {
  * @param {string} unit
  * @returns {PricePerUnit | null}
  */
-export function calcPricePerUnit(price, volume, unit) {
+function calcPricePerUnit(price, volume, unit) {
   if (price == null || !volume || volume <= 0) return null;
 
   switch (unit) {
