@@ -82,23 +82,23 @@ async function showDetail(product, allProducts, savedProducts, notFound = [], gr
     groupHistory,
     savedProduct,
     existingGroups,
-    onProductGroupChange: async (id, groupName) => {
-      await updateProduct(id, { productGroup: groupName });
+    onProductGroupChange: async (id, productGroup) => {
+      await updateProduct(id, { productGroup });
 
       // Update in allProducts (the bonus list)
       const idx = allProducts.findIndex(p => p.savedId === id);
       if (idx !== -1) {
-        allProducts[idx] = { ...allProducts[idx], productGroup: groupName || null };
+        allProducts[idx] = { ...allProducts[idx], productGroup };
       }
 
       // Update in savedProducts
       const sIdx = savedProducts.findIndex(s => s.id === id);
       if (sIdx !== -1) {
-        savedProducts[sIdx] = { ...savedProducts[sIdx], productGroup: groupName || null };
+        savedProducts[sIdx] = { ...savedProducts[sIdx], productGroup };
       }
 
       // Re-open detail with updated product
-      const updatedProduct = idx !== -1 ? allProducts[idx] : { ...product, productGroup: groupName || null };
+      const updatedProduct = idx !== -1 ? allProducts[idx] : { ...product, productGroup };
       showDetail(updatedProduct, allProducts, savedProducts, notFound, grocerUrl);
     },
     onBack: () => render(allProducts, savedProducts, notFound, grocerUrl),
