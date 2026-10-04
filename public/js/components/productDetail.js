@@ -5,7 +5,6 @@ import { showToast } from './toast.js';
 import { storeBadge } from './storeBadge.js';
 import { pauseControlText } from '../utils/pauseControl.js';
 import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
-import { errorMessage } from '../utils/errorMessage.js';
 
 /**
  * @typedef {import('./productCard.js').DisplayedProduct} DisplayedProduct
@@ -23,7 +22,7 @@ import { errorMessage } from '../utils/errorMessage.js';
  * @property {string[]} [existingGroups]
  * @property {((id: string, productGroup: string | null) => void) | null} [onProductGroupChange]
  * @property {GroupHistoryEntry[]} [groupHistory] newest first
- * @property {((updated: SavedProduct) => void) | null} [onPauseChange] set to show the pause control for the saved product; called with the saved product once the pause is stored
+ * @property {(() => Promise<boolean>) | null} [onTogglePause] set to show the pause control for the saved product; asks to pause or resume it and resolves with whether it is paused afterwards
  */
 
 /**
@@ -39,7 +38,7 @@ export function createProductDetail(product, {
   existingGroups = [],
   onProductGroupChange = null,
   groupHistory = [],
-  onPauseChange = null,
+  onTogglePause = null,
 }) {
   const el = document.createElement('div');
   el.className = 'product-detail';
@@ -81,7 +80,7 @@ export function createProductDetail(product, {
   el.appendChild(meta);
 
   // Pause control (only when viewing a saved product)
-  if (savedProduct?.id && onPauseChange) {
+  if (savedProduct?.id && onTogglePause) {
     let isPaused = Boolean(savedProduct.paused);
     const pauseBtn = document.createElement('button');
     pauseBtn.className = 'btn btn-secondary btn-sm product-detail-pause';
@@ -93,17 +92,9 @@ export function createProductDetail(product, {
     renderPauseControl();
     pauseBtn.addEventListener('click', async () => {
       pauseBtn.disabled = true;
-      try {
-        const updated = await updateProduct(savedProduct.id, { paused: !isPaused });
-        isPaused = Boolean(updated.paused);
-        renderPauseControl();
-        onPauseChange(updated);
-        showToast(isPaused ? 'Product gepauzeerd' : 'Product hervat', 'success');
-      } catch (err) {
-        showToast(errorMessage(err), 'error');
-      } finally {
-        pauseBtn.disabled = false;
-      }
+      isPaused = await onTogglePause();
+      renderPauseControl();
+      pauseBtn.disabled = false;
     });
     el.appendChild(pauseBtn);
   }

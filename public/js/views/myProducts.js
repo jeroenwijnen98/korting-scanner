@@ -11,6 +11,7 @@ import { savedProductId } from '../utils/savedProductId.js';
 import { groupPauseAction } from '../utils/groupPause.js';
 import { splitPaused } from '../utils/pausedLayout.js';
 import { productCount } from '../utils/format.js';
+import { createSavedProductList } from '../savedProducts.js';
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
@@ -22,8 +23,8 @@ import { productCount } from '../utils/format.js';
  */
 
 const panel = document.getElementById('panel-my-products');
-/** @type {SavedProduct[]} */
-let savedProducts = [];
+const savedList = createSavedProductList({ getProducts, updateProduct, removeProduct });
+savedList.onChange(renderSaved);
 /** @type {StoreFilter} */
 let activeStore = 'ah';
 /** @type {number | undefined} */
@@ -145,16 +146,12 @@ export async function initMyProducts() {
 
 async function loadSaved() {
   try {
-    savedProducts = await getProducts();
-    renderSaved();
+    await savedList.load();
 
     // Backfill images for existing saved products (fire once, re-render when done)
-    const hasMissingImages = savedProducts.some(p => !p.imageUrl);
+    const hasMissingImages = savedList.products().some(p => !p.imageUrl);
     if (hasMissingImages) {
-      syncProductImages().then(enriched => {
-        savedProducts = enriched;
-        renderSaved();
-      }).catch(() => {});
+      syncProductImages().then(enriched => savedList.merge(enriched)).catch(() => {});
     }
   } catch (err) {
     showToast('Kon producten niet laden', 'error');
@@ -165,6 +162,7 @@ function renderSaved() {
   const container = document.getElementById('saved-products');
   if (!container) return;
   container.innerHTML = '';
+  const savedProducts = savedList.products();
 
   const filtered = activeStore === 'alle'
     ? savedProducts
@@ -228,22 +226,10 @@ function createSavedCard(product) {
   const card = createProductCard(product, {
     isUnavailable: unavailableIds.includes(product.id),
     isPaused: Boolean(product.paused),
-    onTogglePause: async (p) => {
-      const paused = !p.paused;
-      try {
-        const updated = await updateProduct(p.id, { paused });
-        savedProducts = savedProducts.map(s => (s.id === updated.id ? updated : s));
-        renderSaved();
-        showToast(paused ? 'Product gepauzeerd' : 'Product hervat', 'success');
-      } catch (err) {
-        showToast(errorMessage(err), 'error');
-      }
-    },
+    onTogglePause: (p) => { togglePause(p.id); },
     onRemove: async (p) => {
       try {
-        await removeProduct(p.id);
-        savedProducts = savedProducts.filter(s => s.id !== p.id);
-        renderSaved();
+        await savedList.remove(p.id);
         showToast('Product verwijderd', 'success');
       } catch (err) {
         showToast(errorMessage(err), 'error');
@@ -255,6 +241,22 @@ function createSavedCard(product) {
 }
 
 /**
+ * Pauses or resumes a saved product, for the card and the detail.
+ * @param {string} id
+ * @returns {Promise<boolean>} whether it is paused afterwards, also when that failed
+ */
+async function togglePause(id) {
+  const paused = !savedList.get(id)?.paused;
+  try {
+    await savedList.setPaused(id, paused);
+    showToast(paused ? 'Product gepauzeerd' : 'Product hervat', 'success');
+  } catch (err) {
+    showToast(errorMessage(err), 'error');
+  }
+  return Boolean(savedList.get(id)?.paused);
+}
+
+/**
  * The header button that pauses or resumes a whole product group. It acts on,
  * and takes its label from, every member across all stores, not only the ones
  * the store filter shows.
@@ -262,7 +264,7 @@ function createSavedCard(product) {
  * @returns {HTMLButtonElement}
  */
 function createGroupPauseButton(productGroup) {
-  const { paused: willPause } = groupPauseAction(savedProducts, productGroup);
+  const { paused: willPause } = groupPauseAction(savedList.products(), productGroup);
   const btn = document.createElement('button');
   btn.className = 'btn btn-ghost btn-sm group-section-pause';
   btn.textContent = willPause ? 'Pauzeren' : 'Hervatten';
@@ -270,17 +272,16 @@ function createGroupPauseButton(productGroup) {
   btn.addEventListener('click', async () => {
     btn.disabled = true;
     // Taken again on click: the list may have changed since this render
-    const action = groupPauseAction(savedProducts, productGroup);
+    const action = groupPauseAction(savedList.products(), productGroup);
     const results = await Promise.allSettled(
       action.ids.map(id => updateProduct(id, { paused: action.paused })),
     );
-    /** @type {Map<string, SavedProduct>} */
-    const updated = new Map();
+    /** @type {SavedProduct[]} */
+    const updated = [];
     for (const r of results) {
-      if (r.status === 'fulfilled') updated.set(r.value.id, r.value);
+      if (r.status === 'fulfilled') updated.push(r.value);
     }
-    savedProducts = savedProducts.map(s => updated.get(s.id) || s);
-    renderSaved();
+    savedList.merge(updated);
     const failed = results.find(r => r.status === 'rejected');
     if (failed) {
       showToast(errorMessage(/** @type {PromiseRejectedResult} */ (failed).reason), 'error');
@@ -317,11 +318,10 @@ async function showProductDetail(product) {
     : { ...product };
 
   const existingGroups = [...new Set(
-    savedProducts.map(s => s.productGroup).filter(Boolean)
+    savedList.products().map(s => s.productGroup).filter(Boolean)
   )];
 
-  // The savedProduct is the object from savedProducts that matches this product
-  const savedProduct = savedProducts.find(s => s.id === productId) || null;
+  const savedProduct = savedList.get(productId);
 
   panel.innerHTML = '';
   const detailEl = createProductDetail(enrichedDetail, {
@@ -331,23 +331,12 @@ async function showProductDetail(product) {
     savedProduct,
     existingGroups,
     onProductGroupChange: (id, groupName) => {
-      // Update savedProducts in memory
-      const idx = savedProducts.findIndex(s => s.id === id);
-      if (idx !== -1) {
-        savedProducts[idx] = { ...savedProducts[idx], productGroup: groupName || null };
-      }
-      // Re-render saved list
-      renderSaved();
+      const saved = savedList.get(id);
+      if (saved) savedList.merge([{ ...saved, productGroup: groupName || null }]);
       // Re-open detail with updated product
-      const updatedProduct = idx !== -1
-        ? savedProducts[idx]
-        : { ...product, productGroup: groupName || null };
-      showProductDetail(updatedProduct);
+      showProductDetail(savedList.get(id) || { ...product, productGroup: groupName || null });
     },
-    onPauseChange: (updated) => {
-      // The card picks this up when the list is rendered again
-      savedProducts = savedProducts.map(s => (s.id === updated.id ? updated : s));
-    },
+    onTogglePause: () => togglePause(productId),
     onBack: () => initMyProducts(),
   });
   panel.appendChild(detailEl);
@@ -371,7 +360,7 @@ function renderSearchResults(results, container) {
   }
 
   results.forEach(product => {
-    const savedIds = savedProducts.map(p => p.id);
+    const savedIds = savedList.products().map(p => p.id);
     const store = activeStore === 'alle' ? 'ah' : activeStore;
     const productId = savedProductId(store, product.productId);
     const isSaved = savedIds.includes(productId);
@@ -390,7 +379,7 @@ function renderSearchResults(results, container) {
             subCategory: p.subCategory,
             imageUrl: p.imageUrl,
           });
-          savedProducts.push(entry);
+          savedList.merge([entry]);
           showToast('Product toegevoegd', 'success');
           // Re-render search results to show checkmark
           renderSearchResults(results, container);
