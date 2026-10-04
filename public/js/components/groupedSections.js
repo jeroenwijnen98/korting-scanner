@@ -1,5 +1,5 @@
 // @ts-check
-import { parseUnitSize, calcPricePerUnit } from '../utils/unitPrice.js';
+import { unitPriceOf } from '../utils/unitPrice.js';
 import { sectionLayout } from '../utils/pausedLayout.js';
 
 /**
@@ -10,8 +10,9 @@ import { sectionLayout } from '../utils/pausedLayout.js';
 /**
  * Render products as sections: "Niet gecategoriseerd" first, then one section
  * per productgroup (in first-seen order), each group sorted by unit price
- * ascending with unknown unit prices last. In a mixed group the paused members
- * hide behind a "N gepauzeerd" row that opens and closes them.
+ * ascending; members without a unit price (no price, or a size such as "0 g")
+ * come last. In a mixed group the paused members hide behind a "N gepauzeerd"
+ * row that opens and closes them.
  * @template {DisplayedProduct & Pausable} P
  * @param {HTMLElement} container sections are appended to it
  * @param {P[]} products
@@ -128,8 +129,5 @@ function fillCardList(list, productGroup, items, makeCard, expandedPausedRows) {
 
 /** @param {DisplayedProduct} product */
 function getUnitPriceForSort(product) {
-  if (product.currentPrice == null) return null;
-  const { volume, unit } = parseUnitSize(product.salesUnitSize);
-  const result = calcPricePerUnit(product.currentPrice, volume, unit);
-  return result ? result.unitPrice : null;
+  return unitPriceOf(product.currentPrice, product.salesUnitSize)?.unitPrice ?? null;
 }

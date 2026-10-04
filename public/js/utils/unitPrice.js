@@ -2,6 +2,8 @@
 // Shared by the browser and the server (src/routes/api.ts, the bonus email), so
 // it stays plain JS that the browser can load as it is, typed with JSDoc.
 
+import { formatPrice } from './format.js';
+
 /**
  * @typedef {'ml' | 'cl' | 'l' | 'g' | 'kg' | 'stuk' | 'rol'} SizeUnit
  * @typedef {import('../../../src/types.ts').StandardUnit} StandardUnit
@@ -63,4 +65,32 @@ export function calcPricePerUnit(price, volume, unit) {
     default:
       return null;
   }
+}
+
+/**
+ * The unit price of a price for a product of the given sales unit size, e.g.
+ * 2 for "500 g" → { unitPrice: 4, standardUnit: 'kg' }.
+ *
+ * A size that does not parse (empty, or no known unit such as "per bos") counts
+ * as one `stuk`, so its unit price is the price itself per stuk.
+ *
+ * Null when there is no price, or when the size has a known unit but a number
+ * of zero or one that cannot be read (e.g. "0 g"): then there is nothing to
+ * compare by. Callers choose their own placeholder for it.
+ * @param {number | null | undefined} price
+ * @param {string | null | undefined} salesUnitSize
+ * @returns {PricePerUnit | null}
+ */
+export function unitPriceOf(price, salesUnitSize) {
+  const { volume, unit } = parseUnitSize(salesUnitSize);
+  return calcPricePerUnit(price, volume, unit);
+}
+
+/**
+ * A unit price for display, e.g. `€ 1,23 / kg` (nl-NL, as formatPrice).
+ * @param {PricePerUnit} pricePerUnit
+ * @returns {string}
+ */
+export function formatUnitPrice({ unitPrice, standardUnit }) {
+  return `${formatPrice(unitPrice)} / ${standardUnit}`;
 }
