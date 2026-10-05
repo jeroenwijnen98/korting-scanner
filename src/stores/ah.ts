@@ -69,7 +69,8 @@ async function getToken(): Promise<string> {
   return tokenData.token;
 }
 
-async function ahFetch<T>(path: string, retried = false): Promise<T> {
+/** The response to an authorized GET, after one retry with a fresh token on a 401. */
+async function ahGet(path: string, retried = false): Promise<Response> {
   const token = await getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
@@ -80,15 +81,54 @@ async function ahFetch<T>(path: string, retried = false): Promise<T> {
   });
   if (res.status === 401 && !retried) {
     tokenData = null;
-    return ahFetch<T>(path, true);
+    return ahGet(path, true);
   }
+  return res;
+}
+
+async function ahFetch<T>(path: string): Promise<T> {
+  const res = await ahGet(path);
   if (!res.ok) throw new Error(`AH API error: ${res.status}`);
   return (await res.json()) as T;
 }
 
-async function fetchProductDetail(webshopId: string): Promise<AHRawProduct> {
-  const data = await ahFetch<AHDetailResponse>(`/mobile-services/product/detail/v4/fir/${webshopId}`);
+/** Null when AH does not know the product (404). */
+async function fetchProductDetail(webshopId: string): Promise<AHRawProduct | null> {
+  const res = await ahGet(`/mobile-services/product/detail/v4/fir/${webshopId}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`AH API error: ${res.status}`);
+  const data = (await res.json()) as AHDetailResponse;
   return data.productCard || data;
+}
+
+function normalize(product: AHRawProduct): Product {
+  const price = product.priceBeforeBonus ?? product.currentPrice ?? product.price?.now?.amount ?? null;
+
+  // Bonus mechanism: check multiple possible locations
+  const discountLabel = product.discountLabels?.[0]?.defaultDescription;
+  const bonusMech = product.bonusMechanism ?? product.bonus?.segmentDescription ?? discountLabel ?? '';
+
+  // Use webshopId as productId — the detail API requires it
+  const productId = product.webshopId ?? product.hqId;
+
+  // An online-only bonus is not one you can get in the shop: no bonus at all
+  const isOnlineOnly = product.availability?.orderable === 'ONLINE_ONLY' || product.isExclusivelySoldOnline || false;
+
+  return buildProduct({
+    productId: String(productId),
+    title: product.title,
+    salesUnitSize: product.salesUnitSize || '',
+    mainCategory: product.mainCategory || '',
+    subCategory: product.subCategory || '',
+    brand: product.brand || '',
+    imageUrl: product.images?.[0]?.url || null,
+    isOnlineOnly,
+    store: 'ah',
+  }, price, product.isBonus && !isOnlineOnly ? {
+    mechanism: bonusMech,
+    startDate: product.bonusStartDate || product.bonus?.startDate,
+    endDate: product.bonusEndDate || product.bonus?.endDate,
+  } : null);
 }
 
 class AHAdapter extends StoreAdapter {
@@ -96,44 +136,15 @@ class AHAdapter extends StoreAdapter {
     super('ah');
   }
 
-  normalize(product: AHRawProduct): Product {
-    const price = product.priceBeforeBonus ?? product.currentPrice ?? product.price?.now?.amount ?? null;
-
-    // Bonus mechanism: check multiple possible locations
-    const discountLabel = product.discountLabels?.[0]?.defaultDescription;
-    const bonusMech = product.bonusMechanism ?? product.bonus?.segmentDescription ?? discountLabel ?? '';
-
-    // Use webshopId as productId — the detail API requires it
-    const productId = product.webshopId ?? product.hqId;
-
-    // An online-only bonus is not one you can get in the shop: no bonus at all
-    const isOnlineOnly = product.availability?.orderable === 'ONLINE_ONLY' || product.isExclusivelySoldOnline || false;
-
-    return buildProduct({
-      productId: String(productId),
-      title: product.title,
-      salesUnitSize: product.salesUnitSize || '',
-      mainCategory: product.mainCategory || '',
-      subCategory: product.subCategory || '',
-      brand: product.brand || '',
-      imageUrl: product.images?.[0]?.url || null,
-      isOnlineOnly,
-      store: 'ah',
-    }, price, product.isBonus && !isOnlineOnly ? {
-      mechanism: bonusMech,
-      startDate: product.bonusStartDate || product.bonus?.startDate,
-      endDate: product.bonusEndDate || product.bonus?.endDate,
-    } : null);
-  }
-
   async searchProducts(query: string): Promise<Product[]> {
     const data = await ahFetch<AHSearchResponse>(`/mobile-services/product/search/v2?query=${encodeURIComponent(query)}&page=0&size=25`);
     const products = data.products || data.cards?.flatMap(c => c.products) || [];
-    return products.map(p => this.normalize(p)).filter(p => !p.isOnlineOnly);
+    return products.map(normalize).filter(p => !p.isOnlineOnly);
   }
 
-  async getProductDetail(storeProductId: string): Promise<Product> {
-    return this.normalize(await fetchProductDetail(storeProductId));
+  async getProductDetail(storeProductId: string): Promise<Product | null> {
+    const product = await fetchProductDetail(storeProductId);
+    return product && normalize(product);
   }
 }
 

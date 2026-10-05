@@ -35,20 +35,25 @@ interface SapSearchResponse<Promotion> {
 
 /** Search and detail requests for one site, e.g. `kvn-spa` (Kruidvat) or `kvtp` (Trekpleister). */
 export function sapCommerceApi<Promotion>(siteId: string, storeLabel: string) {
-  async function sapFetch<T>(path: string): Promise<T> {
-    const res = await fetch(`${API_HOST}/${siteId}${path}`, { headers: COMMON_HEADERS });
-    if (!res.ok) throw new Error(`${storeLabel} API error: ${res.status}`);
-    return (await res.json()) as T;
+  async function sapGet(path: string): Promise<Response> {
+    return fetch(`${API_HOST}/${siteId}${path}`, { headers: COMMON_HEADERS });
+  }
+  function failure(res: Response): Error {
+    return new Error(`${storeLabel} API error: ${res.status}`);
   }
   return {
     async search(query: string): Promise<SapRawProduct<Promotion>[]> {
-      const data = await sapFetch<SapSearchResponse<Promotion>>(
-        `/search?fields=FULL&lang=nl&query=${encodeURIComponent(query)}`
-      );
+      const res = await sapGet(`/search?fields=FULL&lang=nl&query=${encodeURIComponent(query)}`);
+      if (!res.ok) throw failure(res);
+      const data = (await res.json()) as SapSearchResponse<Promotion>;
       return data.products || [];
     },
-    detail(storeProductId: string): Promise<SapRawProduct<Promotion>> {
-      return sapFetch(`/products/${encodeURIComponent(storeProductId)}?fields=FULL&lang=nl`);
+    /** Null when the store does not know the product. */
+    async detail(storeProductId: string): Promise<SapRawProduct<Promotion> | null> {
+      const res = await sapGet(`/products/${encodeURIComponent(storeProductId)}?fields=FULL&lang=nl`);
+      if (res.status === 404) return null;
+      if (!res.ok) throw failure(res);
+      return (await res.json()) as SapRawProduct<Promotion>;
     },
   };
 }

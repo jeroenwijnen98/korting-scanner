@@ -44,27 +44,28 @@ function trekpleisterMechanism(promo: TrekpleisterPromotion, brand: string): str
   return title;
 }
 
+function normalize(product: TrekpleisterRawProduct): Product {
+  const promo = product.topPromotion;
+  const fields = sapProductFields(product, IMAGE_HOST, 'trekpleister');
+  const isPriceReducing = !!promo?.title && !isFreeGiftPromotion(promo.title);
+  const mechanism = promo && isPriceReducing ? trekpleisterMechanism(promo, fields.brand) : '';
+  return buildProduct(fields, product.price?.value ?? null,
+    mechanism ? { mechanism, startDate: promo?.startDate, endDate: promo?.endDate } : null);
+}
+
 class TrekpleisterAdapter extends StoreAdapter {
   constructor() {
     super('trekpleister');
   }
 
-  normalize(product: TrekpleisterRawProduct): Product {
-    const promo = product.topPromotion;
-    const fields = sapProductFields(product, IMAGE_HOST, 'trekpleister');
-    const isPriceReducing = !!promo?.title && !isFreeGiftPromotion(promo.title);
-    const mechanism = promo && isPriceReducing ? trekpleisterMechanism(promo, fields.brand) : '';
-    return buildProduct(fields, product.price?.value ?? null,
-      mechanism ? { mechanism, startDate: promo?.startDate, endDate: promo?.endDate } : null);
-  }
-
   /** Every result has isBonus false: search results carry only a promotion stub. */
   async searchProducts(query: string): Promise<Product[]> {
-    return (await api.search(query)).map(p => this.normalize(p));
+    return (await api.search(query)).map(normalize);
   }
 
-  async getProductDetail(storeProductId: string): Promise<Product> {
-    return this.normalize(await api.detail(storeProductId));
+  async getProductDetail(storeProductId: string): Promise<Product | null> {
+    const product = await api.detail(storeProductId);
+    return product && normalize(product);
   }
 }
 

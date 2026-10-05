@@ -141,47 +141,47 @@ function salesUnitSize(specs: BolRawProduct['specifications']): string {
   return '';
 }
 
+function normalize(product: BolRawProduct): Product {
+  const offer = product.bestSellingOffer;
+  const sellingPrice = amount(offer?.sellingPrice?.price);
+
+  // Only bol's "most shown price over 90 days" is a price before bonus, never the adviesprijs.
+  const reference = offer?.savings?.reference;
+  const isMostShown = /^meestal$/i.test(reference?.text?.shortText?.text?.trim() ?? '');
+  const mostShownPrice = isMostShown ? amount(reference?.referencePrice) : null;
+
+  let bonusMechanism = '';
+  if (offer?.promotionalLabels) {
+    const label = offer.promotionalLabels.find(l =>
+      l.__typename === 'DiscountLabel' && BONUS_LABELS.includes(l.titleText?.trim().toLowerCase() ?? ''));
+    bonusMechanism = label?.titleText?.trim() ?? '';
+  } else if (offer && mostShownPrice != null && sellingPrice != null && mostShownPrice > sellingPrice) {
+    bonusMechanism = FALLBACK_MECHANISM;
+  }
+
+  const category = product.categories?.[0];
+  const path = category ? [...(category.parents ?? []), category] : [];
+  const image = product.primaryImageRegular?.[0] ?? product.primaryProductImageAssets?.[0];
+
+  // On a bonus the selling price is the bonus price and "Meestal" the normal price.
+  const bonus = bonusMechanism ? { mechanism: bonusMechanism, price: sellingPrice } : null;
+  const normalPrice = bonus ? mostShownPrice : sellingPrice;
+
+  return buildProduct({
+    productId: String(product.id),
+    title: product.title || '',
+    salesUnitSize: salesUnitSize(product.specifications),
+    mainCategory: path[0]?.name || '',
+    subCategory: path[1]?.name || '',
+    brand: product.relatedParties?.find(r => r.role === 'BRAND')?.party?.name || '',
+    imageUrl: image?.renditions?.[0]?.url || null,
+    store: 'bol',
+  }, normalPrice, bonus);
+}
+
 class BolAdapter extends StoreAdapter {
   constructor() {
     super('bol');
-  }
-
-  normalize(product: BolRawProduct): Product {
-    const offer = product.bestSellingOffer;
-    const sellingPrice = amount(offer?.sellingPrice?.price);
-
-    // Only bol's "most shown price over 90 days" is a price before bonus, never the adviesprijs.
-    const reference = offer?.savings?.reference;
-    const isMostShown = /^meestal$/i.test(reference?.text?.shortText?.text?.trim() ?? '');
-    const mostShownPrice = isMostShown ? amount(reference?.referencePrice) : null;
-
-    let bonusMechanism = '';
-    if (offer?.promotionalLabels) {
-      const label = offer.promotionalLabels.find(l =>
-        l.__typename === 'DiscountLabel' && BONUS_LABELS.includes(l.titleText?.trim().toLowerCase() ?? ''));
-      bonusMechanism = label?.titleText?.trim() ?? '';
-    } else if (offer && mostShownPrice != null && sellingPrice != null && mostShownPrice > sellingPrice) {
-      bonusMechanism = FALLBACK_MECHANISM;
-    }
-
-    const category = product.categories?.[0];
-    const path = category ? [...(category.parents ?? []), category] : [];
-    const image = product.primaryImageRegular?.[0] ?? product.primaryProductImageAssets?.[0];
-
-    // On a bonus the selling price is the bonus price and "Meestal" the normal price.
-    const bonus = bonusMechanism ? { mechanism: bonusMechanism, price: sellingPrice } : null;
-    const normalPrice = bonus ? mostShownPrice : sellingPrice;
-
-    return buildProduct({
-      productId: String(product.id),
-      title: product.title || '',
-      salesUnitSize: salesUnitSize(product.specifications),
-      mainCategory: path[0]?.name || '',
-      subCategory: path[1]?.name || '',
-      brand: product.relatedParties?.find(r => r.role === 'BRAND')?.party?.name || '',
-      imageUrl: image?.renditions?.[0]?.url || null,
-      store: 'bol',
-    }, normalPrice, bonus);
   }
 
   async searchProducts(query: string): Promise<Product[]> {
@@ -189,7 +189,7 @@ class BolAdapter extends StoreAdapter {
     if (status !== 200) throw new Error(`bol search error: ${status}`);
     // A query bol answers with a landing page instead of results has no search route.
     const products: BolRawProduct[] = pageData(html)['routes/search/searchPage']?.products ?? [];
-    return products.map(p => this.normalize(p));
+    return products.map(normalize);
   }
 
   /**
@@ -204,7 +204,7 @@ class BolAdapter extends StoreAdapter {
     const product: BolRawProduct | undefined =
       pageData(html)['routes/product']?.content?.productPageData?.product;
     if (!product?.bestSellingOffer || amount(product.bestSellingOffer.sellingPrice?.price) == null) return null;
-    return this.normalize(product);
+    return normalize(product);
   }
 }
 

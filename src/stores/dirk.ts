@@ -103,28 +103,28 @@ async function fetchAssortmentBatch(productIds: number[]): Promise<Map<number, D
   return map;
 }
 
+function normalize(product: DirkRawProduct, assortment: DirkAssortment | undefined): Product {
+  const offer = assortment?.productOffer ?? null;
+  return buildProduct({
+    productId: String(product.productId),
+    title: product.headerText || '',
+    salesUnitSize: product.packaging || '',
+    mainCategory: product.department || '',
+    subCategory: product.webgroup || '',
+    brand: product.brand || '',
+    imageUrl: buildImageUrl(product.image),
+    store: 'dirk',
+  }, assortment?.normalPrice ?? null, offer ? {
+    mechanism: (offer.textPriceSign || '').replace(/[_\s]+/g, ' ').trim(),
+    price: assortment?.offerPrice,
+    startDate: offer.startDate,
+    endDate: offer.endDate,
+  } : null);
+}
+
 class DirkAdapter extends StoreAdapter {
   constructor() {
     super('dirk');
-  }
-
-  normalizeProduct(product: DirkRawProduct, assortment: DirkAssortment | undefined): Product {
-    const offer = assortment?.productOffer ?? null;
-    return buildProduct({
-      productId: String(product.productId),
-      title: product.headerText || '',
-      salesUnitSize: product.packaging || '',
-      mainCategory: product.department || '',
-      subCategory: product.webgroup || '',
-      brand: product.brand || '',
-      imageUrl: buildImageUrl(product.image),
-      store: 'dirk',
-    }, assortment?.normalPrice ?? null, offer ? {
-      mechanism: (offer.textPriceSign || '').replace(/[_\s]+/g, ' ').trim(),
-      price: assortment?.offerPrice,
-      startDate: offer.startDate,
-      endDate: offer.endDate,
-    } : null);
   }
 
   async searchProducts(query: string): Promise<Product[]> {
@@ -142,7 +142,7 @@ class DirkAdapter extends StoreAdapter {
     // Batch fetch pricing/offer status
     const assortmentMap = await fetchAssortmentBatch(ids);
 
-    return products.map(p => this.normalizeProduct(p, assortmentMap.get(p.productId)));
+    return products.map(p => normalize(p, assortmentMap.get(p.productId)));
   }
 
   async getProductDetail(storeProductId: string): Promise<Product | null> {
@@ -157,7 +157,7 @@ class DirkAdapter extends StoreAdapter {
     if (!data.product) return null;
 
     const assortmentMap = await fetchAssortmentBatch([id]);
-    return this.normalizeProduct(data.product, assortmentMap.get(id));
+    return normalize(data.product, assortmentMap.get(id));
   }
 
   /**
@@ -184,7 +184,7 @@ class DirkAdapter extends StoreAdapter {
       const product = productMap.get(id);
       const assortment = assortmentMap.get(id);
       if (product && assortment) {
-        observed.push({ ...this.normalizeProduct(product, assortment), savedId: saved.id });
+        observed.push({ ...normalize(product, assortment), savedId: saved.id });
       } else {
         notFound.push(saved.id);
       }

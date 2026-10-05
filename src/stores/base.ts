@@ -39,8 +39,4 @@ export class StoreAdapter {
   async getProductDetail(storeProductId: string): Promise<Product | null> {
     throw new Error('Not implemented');
   }
-
-  normalize(raw: unknown): Product {
-    throw new Error('Not implemented');
-  }
 }

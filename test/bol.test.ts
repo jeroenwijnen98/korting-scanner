@@ -1,4 +1,4 @@
-import { after, before, test } from 'node:test';
+import { after, before, test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
@@ -34,6 +34,51 @@ async function bolFetch(input: string | URL | Request, init?: RequestInit): Prom
   const id = url.match(/^https:\/\/www\.bol\.com\/nl\/nl\/p\/x\/(\d+)\/$/)?.[1];
   const file = id && PRODUCT_PAGES[id];
   return file ? new Response(await page(file)) : new Response('<html></html>', { status: 404 });
+}
+
+/** React Router's turbo-stream encoding of `value`: the inverse of the adapter's decoder. */
+function encodeTurboStream(value: unknown): unknown[] {
+  const values: unknown[] = [];
+  function put(v: unknown): number {
+    if (v === undefined) return -1;
+    if (v === null) return -5;
+    const index = values.length;
+    if (typeof v !== 'object') {
+      values.push(v);
+      return index;
+    }
+    values.push(null);
+    if (Array.isArray(v)) {
+      values[index] = v.map(put);
+    } else {
+      const out: Record<string, number> = {};
+      for (const [key, x] of Object.entries(v)) out[`_${put(key)}`] = put(x);
+      values[index] = out;
+    }
+    return index;
+  }
+  put(value);
+  return values;
+}
+
+/** A product page for `product`, in the shape bol serves it. */
+function productPage(product: BolRawProduct): string {
+  const stream = JSON.stringify(encodeTurboStream({ loaderData: { 'routes/product': { content: { productPageData: { product } } } } }));
+  return `<script>window.__reactRouterContext.streamController.enqueue(${JSON.stringify(`${stream}\n`)});</script>`;
+}
+
+/** The raw product on a fixture page. */
+async function rawProduct(name: string): Promise<BolRawProduct> {
+  return pageData(await page(name))['routes/product'].content.productPageData.product;
+}
+
+/** The adapter's product for `product`, served as its product page. */
+async function detailOf(t: TestContext, product: BolRawProduct) {
+  t.mock.method(globalThis, 'fetch', async () => new Response(productPage(product)));
+  const detail = await bol.getProductDetail(product.id);
+  t.mock.restoreAll();
+  assert.ok(detail);
+  return detail;
 }
 
 function savedBol(storeProductId: string): SavedProduct {
@@ -92,13 +137,13 @@ test('bol: Outlet is never a bonus, nor an adviesprijs on its own', async (t) =>
   assert.equal(outlet?.salesUnitSize, ''); // no "Inhoud" spec
 });
 
-test('bol: without an "Inhoud" spec, the size is the piece count', async () => {
-  const product = pageData(await page('bol-product-outlet.html'))['routes/product'].content.productPageData.product;
-  const pieces = (specifications: BolRawProduct['specifications']) => bol.normalize({ ...product, specifications }).salesUnitSize;
-  assert.equal(pieces({ groups: [{ attributes: [{ key: 'Number Pieces In Package', name: 'Aantal artikelen in verpakking', textValues: ['4 stuk(s)'] }] }] }), '4 stuks');
-  assert.equal(pieces({ detailedSummary: { attributes: [{ textValues: ['1 mesjes'] }, { textValues: ['3 stuk(s)'] }] } }), '3 stuks');
-  assert.equal(pieces({ detailedSummary: { attributes: [{ textValues: ['1 stuk(s)'] }] } }), '1 stuk');
-  assert.equal(pieces({
+test('bol: without an "Inhoud" spec, the size is the piece count', async (t) => {
+  const product = await rawProduct('bol-product-outlet.html');
+  const pieces = async (specifications: BolRawProduct['specifications']) => (await detailOf(t, { ...product, specifications })).salesUnitSize;
+  assert.equal(await pieces({ groups: [{ attributes: [{ key: 'Number Pieces In Package', name: 'Aantal artikelen in verpakking', textValues: ['4 stuk(s)'] }] }] }), '4 stuks');
+  assert.equal(await pieces({ detailedSummary: { attributes: [{ textValues: ['1 mesjes'] }, { textValues: ['3 stuk(s)'] }] } }), '3 stuks');
+  assert.equal(await pieces({ detailedSummary: { attributes: [{ textValues: ['1 stuk(s)'] }] } }), '1 stuk');
+  assert.equal(await pieces({
     groups: [{ attributes: [{ key: 'Number Pieces In Package', textValues: ['2 stuk(s)'] }, { name: 'Inhoud', textValues: ['500 ml'] }] }],
   }), '500 ml');
 });
@@ -110,34 +155,38 @@ test('bol: a redirected id is the product the page shows', async (t) => {
   assert.equal(merged?.currentPrice, 64.95);
 });
 
-test('bol: "in prijs verlaagd" is a bonus; other discount labels are not', async () => {
-  const product = pageData(await page('bol-product-deal-meestal.html'))['routes/product'].content.productPageData.product;
-  const labelled = (titleText: string) => bol.normalize({
+test('bol: "in prijs verlaagd" is a bonus; other discount labels are not', async (t) => {
+  const product = await rawProduct('bol-product-deal-meestal.html');
+  const labelled = (titleText: string) => detailOf(t, {
     ...product,
     bestSellingOffer: { ...product.bestSellingOffer, promotionalLabels: [{ __typename: 'DiscountLabel', titleText }] },
   });
-  assert.deepEqual([labelled('in prijs verlaagd').isBonus, labelled('in prijs verlaagd').bonusMechanism], [true, 'in prijs verlaagd']);
+  const verlaagd = await labelled('in prijs verlaagd');
+  assert.deepEqual([verlaagd.isBonus, verlaagd.bonusMechanism], [true, 'in prijs verlaagd']);
   for (const label of ['Outlet', 'Select-deal', '10% korting op vervangmesjes', 'tot 50,- cashback']) {
-    assert.equal(labelled(label).isBonus, false, label);
+    assert.equal((await labelled(label)).isBonus, false, label);
   }
 });
 
-test('bol: without a label field, a "Meestal" price above the current one is a bonus', async () => {
-  const product = pageData(await page('bol-product-deal-meestal.html'))['routes/product'].content.productPageData.product;
-  const { promotionalLabels, ...offer } = product.bestSellingOffer;
-  const unlabelled = bol.normalize({ ...product, bestSellingOffer: offer });
+test('bol: without a label field, a "Meestal" price above the current one is a bonus', async (t) => {
+  const product = await rawProduct('bol-product-deal-meestal.html');
+  const { promotionalLabels, ...offer } = product.bestSellingOffer!;
+  const unlabelled = await detailOf(t, { ...product, bestSellingOffer: offer });
   assert.equal(unlabelled.isBonus, true);
   assert.equal(unlabelled.bonusMechanism, 'in prijs verlaagd');
   assert.equal(unlabelled.priceBeforeBonus, 69.99);
 
-  const above = bol.normalize({ ...product, bestSellingOffer: { ...offer, sellingPrice: { price: { amount: '70.00' } } } });
+  const above = await detailOf(t, { ...product, bestSellingOffer: { ...offer, sellingPrice: { price: { amount: '70.00' } } } });
   assert.equal(above.isBonus, false);
 });
 
-test('bol: the real page decodes to the same product as its trimmed fixture', async () => {
-  const real = pageData(await page('bol-product-deal-meestal.real.html.gz'))['routes/product'].content.productPageData.product;
-  const trimmed = pageData(await page('bol-product-deal-meestal.html'))['routes/product'].content.productPageData.product;
-  assert.deepEqual(bol.normalize(real), bol.normalize(trimmed));
+test('bol: the real page gives the same product as its trimmed fixture', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => new Response(await page('bol-product-deal-meestal.real.html.gz')));
+  const real = await bol.getProductDetail('9300000238030673');
+  t.mock.restoreAll();
+  t.mock.method(globalThis, 'fetch', bolFetch);
+  assert.ok(real);
+  assert.deepEqual(real, await bol.getProductDetail('9300000238030673'));
 });
 
 test('bol observe: no buy box or an unknown id puts the saved product in notFound', async (t) => {
