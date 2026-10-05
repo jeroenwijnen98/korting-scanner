@@ -5,8 +5,9 @@
 // The store catalogue: the only place that knows a store's key, label, name,
 // colour, display order and whether it is an online store. StoreName
 // (src/types.ts) is derived from its keys, the My Products pills follow its
-// order and store badges take their colour from it. A new store needs an entry here and a store adapter in
-// src/stores/index.ts; missing either fails the typecheck.
+// order and store badges take their colour from it. A new store needs an
+// entry here and a store adapter in src/stores/index.ts; missing either fails
+// the typecheck.
 
 /**
  * @typedef {object} StoreInfo

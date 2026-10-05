@@ -17,12 +17,16 @@ import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
  * @property {() => void} onBack
  * @property {boolean} [showBonus]
  * @property {PriceSnapshot[]} [history] newest first
- * @property {SavedProduct | null} [savedProduct] set when the product is saved; enables the productgroup selector
+ * @property {SavedProduct | null} [savedProduct] set when the product is
+ *   saved; enables the productgroup selector
  * @property {string[]} [existingGroups]
- * @property {((id: string, productGroup: string | null) => Promise<void>) | null} [onProductGroupChange] set to let the
- *   productgroup selector change it; asks to set the saved product's productgroup (null for none) and rejects when that failed
+ * @property {((id: string, productGroup: string | null) => Promise<void>) | null} [onProductGroupChange]
+ *   set to let the productgroup selector change it; asks to set the saved
+ *   product's productgroup (null for none) and rejects when that failed
  * @property {GroupHistoryEntry[]} [groupHistory] newest first
- * @property {(() => Promise<boolean>) | null} [onTogglePause] set to show the pause control for the saved product; asks to pause or resume it and resolves with whether it is paused afterwards
+ * @property {(() => Promise<boolean>) | null} [onTogglePause] set to show the
+ *   pause control for the saved product; asks to pause or resume it and
+ *   resolves with whether it is paused afterwards
  */
 
 /**

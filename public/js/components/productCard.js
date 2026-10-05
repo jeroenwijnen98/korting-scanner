@@ -11,8 +11,11 @@ import { pauseControlText } from '../utils/pauseControl.js';
 /**
  * What a product card or the product detail shows: a product from a store
  * adapter, or a saved product, which carries no price or bonus state.
- * @typedef {Pick<Product, 'title' | 'store' | 'salesUnitSize' | 'brand' | 'imageUrl'>
- *   & Partial<Pick<Product, 'currentPrice' | 'priceBeforeBonus' | 'isBonus' | 'bonusMechanism' | 'bonusEndDate'>>} DisplayedProduct
+ * @typedef {Pick<Product,
+ *     'title' | 'store' | 'salesUnitSize' | 'brand' | 'imageUrl'>
+ *   & Partial<Pick<Product,
+ *     'currentPrice' | 'priceBeforeBonus' | 'isBonus' | 'bonusMechanism'
+ *     | 'bonusEndDate'>>} DisplayedProduct
  */
 
 /**

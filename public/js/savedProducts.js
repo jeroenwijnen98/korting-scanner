@@ -17,7 +17,8 @@
  * that failed kept their old state.
  * @typedef {object} GroupPauseResult
  * @property {boolean} paused the state the group was set to
- * @property {SavedProduct[]} updated the server answers for the members that saved
+ * @property {SavedProduct[]} updated the server answers for the members that
+ *   saved
  * @property {{ id: string, error: unknown }[]} failed the members that did not
  */
 
@@ -26,8 +27,8 @@
  * @property {() => Promise<void>} load fetch the saved products from the server
  * @property {() => SavedProduct[]} products the current list
  * @property {(id: string) => SavedProduct | null} get
- * @property {() => string[]} productGroups the product groups in use, each once,
- *   in list order
+ * @property {() => string[]} productGroups the product groups in use, each
+ *   once, in list order
  * @property {(id: string, paused: boolean) => Promise<SavedProduct>} setPaused
  * @property {(id: string, productGroup: string | null) => Promise<SavedProduct>} setProductGroup
  *   an empty name means no product group

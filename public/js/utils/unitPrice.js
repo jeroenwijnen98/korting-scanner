@@ -15,7 +15,8 @@ import { formatPrice } from './format.js';
 
 /**
  * Parse salesUnitSize string into volume and unit.
- * Examples: "500 g" → { volume: 500, unit: 'g' }, "1.5 l" → { volume: 1.5, unit: 'l' }
+ * Examples: "500 g" → { volume: 500, unit: 'g' },
+ * "1.5 l" → { volume: 1.5, unit: 'l' }
  * @param {string | null | undefined} salesUnitSize
  * @returns {UnitSize}
  */

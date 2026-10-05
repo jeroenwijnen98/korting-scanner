@@ -12,7 +12,8 @@ export abstract class StoreAdapter {
   /**
    * Fetches each saved product's detail in turn and reports every one found,
    * on bonus or not. A detail that fails or comes back null puts the saved id
-   * in `notFound`. Stores that can fetch many products in one request override this.
+   * in `notFound`. Stores that can fetch many products in one request
+   * override this.
    */
   async observe(savedProducts: SavedProduct[]): Promise<ObservationResult> {
     const observed: BonusProduct[] = [];

@@ -39,7 +39,8 @@ export interface Product {
 
 /**
  * A product as a store adapter observed it for a saved product, on bonus or
- * not, tied to that saved product. The bonus overview holds only those on bonus.
+ * not, tied to that saved product. The bonus overview holds only those on
+ * bonus.
  */
 export interface BonusProduct extends Product {
   savedId: string;
@@ -81,7 +82,8 @@ export interface SavedProduct {
 
 /**
  * One entry of a product's price history (price-history.json, keyed by saved
- * product id). Appended only when currentPrice, isBonus or bonusMechanism changes.
+ * product id). Appended only when currentPrice, isBonus or bonusMechanism
+ * changes.
  */
 export interface PriceSnapshot {
   /** YYYY-MM-DD. */

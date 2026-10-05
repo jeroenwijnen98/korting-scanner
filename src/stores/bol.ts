@@ -10,7 +10,8 @@ const BASE_URL = 'https://www.bol.com/nl/nl';
 // The labels bol puts on a temporary price reduction. Any other discount
 // label ("Outlet", "Select-deal", "10% korting op …", cashback) is not a bonus.
 const BONUS_LABELS = ['deal', 'in prijs verlaagd'];
-// The mechanism when the page has no label field at all but a "Meestal" price above the current one.
+// The mechanism when the page has no label field at all but a "Meestal"
+// price above the current one.
 const FALLBACK_MECHANISM = 'in prijs verlaagd';
 
 // Raw bol shapes, from the React Router loader data each page embeds: only the

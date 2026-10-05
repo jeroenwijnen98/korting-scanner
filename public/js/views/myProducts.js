@@ -233,7 +233,8 @@ function createSavedCard(product) {
 /**
  * Pauses or resumes a saved product, for the card and the detail.
  * @param {string} id
- * @returns {Promise<boolean>} whether it is paused afterwards, also when that failed
+ * @returns {Promise<boolean>} whether it is paused afterwards, also when that
+ *   failed
  */
 async function togglePause(id) {
   const paused = !savedList.get(id)?.paused;

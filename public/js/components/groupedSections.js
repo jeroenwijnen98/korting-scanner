@@ -23,7 +23,8 @@ import { sectionLayout } from '../utils/pausedLayout.js';
  * }} [options] `makeGroupAction` makes an extra control for the header of
  *   each product group (not "Niet gecategoriseerd"); `expandedPausedRows`
  *   holds the product groups (null for "Niet gecategoriseerd") whose
- *   "N gepauzeerd" row is open, and is updated as the user opens and closes them
+ *   "N gepauzeerd" row is open, and is updated as the user opens and closes
+ *   them
  */
 export function renderGroupedSections(container, products, makeCard, { makeGroupAction, expandedPausedRows = new Set() } = {}) {
   /** @type {Map<string, P[]>} */
