@@ -44,7 +44,13 @@ test('AH: a bonus from a search result, priced by its bonus mechanism; no bonus 
   assert.equal(plain.bonusEndDate, '');
   assert.equal(plain.imageUrl, null);
 
-  assert.equal(ah.normalize(online).isOnlineOnly, true);
+  // An online-only bonus does not count: no bonus at all
+  const onlineOnly = ah.normalize(online);
+  assert.equal(onlineOnly.isOnlineOnly, true);
+  assert.equal(onlineOnly.isBonus, false);
+  assert.equal(onlineOnly.bonusMechanism, '');
+  assert.equal(onlineOnly.priceBeforeBonus, null);
+  assert.equal(onlineOnly.currentPrice, 10);
 });
 
 test('AH: a detail, unwrapped from productCard', async () => {
@@ -131,7 +137,7 @@ test('Dirk observe: every found saved product, on offer or not; the rest in notF
   ]);
   assert.deepEqual(notFound.sort(), ['dirk-303', 'dirk-geen-id']);
   assert.equal(queries.length, 2);
-  assert.deepEqual(observed.filter(p => dirk.countsAsBonus(p)).map(p => p.savedId), ['dirk-101']);
+  assert.deepEqual(observed.filter(p => p.isBonus).map(p => p.savedId), ['dirk-101']);
 });
 
 test('Dirk observe: no valid ids means no request', async (t) => {

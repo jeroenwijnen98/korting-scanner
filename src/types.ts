@@ -25,10 +25,15 @@ export interface Product {
   mainCategory: string;
   subCategory: string;
   brand: string;
+  /**
+   * The store adapter's verdict: the bonus counts, for the bonus overview and
+   * everywhere else. False for a bonus the store flags but that does not
+   * count (AH online-only); the product then reads as not on bonus.
+   */
   isBonus: boolean;
   imageUrl: string | null;
   store: StoreName;
-  /** AH only: sold online only, filtered out of search and bonus results. */
+  /** AH only: sold online only, filtered out of search and never on bonus. */
   isOnlineOnly?: boolean;
 }
 

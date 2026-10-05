@@ -1,5 +1,6 @@
 import { afterEach, mock, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { checkSavedProducts } from '../src/services/priceCheck.ts';
 import { cheapestPerDate } from '../src/services/groupHistory.ts';
 import * as priceHistory from '../src/services/priceHistory.ts';
@@ -43,24 +44,24 @@ test('an observed product not on bonus gets a price snapshot but is not a bonus 
   assert.deepEqual(await priceHistory.getHistory('ah-404'), []);
 });
 
-test('the store adapter\'s countsAsBonus filters the overview: AH leaves out online-only bonuses', async () => {
-  assert.equal(ah.countsAsBonus(product('ah', '1', onBonus())), true);
-  assert.equal(ah.countsAsBonus(product('ah', '1', onBonus({ isOnlineOnly: true }))), false);
-  assert.equal(ah.countsAsBonus(product('ah', '1')), false);
+test('an online-only AH bonus is no bonus: left out of the overview, snapshotted without a bonus', async (t) => {
+  const [melk, , online] = JSON.parse(await readFile(new URL('fixtures/ah-search.json', import.meta.url), 'utf-8')).products;
+  const details: Record<string, unknown> = { '588920': { productCard: melk }, '777': { productCard: online } };
+  t.mock.method(globalThis, 'fetch', async (url: string) => {
+    if (url.includes('/auth/token/')) return Response.json({ access_token: 'token', expires_in: 3600 });
+    const id = url.split('/').pop()!;
+    return details[id] ? Response.json(details[id]) : new Response(null, { status: 404 });
+  });
 
-  const store = new FakeStore('ah', [
-    product('ah', '11', onBonus()),
-    product('ah', '12', onBonus({ isOnlineOnly: true, currentPrice: 5 })),
-  ]);
-  store.countsAsBonus = ah.countsAsBonus;
+  await save('ah', '588920');
+  await save('ah', '777');
 
-  await save('ah', '11');
-  await save('ah', '12');
-
-  const overview = await checkSavedProducts({ ah: store });
-  assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-11']);
-  // Observed all the same
-  assert.deepEqual((await priceHistory.getHistory('ah-12')).map(s => s.currentPrice), [5]);
+  const overview = await checkSavedProducts({ ah });
+  assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-588920']);
+  assert.deepEqual(overview.notFound, []);
+  // Observed all the same, at its regular price
+  assert.deepEqual((await priceHistory.getHistory('ah-777')).map(s => [s.currentPrice, s.priceBeforeBonus, s.isBonus]), [[10, null, false]]);
+  assert.deepEqual((await priceHistory.getHistory('ah-588920')).map(s => [s.currentPrice, s.isBonus]), [[0.9, true]]);
 });
 
 test('a store that throws puts its saved products in notFound; the others still count', async () => {

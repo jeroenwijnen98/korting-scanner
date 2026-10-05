@@ -8,7 +8,7 @@ import * as productStore from './productStore.ts';
  * The price check: loads the saved products, observes them store by store and
  * records a price snapshot for each one observed, on bonus or not, so a
  * regular price shows up again once a bonus ends. The overview lists only
- * those the store adapter counts as a bonus, each with its saved product's
+ * those on bonus (`isBonus`, the store adapter's verdict), each with its saved product's
  * view (`productGroup`); a paused saved product is observed and snapshotted
  * like any other but left out of the overview. A saved product whose observed
  * image differs takes the new `imageUrl`: stores replace images and the old
@@ -36,7 +36,7 @@ export async function checkSavedProducts(
       });
       const pausedIds = new Set(storeProducts.filter(p => p.paused).map(p => p.id));
       const bonusProducts = observed.filter(product =>
-        adapter.countsAsBonus(product) && !pausedIds.has(product.savedId),
+        product.isBonus && !pausedIds.has(product.savedId),
       );
       overview.bonusProducts.push(...productStore.withSavedProductView(bonusProducts, storeProducts));
       overview.notFound.push(...notFound);

@@ -35,11 +35,6 @@ export class StoreAdapter {
     return { observed, notFound };
   }
 
-  /** Whether an observed product belongs in the bonus overview. */
-  countsAsBonus(product: Product): boolean {
-    return product.isBonus;
-  }
-
   /** Resolves to null when the store does not know the product. */
   async getProductDetail(storeProductId: string): Promise<Product | null> {
     throw new Error('Not implemented');

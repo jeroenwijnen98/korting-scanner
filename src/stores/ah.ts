@@ -106,6 +106,9 @@ class AHAdapter extends StoreAdapter {
     // Use webshopId as productId — the detail API requires it
     const productId = product.webshopId ?? product.hqId;
 
+    // An online-only bonus is not one you can get in the shop: no bonus at all
+    const isOnlineOnly = product.availability?.orderable === 'ONLINE_ONLY' || product.isExclusivelySoldOnline || false;
+
     return buildProduct({
       productId: String(productId),
       title: product.title,
@@ -114,9 +117,9 @@ class AHAdapter extends StoreAdapter {
       subCategory: product.subCategory || '',
       brand: product.brand || '',
       imageUrl: product.images?.[0]?.url || null,
-      isOnlineOnly: product.availability?.orderable === 'ONLINE_ONLY' || product.isExclusivelySoldOnline || false,
+      isOnlineOnly,
       store: 'ah',
-    }, price, product.isBonus ? {
+    }, price, product.isBonus && !isOnlineOnly ? {
       mechanism: bonusMech,
       startDate: product.bonusStartDate || product.bonus?.startDate,
       endDate: product.bonusEndDate || product.bonus?.endDate,
@@ -131,11 +134,6 @@ class AHAdapter extends StoreAdapter {
 
   async getProductDetail(storeProductId: string): Promise<Product> {
     return this.normalize(await fetchProductDetail(storeProductId));
-  }
-
-  // Like search: an online-only bonus is not one you can get in the shop
-  countsAsBonus(product: Product): boolean {
-    return product.isBonus && !product.isOnlineOnly;
   }
 }
 
