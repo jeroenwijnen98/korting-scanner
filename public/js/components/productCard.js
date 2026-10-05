@@ -123,7 +123,7 @@ export function createProductCard(product, { onRemove, onTogglePause, isPaused =
       curr.textContent = formatPrice(product.currentPrice);
       prices.appendChild(curr);
     }
-    if (product.priceBeforeBonus != null && product.priceBeforeBonus !== product.currentPrice) {
+    if (product.priceBeforeBonus != null) {
       const before = document.createElement('span');
       before.className = 'price-before';
       before.textContent = formatPrice(product.priceBeforeBonus);

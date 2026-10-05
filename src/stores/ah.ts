@@ -1,6 +1,6 @@
 import type { Product } from '../types.ts';
 import { StoreAdapter } from './base.ts';
-import { bonusPrice } from './bonusMechanism.ts';
+import { buildProduct } from './product.ts';
 
 const BASE_URL = 'https://api.ah.nl';
 
@@ -101,29 +101,26 @@ class AHAdapter extends StoreAdapter {
 
     // Bonus mechanism: check multiple possible locations
     const discountLabel = product.discountLabels?.[0]?.defaultDescription;
-    const bonusMech = product.bonusMechanism ?? product.bonus?.segmentDescription ?? discountLabel ?? null;
-    const currentPrice = product.isBonus ? bonusPrice(bonusMech, price) ?? price : price;
+    const bonusMech = product.bonusMechanism ?? product.bonus?.segmentDescription ?? discountLabel ?? '';
 
     // Use webshopId as productId — the detail API requires it
     const productId = product.webshopId ?? product.hqId;
 
-    return {
+    return buildProduct({
       productId: String(productId),
       title: product.title,
       salesUnitSize: product.salesUnitSize || '',
-      bonusMechanism: bonusMech || '',
-      priceBeforeBonus: price,
-      currentPrice,
-      bonusStartDate: product.bonusStartDate || product.bonus?.startDate || '',
-      bonusEndDate: product.bonusEndDate || product.bonus?.endDate || '',
       mainCategory: product.mainCategory || '',
       subCategory: product.subCategory || '',
       brand: product.brand || '',
-      isBonus: product.isBonus ?? false,
       imageUrl: product.images?.[0]?.url || null,
       isOnlineOnly: product.availability?.orderable === 'ONLINE_ONLY' || product.isExclusivelySoldOnline || false,
       store: 'ah',
-    };
+    }, price, product.isBonus ? {
+      mechanism: bonusMech,
+      startDate: product.bonusStartDate || product.bonus?.startDate,
+      endDate: product.bonusEndDate || product.bonus?.endDate,
+    } : null);
   }
 
   async searchProducts(query: string): Promise<Product[]> {

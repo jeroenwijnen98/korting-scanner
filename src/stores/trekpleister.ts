@@ -1,6 +1,7 @@
 import type { Product } from '../types.ts';
 import { StoreAdapter } from './base.ts';
 import { bonusPrice } from './bonusMechanism.ts';
+import { buildProduct } from './product.ts';
 import { isFreeGiftPromotion, sapCommerceApi, sapProductFields, type SapRawProduct } from './sapCommerce.ts';
 
 const IMAGE_HOST = 'https://www.trekpleister.nl';
@@ -50,29 +51,11 @@ class TrekpleisterAdapter extends StoreAdapter {
 
   normalize(product: TrekpleisterRawProduct): Product {
     const promo = product.topPromotion;
-    const fields = sapProductFields(product, IMAGE_HOST);
+    const fields = sapProductFields(product, IMAGE_HOST, 'trekpleister');
     const isPriceReducing = !!promo?.title && !isFreeGiftPromotion(promo.title);
-    const bonusMechanism = promo && isPriceReducing ? trekpleisterMechanism(promo, fields.brand) : '';
-    const isBonus = !!bonusMechanism;
-    const normalPrice = product.price?.value ?? null;
-    const currentPrice = isBonus ? bonusPrice(bonusMechanism, normalPrice) ?? normalPrice : normalPrice;
-
-    return {
-      productId: fields.productId,
-      title: fields.title,
-      salesUnitSize: fields.salesUnitSize,
-      bonusMechanism,
-      priceBeforeBonus: isBonus ? normalPrice : null,
-      currentPrice,
-      bonusStartDate: isBonus ? promo?.startDate || '' : '',
-      bonusEndDate: isBonus ? promo?.endDate || '' : '',
-      mainCategory: fields.mainCategory,
-      subCategory: fields.subCategory,
-      brand: fields.brand,
-      isBonus,
-      imageUrl: fields.imageUrl,
-      store: 'trekpleister',
-    };
+    const mechanism = promo && isPriceReducing ? trekpleisterMechanism(promo, fields.brand) : '';
+    return buildProduct(fields, product.price?.value ?? null,
+      mechanism ? { mechanism, startDate: promo?.startDate, endDate: promo?.endDate } : null);
   }
 
   /** Every result has isBonus false: search results carry only a promotion stub. */

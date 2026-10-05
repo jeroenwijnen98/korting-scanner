@@ -225,7 +225,7 @@ export function createProductDetail(product, {
       curr.textContent = formatPrice(product.currentPrice);
       prices.appendChild(curr);
     }
-    if (product.priceBeforeBonus != null && product.priceBeforeBonus !== product.currentPrice) {
+    if (product.priceBeforeBonus != null) {
       const before = document.createElement('span');
       before.className = 'price-before';
       before.textContent = formatPrice(product.priceBeforeBonus);
@@ -260,7 +260,7 @@ export function createProductDetail(product, {
       unitSection.appendChild(row);
     }
 
-    if (product.priceBeforeBonus != null && product.priceBeforeBonus !== product.currentPrice) {
+    if (product.priceBeforeBonus != null) {
       const normalUnit = unitPriceOf(product.priceBeforeBonus, product.salesUnitSize);
       if (normalUnit) {
         const row = document.createElement('div');
@@ -271,8 +271,7 @@ export function createProductDetail(product, {
     }
   } else {
     // Not on bonus — show regular unit price
-    const price = product.currentPrice ?? product.priceBeforeBonus;
-    const unitInfo = unitPriceOf(price, product.salesUnitSize);
+    const unitInfo = unitPriceOf(product.currentPrice, product.salesUnitSize);
     if (unitInfo) {
       const row = document.createElement('div');
       row.className = 'unit-price-row';

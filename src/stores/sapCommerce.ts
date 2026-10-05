@@ -1,4 +1,5 @@
-import type { Product } from '../types.ts';
+import type { StoreName } from '../types.ts';
+import type { ProductFields } from './product.ts';
 
 // The A.S. Watson SAP Commerce API (fields=FULL) behind Kruidvat and
 // Trekpleister: app.kruidvat.nl serves both sites, each under its own site id.
@@ -52,11 +53,8 @@ export function sapCommerceApi<Promotion>(siteId: string, storeLabel: string) {
   };
 }
 
-/** The product fields that do not depend on the promotion. */
-export function sapProductFields(
-  product: SapRawProduct<unknown>,
-  imageHost: string,
-): Pick<Product, 'productId' | 'title' | 'salesUnitSize' | 'mainCategory' | 'subCategory' | 'brand' | 'imageUrl'> {
+/** The product fields that do not depend on the price or the promotion. */
+export function sapProductFields(product: SapRawProduct<unknown>, imageHost: string, store: StoreName): ProductFields {
   const hierarchyCats = product.categoriesHierarchy?.[0]?.categories || [];
   const firstImage = product.images?.find(i => i.imageType === 'PRIMARY') || product.images?.[0];
   const imageUrl = firstImage?.url
@@ -71,6 +69,7 @@ export function sapProductFields(
     subCategory: hierarchyCats[1]?.name || '',
     brand: product.manufacturer || '',
     imageUrl,
+    store,
   };
 }
 

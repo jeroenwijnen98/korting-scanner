@@ -1,5 +1,6 @@
 import type { Product } from '../types.ts';
 import { StoreAdapter } from './base.ts';
+import { buildProduct } from './product.ts';
 
 // bol.com has no public API that fits (see docs/adr/0001): prices come from
 // the public search and product pages. Plain fetch: its default
@@ -147,7 +148,7 @@ class BolAdapter extends StoreAdapter {
 
   normalize(product: BolRawProduct): Product {
     const offer = product.bestSellingOffer;
-    const currentPrice = amount(offer?.sellingPrice?.price);
+    const sellingPrice = amount(offer?.sellingPrice?.price);
 
     // Only bol's "most shown price over 90 days" is a price before bonus, never the adviesprijs.
     const reference = offer?.savings?.reference;
@@ -159,31 +160,26 @@ class BolAdapter extends StoreAdapter {
       const label = offer.promotionalLabels.find(l =>
         l.__typename === 'DiscountLabel' && BONUS_LABELS.includes(l.titleText?.trim().toLowerCase() ?? ''));
       bonusMechanism = label?.titleText?.trim() ?? '';
-    } else if (offer && mostShownPrice != null && currentPrice != null && mostShownPrice > currentPrice) {
+    } else if (offer && mostShownPrice != null && sellingPrice != null && mostShownPrice > sellingPrice) {
       bonusMechanism = FALLBACK_MECHANISM;
     }
-    const isBonus = !!bonusMechanism;
 
     const category = product.categories?.[0];
     const path = category ? [...(category.parents ?? []), category] : [];
     const image = product.primaryImageRegular?.[0] ?? product.primaryProductImageAssets?.[0];
 
-    return {
+    // On a bonus the selling price is the bonus price and "Meestal" the normal price.
+    return buildProduct({
       productId: String(product.id),
       title: product.title || '',
       salesUnitSize: salesUnitSize(product.specifications),
-      bonusMechanism,
-      priceBeforeBonus: isBonus ? mostShownPrice : null,
-      currentPrice,
-      bonusStartDate: '',
-      bonusEndDate: '',
       mainCategory: path[0]?.name || '',
       subCategory: path[1]?.name || '',
       brand: product.relatedParties?.find(r => r.role === 'BRAND')?.party?.name || '',
-      isBonus,
       imageUrl: image?.renditions?.[0]?.url || null,
       store: 'bol',
-    };
+    }, bonusMechanism ? mostShownPrice : sellingPrice,
+      bonusMechanism ? { mechanism: bonusMechanism, price: sellingPrice } : null);
   }
 
   async searchProducts(query: string): Promise<Product[]> {

@@ -13,7 +13,7 @@ async function fixture(name: string): Promise<any> {
   return JSON.parse(await readFile(new URL(`fixtures/${name}`, import.meta.url), 'utf-8'));
 }
 
-test('AH: a bonus from a search result, priced by its bonus mechanism', async () => {
+test('AH: a bonus from a search result, priced by its bonus mechanism; no bonus means no before price', async () => {
   const [melk, koffie, online] = (await fixture('ah-search.json')).products;
 
   assert.deepEqual(ah.normalize(melk), {
@@ -39,7 +39,9 @@ test('AH: a bonus from a search result, priced by its bonus mechanism', async ()
   assert.equal(plain.isBonus, false);
   assert.equal(plain.bonusMechanism, '');
   assert.equal(plain.currentPrice, 7.49);
-  assert.equal(plain.priceBeforeBonus, 7.49);
+  assert.equal(plain.priceBeforeBonus, null);
+  assert.equal(plain.bonusStartDate, '');
+  assert.equal(plain.bonusEndDate, '');
   assert.equal(plain.imageUrl, null);
 
   assert.equal(ah.normalize(online).isOnlineOnly, true);
@@ -160,13 +162,15 @@ test('Kruidvat: a bonus priced by its mechanism, the primary image made absolute
   });
 });
 
-test('Kruidvat: a "gratis artikel" promotion is not a bonus; a missing price stays null', async () => {
+test('Kruidvat: a "gratis artikel" promotion is not a bonus and keeps no dates; a missing price stays null', async () => {
   const [, shampoo, watten] = (await fixture('kruidvat-search.json')).products;
 
   const s = kruidvat.normalize(shampoo);
   assert.equal(s.isBonus, false);
   assert.equal(s.bonusMechanism, '');
   assert.equal(s.priceBeforeBonus, null);
+  assert.equal(s.bonusStartDate, '');
+  assert.equal(s.bonusEndDate, '');
   assert.equal(s.currentPrice, 4.99);
   assert.equal(s.imageUrl, 'https://cdn.kruidvat.nl/shampoo.jpg');
 

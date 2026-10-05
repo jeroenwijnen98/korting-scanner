@@ -1,5 +1,6 @@
 import type { BonusProduct, ObservationResult, Product, SavedProduct } from '../types.ts';
 import { StoreAdapter } from './base.ts';
+import { buildProduct } from './product.ts';
 
 const GRAPHQL_URL = 'https://web-gateway.dirk.nl/graphql';
 const GRAPHQL_API_KEY = '6d3a42a3-6d93-4f98-838d-bcc0ab2307fd';
@@ -109,27 +110,21 @@ class DirkAdapter extends StoreAdapter {
 
   normalizeProduct(product: DirkRawProduct, assortment: DirkAssortment | undefined): Product {
     const offer = assortment?.productOffer ?? null;
-    const hasOffer = offer != null;
-    const normalPrice = assortment?.normalPrice ?? null;
-    const offerPrice = assortment?.offerPrice ?? null;
-    const mechanism = (offer?.textPriceSign || '').replace(/[_\s]+/g, ' ').trim();
-
-    return {
+    return buildProduct({
       productId: String(product.productId),
       title: product.headerText || '',
       salesUnitSize: product.packaging || '',
-      bonusMechanism: hasOffer ? mechanism : '',
-      priceBeforeBonus: hasOffer ? normalPrice : null,
-      currentPrice: hasOffer ? offerPrice : normalPrice,
-      bonusStartDate: offer?.startDate || '',
-      bonusEndDate: offer?.endDate || '',
       mainCategory: product.department || '',
       subCategory: product.webgroup || '',
       brand: product.brand || '',
-      isBonus: hasOffer,
       imageUrl: buildImageUrl(product.image),
       store: 'dirk',
-    };
+    }, assortment?.normalPrice ?? null, offer && {
+      mechanism: (offer.textPriceSign || '').replace(/[_\s]+/g, ' ').trim(),
+      price: assortment?.offerPrice,
+      startDate: offer.startDate,
+      endDate: offer.endDate,
+    });
   }
 
   async searchProducts(query: string): Promise<Product[]> {

@@ -1,6 +1,6 @@
 import type { Product } from '../types.ts';
 import { StoreAdapter } from './base.ts';
-import { bonusPrice } from './bonusMechanism.ts';
+import { buildProduct } from './product.ts';
 import { isFreeGiftPromotion, sapCommerceApi, sapProductFields, type SapRawProduct } from './sapCommerce.ts';
 
 const IMAGE_HOST = 'https://www.kruidvat.nl';
@@ -23,30 +23,10 @@ class KruidvatAdapter extends StoreAdapter {
 
   normalize(product: KruidvatRawProduct): Product {
     const promo = product.topPromotion;
-    const rawMechanism = promo?.badge?.headline || '';
-    const isPriceReducing = rawMechanism !== '' && !isFreeGiftPromotion(rawMechanism);
-    const bonusMechanism = isPriceReducing ? rawMechanism : '';
-    const isBonus = !!bonusMechanism;
-    const normalPrice = product.price?.value ?? null;
-    const currentPrice = isBonus ? bonusPrice(bonusMechanism, normalPrice) ?? normalPrice : normalPrice;
-    const fields = sapProductFields(product, IMAGE_HOST);
-
-    return {
-      productId: fields.productId,
-      title: fields.title,
-      salesUnitSize: fields.salesUnitSize,
-      bonusMechanism,
-      priceBeforeBonus: isBonus ? normalPrice : null,
-      currentPrice,
-      bonusStartDate: promo?.startDate || '',
-      bonusEndDate: promo?.endDate || '',
-      mainCategory: fields.mainCategory,
-      subCategory: fields.subCategory,
-      brand: fields.brand,
-      isBonus,
-      imageUrl: fields.imageUrl,
-      store: 'kruidvat',
-    };
+    const mechanism = promo?.badge?.headline || '';
+    const isPriceReducing = mechanism !== '' && !isFreeGiftPromotion(mechanism);
+    return buildProduct(sapProductFields(product, IMAGE_HOST, 'kruidvat'), product.price?.value ?? null,
+      isPriceReducing ? { mechanism, startDate: promo?.startDate, endDate: promo?.endDate } : null);
   }
 
   async searchProducts(query: string): Promise<Product[]> {

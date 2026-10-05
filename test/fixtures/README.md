@@ -10,7 +10,7 @@ whole response body) and adjust the expected values in the test.
 - `ah-detail.json`: `GET /mobile-services/product/detail/v4/fir/{webshopId}` body
 - `dirk-list-products.json`: GraphQL `listProducts` response
 - `dirk-assortment.json`: GraphQL aliased `productAssortment` response (`p0`, `p1`, …)
-- `kruidvat-search.json`: `GET /search?fields=FULL` body
+- `kruidvat-search.json`: `GET /search?fields=FULL` body, the second product with a "gratis artikel" promotion (with dates)
 - `trekpleister-search.json`: `GET /search?fields=FULL` body (site `kvtp`), stub `topPromotion` as on every search result
 - `trekpleister-detail.json`: `GET /products/{code}?fields=FULL` body, "Aquafresh 2+2 gratis" promotion
 - `trekpleister-detail-no-promotion.json`: detail with a stub `topPromotion`, no title
