@@ -20,26 +20,26 @@ export class FakeStore extends StoreAdapter {
     this.products = products;
   }
 
-  async searchProducts(query: string): Promise<Product[]> {
-    return this.products.filter(p => p.title.toLowerCase().includes(query.toLowerCase()));
+  searchProducts(query: string): Promise<Product[]> {
+    return Promise.resolve(this.products.filter(p => p.title.toLowerCase().includes(query.toLowerCase())));
   }
 
-  async getProductDetail(storeProductId: string): Promise<Product | null> {
-    return this.products.find(p => p.productId === storeProductId) ?? null;
+  getProductDetail(storeProductId: string): Promise<Product | null> {
+    return Promise.resolve(this.products.find(p => p.productId === storeProductId) ?? null);
   }
 }
 
-/** A store adapter whose every call throws, like a store that is down. */
+/** A store adapter whose every call fails, like a store that is down. */
 export class BrokenStore extends StoreAdapter {
-  async searchProducts(): Promise<Product[]> {
-    throw new Error('store down');
+  searchProducts(): Promise<Product[]> {
+    return Promise.reject(new Error('store down'));
   }
 
-  async getProductDetail(): Promise<Product | null> {
-    throw new Error('store down');
+  getProductDetail(): Promise<Product | null> {
+    return Promise.reject(new Error('store down'));
   }
 
-  async observe(): Promise<never> {
-    throw new Error('store down');
+  observe(): Promise<never> {
+    return Promise.reject(new Error('store down'));
   }
 }

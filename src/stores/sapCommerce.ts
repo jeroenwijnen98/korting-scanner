@@ -35,7 +35,7 @@ interface SapSearchResponse<Promotion> {
 
 /** Search and detail requests for one site, e.g. `kvn-spa` (Kruidvat) or `kvtp` (Trekpleister). */
 export function sapCommerceApi<Promotion>(siteId: string, storeLabel: string) {
-  async function sapGet(path: string): Promise<Response> {
+  function sapGet(path: string): Promise<Response> {
     return fetch(`${API_HOST}/${siteId}${path}`, { headers: COMMON_HEADERS });
   }
   function failure(res: Response): Error {

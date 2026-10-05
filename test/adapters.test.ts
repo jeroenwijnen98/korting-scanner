@@ -39,7 +39,7 @@ const notFound = () => new Response(null, { status: 404 });
 
 /** AH: the anonymous token, the search fixture and details by webshopId. */
 function stubAH(t: TestContext, details: Record<string, unknown>): string[] {
-  return stubStore(t, 'https://api.ah.nl/', async url => {
+  return stubStore(t, 'https://api.ah.nl/', url => {
     if (url.includes('/auth/token/')) return { access_token: 'token', expires_in: 3600 };
     if (url.includes('/product/search/')) return fixture('ah-search.json');
     const id = url.match(/\/product\/detail\/v4\/fir\/(.+)$/)?.[1] ?? '';
@@ -199,9 +199,7 @@ test('Dirk observe: every found saved product, on offer or not; the rest in notF
 });
 
 test('Dirk observe: no valid ids means no request', async (t) => {
-  const fetch = t.mock.method(globalThis, 'fetch', async () => {
-    throw new Error('no request expected');
-  });
+  const fetch = t.mock.method(globalThis, 'fetch', () => Promise.reject(new Error('no request expected')));
   assert.deepEqual(await dirk.observe([savedDirk('x')]), { observed: [], notFound: ['dirk-x'] });
   assert.equal(fetch.mock.callCount(), 0);
 });

@@ -5,7 +5,7 @@ import { STORES, type StoreInfo } from '../public/js/utils/stores.js';
 import { stores } from '../src/stores/index.ts';
 import { storeBadge } from '../public/js/components/storeBadge.js';
 
-async function css(name: string): Promise<string> {
+function css(name: string): Promise<string> {
   return readFile(new URL(`../public/css/${name}`, import.meta.url), 'utf-8');
 }
 

@@ -12,9 +12,10 @@ function fakeApi(server: SavedProduct[], { fail = false, failIds = [] as string[
   const calls: string[] = [];
   return {
     calls,
-    async getProducts() {
-      return server.map(p => ({ ...p }));
+    getProducts() {
+      return Promise.resolve(server.map(p => ({ ...p })));
     },
+    // oxlint-disable-next-line require-await -- a failed edit must reject, not throw: toggleGroupPause collects them with Promise.allSettled
     async updateProduct(id: string, data: { productGroup?: string | null, paused?: boolean }) {
       calls.push(`PATCH ${id} ${JSON.stringify(data)}`);
       if (fail || failIds.includes(id)) throw new Error('Opslaan mislukt');
@@ -23,11 +24,11 @@ function fakeApi(server: SavedProduct[], { fail = false, failIds = [] as string[
       Object.assign(p, data);
       return { ...p };
     },
-    async removeProduct(id: string) {
+    removeProduct(id: string) {
       calls.push(`DELETE ${id}`);
-      if (fail) throw new Error('Verwijderen mislukt');
+      if (fail) return Promise.reject(new Error('Verwijderen mislukt'));
       server.splice(server.findIndex(s => s.id === id), 1);
-      return { ok: true as const };
+      return Promise.resolve({ ok: true as const });
     },
   };
 }
@@ -97,7 +98,7 @@ test('a failed load leaves the list unchanged and throws the error', async () =>
   const { list, changes } = await loaded([saved('ah-1', null)]);
   const failing = createSavedProductList({
     ...fakeApi([]),
-    async getProducts() { throw new Error('Kon producten niet laden'); },
+    getProducts() { return Promise.reject(new Error('Kon producten niet laden')); },
   });
   await assert.rejects(failing.load(), { message: 'Kon producten niet laden' });
   assert.deepEqual(failing.products(), []);

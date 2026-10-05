@@ -74,7 +74,7 @@ async function rawProduct(name: string): Promise<BolRawProduct> {
 
 /** The adapter's product for `product`, served as its product page. */
 async function detailOf(t: TestContext, product: BolRawProduct) {
-  t.mock.method(globalThis, 'fetch', async () => new Response(productPage(product)));
+  t.mock.method(globalThis, 'fetch', () => Promise.resolve(new Response(productPage(product))));
   const detail = await bol.getProductDetail(product.id);
   t.mock.restoreAll();
   assert.ok(detail);

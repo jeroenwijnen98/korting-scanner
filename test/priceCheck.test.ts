@@ -47,10 +47,10 @@ test('an observed product not on bonus gets a price snapshot but is not a bonus 
 test('an online-only AH bonus is no bonus: left out of the overview, snapshotted without a bonus', async (t) => {
   const [melk, , online] = JSON.parse(await readFile(new URL('fixtures/ah-search.json', import.meta.url), 'utf-8')).products;
   const details: Record<string, unknown> = { '588920': { productCard: melk }, '777': { productCard: online } };
-  t.mock.method(globalThis, 'fetch', async (url: string) => {
-    if (url.includes('/auth/token/')) return Response.json({ access_token: 'token', expires_in: 3600 });
+  t.mock.method(globalThis, 'fetch', (url: string) => {
+    if (url.includes('/auth/token/')) return Promise.resolve(Response.json({ access_token: 'token', expires_in: 3600 }));
     const id = url.split('/').pop()!;
-    return details[id] ? Response.json(details[id]) : new Response(null, { status: 404 });
+    return Promise.resolve(details[id] ? Response.json(details[id]) : new Response(null, { status: 404 }));
   });
 
   await save('ah', '588920');
@@ -80,7 +80,7 @@ test('bonus products carry their saved product\'s productGroup, joined on savedI
   await save('ah', '42', 'Thee');
   // Like an AH detail without a webshopId: the observed productId is not the saved storeProductId
   const store = new FakeStore('ah', [product('ah', 'hq-41', onBonus()), product('ah', '42', onBonus())]);
-  store.getProductDetail = async id => store.products.find(p => p.productId === (id === '41' ? 'hq-41' : id)) ?? null;
+  store.getProductDetail = id => Promise.resolve(store.products.find(p => p.productId === (id === '41' ? 'hq-41' : id)) ?? null);
 
   const overview = await checkSavedProducts({ ah: store });
   assert.deepEqual(overview.bonusProducts.map(p => [p.savedId, p.productId, p.productGroup]), [

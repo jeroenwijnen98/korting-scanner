@@ -22,7 +22,7 @@ export type SavedProductPatch = Partial<Pick<SavedProduct, typeof EDITABLE_FIELD
 
 const FILE = 'products.json';
 
-export async function getAll(): Promise<SavedProduct[]> {
+export function getAll(): Promise<SavedProduct[]> {
   return readJson<SavedProduct[]>(dataFile(FILE), []);
 }
 
@@ -40,7 +40,7 @@ export function withSavedProductView(bonusProducts: BonusProduct[], saved: Saved
   return bonusProducts.map(p => ({ ...p, ...savedProductView(byId.get(p.savedId)) }));
 }
 
-export async function add(product: NewSavedProduct): Promise<SavedProduct | null> {
+export function add(product: NewSavedProduct): Promise<SavedProduct | null> {
   return updateJson<SavedProduct[], SavedProduct | null>(dataFile(FILE), [], (products) => {
     const id = savedProductId(product.store, product.storeProductId);
     if (products.find(p => p.id === id)) {
@@ -63,7 +63,7 @@ export async function add(product: NewSavedProduct): Promise<SavedProduct | null
   });
 }
 
-export async function remove(id: string): Promise<boolean> {
+export function remove(id: string): Promise<boolean> {
   return updateJson<SavedProduct[], boolean>(dataFile(FILE), [], (products) => {
     const idx = products.findIndex(p => p.id === id);
     if (idx === -1) return { changed: false, result: false };
@@ -87,7 +87,7 @@ function editableFields(patch: object): SavedProductPatch {
  * taken from `patch` (a request body may carry anything); a missing field
  * stays unchanged and `null` clears it.
  */
-export async function update(id: string, patch: SavedProductPatch): Promise<SavedProduct | null> {
+export function update(id: string, patch: SavedProductPatch): Promise<SavedProduct | null> {
   const fields = editableFields(patch);
   return updateJson<SavedProduct[], SavedProduct | null>(dataFile(FILE), [], (products) => {
     const product = products.find(p => p.id === id);
@@ -97,7 +97,7 @@ export async function update(id: string, patch: SavedProductPatch): Promise<Save
   });
 }
 
-export async function bulkUpdate(
+export function bulkUpdate(
   updates: { id: string; fields: SavedProductFields }[],
 ): Promise<SavedProduct[]> {
   return updateJson<SavedProduct[], SavedProduct[]>(dataFile(FILE), [], (products) => {
