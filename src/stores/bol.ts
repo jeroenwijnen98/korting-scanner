@@ -169,6 +169,9 @@ class BolAdapter extends StoreAdapter {
     const image = product.primaryImageRegular?.[0] ?? product.primaryProductImageAssets?.[0];
 
     // On a bonus the selling price is the bonus price and "Meestal" the normal price.
+    const bonus = bonusMechanism ? { mechanism: bonusMechanism, price: sellingPrice } : null;
+    const normalPrice = bonus ? mostShownPrice : sellingPrice;
+
     return buildProduct({
       productId: String(product.id),
       title: product.title || '',
@@ -178,8 +181,7 @@ class BolAdapter extends StoreAdapter {
       brand: product.relatedParties?.find(r => r.role === 'BRAND')?.party?.name || '',
       imageUrl: image?.renditions?.[0]?.url || null,
       store: 'bol',
-    }, bonusMechanism ? mostShownPrice : sellingPrice,
-      bonusMechanism ? { mechanism: bonusMechanism, price: sellingPrice } : null);
+    }, normalPrice, bonus);
   }
 
   async searchProducts(query: string): Promise<Product[]> {

@@ -119,12 +119,12 @@ class DirkAdapter extends StoreAdapter {
       brand: product.brand || '',
       imageUrl: buildImageUrl(product.image),
       store: 'dirk',
-    }, assortment?.normalPrice ?? null, offer && {
+    }, assortment?.normalPrice ?? null, offer ? {
       mechanism: (offer.textPriceSign || '').replace(/[_\s]+/g, ' ').trim(),
       price: assortment?.offerPrice,
       startDate: offer.startDate,
       endDate: offer.endDate,
-    });
+    } : null);
   }
 
   async searchProducts(query: string): Promise<Product[]> {
