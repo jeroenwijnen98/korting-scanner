@@ -9,7 +9,8 @@
     "start": "node server.ts",
     "sandcastle": "tsx .sandcastle/main.mts",
     "typecheck": "tsc -p . && tsc -p public",
-    "test": "node --test \"test/**/*.test.ts\""
+    "test": "node --test \"test/**/*.test.ts\"",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "dotenv": "^18.0.4",
