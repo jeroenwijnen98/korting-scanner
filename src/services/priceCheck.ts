@@ -8,12 +8,12 @@ import * as productStore from './productStore.ts';
  * The price check: loads the saved products, observes them store by store and
  * records a price snapshot for each one observed, on bonus or not, so a
  * regular price shows up again once a bonus ends. The overview lists only
- * those on bonus (`isBonus`, the store adapter's verdict), each with its saved product's
- * view (`productGroup`); a paused saved product is observed and snapshotted
- * like any other but left out of the overview. A saved product whose observed
- * image differs takes the new `imageUrl`: stores replace images and the old
- * URL stops working. A store whose check throws does not sink the others: its
- * saved products go to `notFound`.
+ * those on bonus (`isBonus`, the store adapter's verdict), each with its saved
+ * product's view (`productGroup`); a paused saved product is observed and
+ * snapshotted like any other but left out of the overview. A saved product
+ * whose observed image differs takes the new `imageUrl`: stores replace images
+ * and the old URL stops working. A store whose check throws does not sink the
+ * others: its saved products go to `notFound`.
  */
 export async function checkSavedProducts(
   stores: Partial<Record<StoreName, StoreAdapter>>,
