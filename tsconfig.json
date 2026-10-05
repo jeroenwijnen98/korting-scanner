@@ -1,23 +1,10 @@
 {
-  // Type checking only: Node runs the .ts files as they are, by stripping the
-  // types (see CODING_STANDARDS.md). Nothing is ever emitted, so
-  // only syntax Node can erase is allowed — no enums, namespaces or parameter
-  // properties — and every relative import names its .ts file.
+  // Type checking only; see CODING_STANDARDS.md and the shared preset.
+  "extends": "@jeroenwijnen98/standards/tsconfig/node.json",
   "compilerOptions": {
-    "target": "esnext",
-    "lib": ["esnext"],
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "types": ["node"],
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true,
     // Lets the .ts files import the modules still in .js, with inferred
     // types; those files are not checked themselves (no checkJs).
-    "allowJs": true,
-    "strict": true,
-    "skipLibCheck": true
+    "allowJs": true
   },
   "include": ["server.ts", "src", "scripts", "test"]
 }
