@@ -1,6 +1,6 @@
 {
   // Type checking only: Node runs the .ts files as they are, by stripping the
-  // types (see .sandcastle/CODING_STANDARDS.md). Nothing is ever emitted, so
+  // types (see CODING_STANDARDS.md). Nothing is ever emitted, so
   // only syntax Node can erase is allowed — no enums, namespaces or parameter
   // properties — and every relative import names its .ts file.
   "compilerOptions": {
