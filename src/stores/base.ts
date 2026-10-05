@@ -1,15 +1,13 @@
 import type { BonusProduct, ObservationResult, Product, SavedProduct, StoreName } from '../types.ts';
 
-export class StoreAdapter {
+export abstract class StoreAdapter {
   name: StoreName;
 
   constructor(name: StoreName) {
     this.name = name;
   }
 
-  async searchProducts(query: string): Promise<Product[]> {
-    throw new Error('Not implemented');
-  }
+  abstract searchProducts(query: string): Promise<Product[]>;
 
   /**
    * Fetches each saved product's detail in turn and reports every one found,
@@ -36,7 +34,5 @@ export class StoreAdapter {
   }
 
   /** Resolves to null when the store does not know the product. */
-  async getProductDetail(storeProductId: string): Promise<Product | null> {
-    throw new Error('Not implemented');
-  }
+  abstract getProductDetail(storeProductId: string): Promise<Product | null>;
 }

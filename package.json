@@ -9,7 +9,8 @@
     "start": "node server.ts",
     "sandcastle": "tsx .sandcastle/main.mts",
     "typecheck": "tsc -p . && tsc -p public",
-    "test": "node --test \"test/**/*.test.ts\"",
+    "lint": "oxlint --deny-warnings",
+    "test": "npm run typecheck && npm run lint && node --test \"test/**/*.test.ts\"",
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "@types/nodemailer": "^8.0.2",
+    "oxlint": "1.86.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "zod": "^4.6.5"

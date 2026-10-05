@@ -35,9 +35,10 @@ export function parseBonusMechanism(label: string | null, priceBeforeBonus: numb
   if (nthMatch) {
     if (priceBeforeBonus == null) return null;
     const n = parseInt(nthMatch[1]);
-    const nth = nthMatch[2] === 'gratis' ? 0
-      : nthMatch[2] === 'halve prijs' ? priceBeforeBonus / 2
-      : parseFloat(nthMatch[3].replace(',', '.'));
+    let nth: number;
+    if (nthMatch[2] === 'gratis') nth = 0;
+    else if (nthMatch[2] === 'halve prijs') nth = priceBeforeBonus / 2;
+    else nth = parseFloat(nthMatch[3].replace(',', '.'));
     return ((n - 1) * priceBeforeBonus + nth) / n;
   }
 

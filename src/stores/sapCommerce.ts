@@ -62,9 +62,10 @@ export function sapCommerceApi<Promotion>(siteId: string, storeLabel: string) {
 export function sapProductFields(product: SapRawProduct<unknown>, imageHost: string, store: StoreName): ProductFields {
   const hierarchyCats = product.categoriesHierarchy?.[0]?.categories || [];
   const firstImage = product.images?.find(i => i.imageType === 'PRIMARY') || product.images?.[0];
-  const imageUrl = firstImage?.url
-    ? (firstImage.url.startsWith('http') ? firstImage.url : `${imageHost}${firstImage.url}`)
-    : null;
+  let imageUrl: string | null = null;
+  if (firstImage?.url) {
+    imageUrl = firstImage.url.startsWith('http') ? firstImage.url : `${imageHost}${firstImage.url}`;
+  }
 
   return {
     productId: String(product.code),

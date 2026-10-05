@@ -143,7 +143,7 @@ async function loadSaved() {
     if (hasMissingImages) {
       syncProductImages().then(enriched => savedList.merge(enriched)).catch(() => {});
     }
-  } catch (err) {
+  } catch {
     showToast('Kon producten niet laden', 'error');
   }
 }
