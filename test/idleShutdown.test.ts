@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { get } from 'node:http';
 import type { ClientRequest, Server } from 'node:http';
@@ -76,10 +76,15 @@ test('a window that reconnects within the grace period keeps the server up', asy
   await stop();
 });
 
-test('does nothing when not enabled', async () => {
-  const app = express();
-  let exits = 0;
-  attachIdleShutdown(app, { enabled: false, exit: () => { exits += 1; }, graceMs: 10, startupGraceMs: 10 });
-  await sleep(50);
-  assert.equal(exits, 0);
+test('does nothing when not enabled', () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const app = express();
+    let exits = 0;
+    attachIdleShutdown(app, { enabled: false, exit: () => { exits += 1; }, graceMs: 10, startupGraceMs: 10 });
+    mock.timers.tick(60_000);
+    assert.equal(exits, 0);
+  } finally {
+    mock.timers.reset();
+  }
 });
