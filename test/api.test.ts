@@ -14,6 +14,8 @@ const ah = new FakeStore('ah', [
   product('ah', '1', { title: 'Koffie bonen', salesUnitSize: '500 g', isBonus: true, bonusMechanism: '25%', priceBeforeBonus: 8, currentPrice: 6 }),
   product('ah', '2', { title: 'Thee', currentPrice: 1.5 }),
   product('ah', '3', { title: 'Melk', isBonus: true, bonusMechanism: '2e halve prijs', currentPrice: 1 }),
+  product('ah', '4', { title: 'Kaas', currentPrice: 4, imageUrl: 'https://img/new.jpg' }),
+  product('ah', '6', { title: 'Brood', currentPrice: 3 }),
 ]);
 const dirk = new BrokenStore('dirk');
 
@@ -21,7 +23,7 @@ let server: Server;
 let base: string;
 
 before(async () => {
-  server = createApp({ stores: { ah, dirk }, idleShutdown: { enabled: false }, grocerUrl: null }).listen(0);
+  server = createApp({ stores: { ah, dirk }, idleShutdown: { enabled: false }, grocerUrl: null }).app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   base = `http://localhost:${(server.address() as AddressInfo).port}/api`;
 });
@@ -179,7 +181,7 @@ test('bonus: the answer carries GROCER_URL, or null without it', async () => {
 
   assert.equal((await api('GET', '/bonus')).json.grocerUrl, null);
 
-  const grocer = createApp({ stores: { ah }, idleShutdown: { enabled: false }, grocerUrl: 'https://grocer.example.nl' }).listen(0);
+  const grocer = createApp({ stores: { ah }, idleShutdown: { enabled: false }, grocerUrl: 'https://grocer.example.nl' }).app.listen(0);
   await new Promise(resolve => grocer.once('listening', resolve));
   try {
     const res = await fetch(`http://localhost:${(grocer.address() as AddressInfo).port}/api/bonus`);
@@ -194,17 +196,43 @@ test('bonus: the answer carries GROCER_URL, or null without it', async () => {
   await api('DELETE', '/products/ah-1');
 });
 
-test('product detail: unknown store, not found, and a price snapshot', async () => {
+test('product detail: an unknown store is a 400, an unknown product a 404', async () => {
   assert.equal((await api('GET', '/product/jumbo/1')).status, 400);
   assert.equal((await api('GET', '/product/ah/404')).status, 404);
 
-  const detail = await api('GET', '/product/ah/2');
-  assert.equal(detail.status, 200);
-  assert.equal(detail.json.title, 'Thee');
+  // A saved product the store does not know is a 404 as well
+  await api('POST', '/products', { store: 'ah', storeProductId: '404', title: 'Weg' });
+  assert.equal((await api('GET', '/product/ah/404')).status, 404);
+  assert.deepEqual((await api('GET', '/history/ah-404')).json, []);
+  await api('DELETE', '/products/ah-404');
+});
 
-  const history = await api('GET', '/history/ah-2');
-  assert.deepEqual(history.json.map((s: any) => s.currentPrice), [1.5]);
-  assert.deepEqual((await api('GET', '/history/ah-unknown')).json, []);
+test('product detail: viewing a saved product snapshots it and syncs its image', async () => {
+  await api('POST', '/products', { store: 'ah', storeProductId: '4', title: 'Kaas', imageUrl: 'https://img/old.jpg' });
+
+  const detail = await api('GET', '/product/ah/4');
+  assert.equal(detail.status, 200);
+  assert.equal(detail.json.title, 'Kaas');
+  assert.equal(detail.json.currentPrice, 4);
+  assert.equal(detail.json.savedId, undefined);
+
+  const history = await api('GET', '/history/ah-4');
+  assert.deepEqual(history.json.map((s: any) => [s.currentPrice, s.isBonus]), [[4, false]]);
+  const [kaas] = (await api('GET', '/products')).json;
+  assert.equal(kaas.imageUrl, 'https://img/new.jpg');
+
+  await api('DELETE', '/products/ah-4');
+});
+
+test('product detail: viewing an unsaved product writes no history', async () => {
+  const before = await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null);
+
+  const detail = await api('GET', '/product/ah/6');
+  assert.equal(detail.status, 200);
+  assert.equal(detail.json.title, 'Brood');
+
+  assert.deepEqual((await api('GET', '/history/ah-6')).json, []);
+  assert.equal(await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null), before);
 });
 
 test('group history: the cheapest per unit per date, across the group', async () => {

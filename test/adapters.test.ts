@@ -367,7 +367,7 @@ let server: Server;
 let base: string;
 
 before(async () => {
-  server = createApp({ stores: { ah, kruidvat, trekpleister }, idleShutdown: { enabled: false }, grocerUrl: null }).listen(0);
+  server = createApp({ stores: { ah, kruidvat, trekpleister }, idleShutdown: { enabled: false }, grocerUrl: null }).app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   base = `http://localhost:${(server.address() as AddressInfo).port}/api`;
 });

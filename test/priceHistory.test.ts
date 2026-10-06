@@ -2,7 +2,7 @@ import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { recordSnapshot, recordSnapshots, getHistory } from '../src/services/priceHistory.ts';
+import { recordSnapshots, getHistory } from '../src/services/priceHistory.ts';
 import * as productStore from '../src/services/productStore.ts';
 import { useTempDataDir } from './tempDataDir.ts';
 
@@ -16,18 +16,18 @@ beforeEach(async () => {
 const base = { currentPrice: 2.5, priceBeforeBonus: null, isBonus: false, bonusMechanism: '' };
 
 test('an identical snapshot is not appended', async () => {
-  await recordSnapshot('ah-1', base);
-  await recordSnapshot('ah-1', { ...base });
+  await recordSnapshots([{ productId: 'ah-1', data: base }]);
+  await recordSnapshots([{ productId: 'ah-1', data: { ...base } }]);
   // priceBeforeBonus is not part of the dedup
-  await recordSnapshot('ah-1', { ...base, priceBeforeBonus: 3 });
+  await recordSnapshots([{ productId: 'ah-1', data: { ...base, priceBeforeBonus: 3 } }]);
   assert.equal((await getHistory('ah-1')).length, 1);
 });
 
 test('a change in price, bonus flag or bonus mechanism is appended, newest first', async () => {
-  await recordSnapshot('ah-1', base);
-  await recordSnapshot('ah-1', { ...base, currentPrice: 2 });
-  await recordSnapshot('ah-1', { ...base, currentPrice: 2, isBonus: true });
-  await recordSnapshot('ah-1', { ...base, currentPrice: 2, isBonus: true, bonusMechanism: '25%' });
+  await recordSnapshots([{ productId: 'ah-1', data: base }]);
+  await recordSnapshots([{ productId: 'ah-1', data: { ...base, currentPrice: 2 } }]);
+  await recordSnapshots([{ productId: 'ah-1', data: { ...base, currentPrice: 2, isBonus: true } }]);
+  await recordSnapshots([{ productId: 'ah-1', data: { ...base, currentPrice: 2, isBonus: true, bonusMechanism: '25%' } }]);
 
   const history = await getHistory('ah-1');
   assert.deepEqual(
@@ -54,7 +54,7 @@ test('recordSnapshots records several products in one go', async () => {
 // last write won.
 test('concurrent snapshots are all kept', async () => {
   const ids = Array.from({ length: 20 }, (_, i) => `ah-${i}`);
-  await Promise.all(ids.map(id => recordSnapshot(id, base)));
+  await Promise.all(ids.map(id => recordSnapshots([{ productId: id, data: base }])));
 
   const onDisk = JSON.parse(await readFile(join(dir, 'price-history.json'), 'utf-8'));
   assert.deepEqual(Object.keys(onDisk).sort(), [...ids].sort());

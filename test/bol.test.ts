@@ -223,7 +223,7 @@ let server: Server;
 let base: string;
 
 before(async () => {
-  server = createApp({ stores: { bol }, idleShutdown: { enabled: false } }).listen(0);
+  server = createApp({ stores: { bol }, idleShutdown: { enabled: false } }).app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   base = `http://localhost:${(server.address() as AddressInfo).port}/api`;
 });
