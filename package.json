@@ -10,7 +10,8 @@
     "sandcastle": "tsx .sandcastle/main.mts",
     "typecheck": "tsc -p . && tsc -p public",
     "lint": "oxlint --deny-warnings",
-    "test": "npm run typecheck && npm run lint && node --test \"test/**/*.test.ts\"",
+    "test": "sh .githooks/checked-tree run npm run --silent check",
+    "check": "npm run typecheck && npm run lint && node --test \"test/**/*.test.ts\"",
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
