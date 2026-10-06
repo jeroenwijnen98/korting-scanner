@@ -37,12 +37,10 @@ function appendSnapshot(history: History, productId: string, data: SnapshotData)
   return true;
 }
 
-/** Record a snapshot for one product. Safe to call concurrently. */
-export function recordSnapshot(productId: string, data: SnapshotData): Promise<void> {
-  return recordSnapshots([{ productId, data }]);
-}
-
-/** Record snapshots for several products with one read and one write. */
+/**
+ * Record snapshots for several products with one read and one write. Safe to
+ * call concurrently.
+ */
 export function recordSnapshots(
   snapshots: { productId: string; data: SnapshotData }[],
 ): Promise<void> {

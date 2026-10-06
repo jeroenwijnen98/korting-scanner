@@ -3,11 +3,11 @@ import type { ErrorRequestHandler } from 'express';
 import * as productStore from '../services/productStore.ts';
 import * as priceHistory from '../services/priceHistory.ts';
 import { checkSavedProducts } from '../services/priceCheck.ts';
+import { observeSavedProducts } from '../services/priceObservation.ts';
 import { cheapestPerDate } from '../services/groupHistory.ts';
 import type { StoreAdapter } from '../stores/base.ts';
-import type { BonusAnswer, StoreName } from '../types.ts';
+import type { BonusAnswer, BonusProduct, Product, StoreName } from '../types.ts';
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
-import { savedProductId } from '../../public/js/utils/savedProductId.js';
 
 /** The store adapter per store name; tests pass fakes. */
 export type StoreRegistry = Partial<Record<StoreName, StoreAdapter>>;
@@ -63,18 +63,27 @@ export function createApiRouter(
     res.json(await adapter.searchProducts(q));
   });
 
-  // Get product detail from store
+  // Get product detail from store; a saved product is observed (snapshot and
+  // image sync), any other product is only fetched
   router.get('/product/:store/:storeProductId', async (req, res) => {
     const { store, storeProductId } = req.params;
     const adapter = adapterFor(store);
     if (!adapter) {
       return res.status(400).json({ error: `Unknown store: ${store}` });
     }
-    const detail = await adapter.getProductDetail(storeProductId);
+    const saved = (await productStore.getAll())
+      .find(p => p.store === store && p.storeProductId === storeProductId);
+    let detail: Product | null;
+    if (saved) {
+      const { observed } = await observeSavedProducts({ [saved.store]: adapter }, [saved]);
+      // The client gets the product as the store has it, without the saved id
+      detail = observed[0] ? withoutSavedId(observed[0]) : null;
+    } else {
+      detail = await adapter.getProductDetail(storeProductId);
+    }
     if (!detail) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    priceHistory.recordSnapshot(savedProductId(store, storeProductId), detail).catch(() => {});
     res.json(detail);
   });
 
@@ -136,6 +145,10 @@ export function createApiRouter(
   });
 
   return router;
+}
+
+function withoutSavedId({ savedId: _, ...product }: BonusProduct): Product {
+  return product;
 }
 
 /**
