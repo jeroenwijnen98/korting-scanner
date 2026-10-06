@@ -16,8 +16,14 @@ export interface AppDeps {
   grocerUrl?: string | null;
 }
 
+export interface KortingApp {
+  app: Express;
+  /** Cancels a pending idle quit, so no timer of it keeps the process alive. */
+  closeIdleTracker(): void;
+}
+
 // Builds the app without listening; server.ts does the listen.
-export function createApp({ stores = defaultStores, idleShutdown = {}, grocerUrl = GROCER_URL }: AppDeps = {}): Express {
+export function createApp({ stores = defaultStores, idleShutdown = {}, grocerUrl = GROCER_URL }: AppDeps = {}): KortingApp {
   const app = express();
 
   app.use(express.json());
@@ -25,10 +31,10 @@ export function createApp({ stores = defaultStores, idleShutdown = {}, grocerUrl
   // The source app icon and its renders double as the favicon.
   app.use('/assets', express.static('assets'));
 
-  attachIdleShutdown(app, { enabled: AUTOQUIT, ...idleShutdown });
+  const idleTracker = attachIdleShutdown(app, { enabled: AUTOQUIT, ...idleShutdown });
 
   app.use('/api', createApiRouter(stores, { grocerUrl }));
   app.use(errorHandler);
 
-  return app;
+  return { app, closeIdleTracker: () => idleTracker.close() };
 }

@@ -34,13 +34,14 @@ const disabledTracker: IdleTracker = {
   close() {},
 };
 
-// The SSE side only: headers and pings. The idle tracker does the counting.
+// The SSE side only: headers and pings. The idle tracker does the counting;
+// it is returned so its owner can close it.
 export function attachIdleShutdown(app: Express, {
   enabled,
   exit = () => process.exit(0),
   graceMs = GRACE_MS,
   startupGraceMs = STARTUP_GRACE_MS,
-}: IdleShutdownOptions): void {
+}: IdleShutdownOptions): IdleTracker {
   const tracker = enabled ? createIdleTracker({ graceMs, startupGraceMs, exit }) : disabledTracker;
 
   app.get('/api/session', (req, res) => {
@@ -59,4 +60,6 @@ export function attachIdleShutdown(app: Express, {
       tracker.disconnected();
     });
   });
+
+  return tracker;
 }

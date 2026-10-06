@@ -21,7 +21,7 @@ let server: Server;
 let base: string;
 
 before(async () => {
-  server = createApp({ stores: { ah, dirk }, idleShutdown: { enabled: false }, grocerUrl: null }).listen(0);
+  server = createApp({ stores: { ah, dirk }, idleShutdown: { enabled: false }, grocerUrl: null }).app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   base = `http://localhost:${(server.address() as AddressInfo).port}/api`;
 });
@@ -179,7 +179,7 @@ test('bonus: the answer carries GROCER_URL, or null without it', async () => {
 
   assert.equal((await api('GET', '/bonus')).json.grocerUrl, null);
 
-  const grocer = createApp({ stores: { ah }, idleShutdown: { enabled: false }, grocerUrl: 'https://grocer.example.nl' }).listen(0);
+  const grocer = createApp({ stores: { ah }, idleShutdown: { enabled: false }, grocerUrl: 'https://grocer.example.nl' }).app.listen(0);
   await new Promise(resolve => grocer.once('listening', resolve));
   try {
     const res = await fetch(`http://localhost:${(grocer.address() as AddressInfo).port}/api/bonus`);
