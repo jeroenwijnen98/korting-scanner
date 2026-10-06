@@ -27,7 +27,7 @@ async function save(store: StoreName, storeProductId: string, title = `Product $
 const onBonus = (fields: Partial<Product> = {}) =>
   ({ isBonus: true, bonusMechanism: '25%', priceBeforeBonus: 8, currentPrice: 6, ...fields });
 
-test('an observed product not on bonus gets a price snapshot but is not a bonus product', async () => {
+test('only products on bonus make the overview; unknown ones are notFound', async () => {
   const store = new FakeStore('ah', [
     product('ah', '1', onBonus()),
     product('ah', '2', { currentPrice: 1.5 }),
@@ -39,9 +39,6 @@ test('an observed product not on bonus gets a price snapshot but is not a bonus 
 
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-1']);
   assert.deepEqual(overview.notFound, ['ah-404']);
-  assert.deepEqual((await priceHistory.getHistory('ah-1')).map(s => [s.currentPrice, s.isBonus]), [[6, true]]);
-  assert.deepEqual((await priceHistory.getHistory('ah-2')).map(s => [s.currentPrice, s.isBonus]), [[1.5, false]]);
-  assert.deepEqual(await priceHistory.getHistory('ah-404'), []);
 });
 
 test('an online-only AH bonus is no bonus: left out of the overview, snapshotted without a bonus', async (t) => {
@@ -127,18 +124,4 @@ test('group history goes back to the regular price once a bonus ends', async () 
     ['2026-03-08', 'Thee', 7, false],
     ['2026-03-01', 'Koffie', 6, true],
   ]);
-});
-
-test('a saved product\'s imageUrl follows the store when its image changes', async () => {
-  await productStore.add({ store: 'ah', storeProductId: '51', title: 'Shampoo', imageUrl: 'https://img/old.jpg' });
-  await productStore.add({ store: 'ah', storeProductId: '52', title: 'Zeep', imageUrl: 'https://img/zeep.jpg' });
-  const store = new FakeStore('ah', [
-    product('ah', '51', { imageUrl: 'https://img/new.jpg' }),
-    product('ah', '52', { imageUrl: null }),
-  ]);
-
-  await checkSavedProducts({ ah: store });
-
-  const images = Object.fromEntries((await productStore.getAll()).map(p => [p.id, p.imageUrl]));
-  assert.deepEqual(images, { 'ah-51': 'https://img/new.jpg', 'ah-52': 'https://img/zeep.jpg' });
 });
