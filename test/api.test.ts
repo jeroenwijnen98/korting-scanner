@@ -16,6 +16,9 @@ const ah = new FakeStore('ah', [
   product('ah', '3', { title: 'Melk', isBonus: true, bonusMechanism: '2e halve prijs', currentPrice: 1 }),
   product('ah', '4', { title: 'Kaas', currentPrice: 4, imageUrl: 'https://img/new.jpg' }),
   product('ah', '6', { title: 'Brood', currentPrice: 3 }),
+  product('ah', '7', { title: 'Eieren', isBonus: true, bonusMechanism: '1+1 gratis', currentPrice: 2.5 }),
+  product('ah', '8', { title: 'Boter', currentPrice: 2 }),
+  product('ah', '9', { title: 'Jam', currentPrice: 2.2 }),
 ]);
 const dirk = new BrokenStore('dirk');
 
@@ -233,6 +236,44 @@ test('product detail: viewing an unsaved product writes no history', async () =>
 
   assert.deepEqual((await api('GET', '/history/ah-6')).json, []);
   assert.equal(await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null), before);
+});
+
+test('image backfill: a missing image is filled and the saved products returned', async () => {
+  await api('POST', '/products', { store: 'ah', storeProductId: '4', title: 'Kaas' });
+  await api('POST', '/products', { store: 'ah', storeProductId: '2', title: 'Thee', imageUrl: 'https://img/thee.jpg' });
+  await api('POST', '/products', { store: 'ah', storeProductId: '6', title: 'Brood' });
+
+  const { status, json } = await api('POST', '/products/sync-images');
+  assert.equal(status, 200);
+  // Kaas takes the store's image; Brood has none at the store; Thee keeps its own
+  assert.deepEqual(json.map((p: any) => [p.id, p.imageUrl]), [
+    ['ah-4', 'https://img/new.jpg'],
+    ['ah-2', 'https://img/thee.jpg'],
+    ['ah-6', ''],
+  ]);
+  assert.deepEqual((await api('GET', '/products')).json, json);
+
+  for (const id of ['ah-4', 'ah-2', 'ah-6']) await api('DELETE', `/products/${id}`);
+});
+
+test('image backfill: each observed product gets a price snapshot', async () => {
+  await api('POST', '/products', { store: 'ah', storeProductId: '7', title: 'Eieren' });
+  await api('POST', '/products', { store: 'ah', storeProductId: '8', title: 'Boter' });
+  await api('POST', '/products', { store: 'ah', storeProductId: '999', title: 'Weg' });
+  await api('POST', '/products', { store: 'ah', storeProductId: '9', title: 'Jam', imageUrl: 'https://img/jam.jpg' });
+
+  assert.equal((await api('POST', '/products/sync-images')).status, 200);
+
+  const eieren = await api('GET', '/history/ah-7');
+  assert.deepEqual(eieren.json.map((s: any) => [s.currentPrice, s.isBonus]), [[2.5, true]]);
+  const boter = await api('GET', '/history/ah-8');
+  assert.deepEqual(boter.json.map((s: any) => [s.currentPrice, s.isBonus]), [[2, false]]);
+  // Not found at the store, so not observed
+  assert.deepEqual((await api('GET', '/history/ah-999')).json, []);
+  // Jam has its image, so the backfill does not observe it
+  assert.deepEqual((await api('GET', '/history/ah-9')).json, []);
+
+  for (const id of ['ah-7', 'ah-8', 'ah-999', 'ah-9']) await api('DELETE', `/products/${id}`);
 });
 
 test('group history: the cheapest per unit per date, across the group', async () => {

@@ -87,26 +87,12 @@ export function createApiRouter(
     res.json(detail);
   });
 
-  // Backfill imageUrl for saved products that are missing it
+  // Backfill imageUrl for saved products that are missing it: they are
+  // observed, so each also gets a price snapshot and Dirk batches
   router.post('/products/sync-images', async (req, res) => {
-    const saved = await productStore.getAll();
-    const missing = saved.filter(p => !p.imageUrl);
-    const fetched = await Promise.all(missing.map(async (p) => {
-      try {
-        const adapter = adapterFor(p.store);
-        if (!adapter) return null;
-        const detail = await adapter.getProductDetail(p.storeProductId);
-        if (detail?.imageUrl) {
-          return { id: p.id, fields: { imageUrl: detail.imageUrl } };
-        }
-      } catch { /* skip on error */ }
-      return null;
-    }));
-    const updates = fetched.filter(u => u !== null);
-    const products = updates.length > 0
-      ? await productStore.bulkUpdate(updates)
-      : saved;
-    res.json(products);
+    const missing = (await productStore.getAll()).filter(p => !p.imageUrl);
+    if (missing.length > 0) await observeSavedProducts(stores, missing);
+    res.json(await productStore.getAll());
   });
 
   // Get price history for a product

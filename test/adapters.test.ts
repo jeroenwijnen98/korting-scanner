@@ -361,13 +361,14 @@ test('Trekpleister search: results carry a promotion stub, so none is a bonus', 
   assert.deepEqual(urls, ['https://app.kruidvat.nl/api/v2/kvtp/search?fields=FULL&lang=nl&query=tand%20pasta']);
 });
 
-// GET /api/product/:store/:id over the real adapters, the stores answering 404.
+// The routes over the real adapters: GET /api/product/:store/:id with the
+// stores answering 404, and the image backfill over Dirk's fixtures.
 await useTempDataDir();
 let server: Server;
 let base: string;
 
 before(async () => {
-  server = createApp({ stores: { ah, kruidvat, trekpleister }, idleShutdown: { enabled: false }, grocerUrl: null }).app.listen(0);
+  server = createApp({ stores: { ah, dirk, kruidvat, trekpleister }, idleShutdown: { enabled: false }, grocerUrl: null }).app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   base = `http://localhost:${(server.address() as AddressInfo).port}/api`;
 });
@@ -387,4 +388,26 @@ test('route: an unknown product answers 404 in AH, Kruidvat and Trekpleister', a
   t.mock.restoreAll();
   stubSap(t, 'kvtp', 'trekpleister-search.json', {});
   assert.equal((await realFetch(`${base}/product/trekpleister/0000000`)).status, 404);
+});
+
+test('route: a Dirk backfill of several products makes one batched request', async (t) => {
+  const post = (body: unknown) => realFetch(`${base}/products`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  await post({ store: 'dirk', storeProductId: '101', title: 'Cola' });
+  await post({ store: 'dirk', storeProductId: '202', title: 'Brood' });
+  const queries = stubDirk(t);
+
+  const res = await realFetch(`${base}/products/sync-images`, { method: 'POST' });
+  assert.equal(res.status, 200);
+  const products = await res.json() as SavedProduct[];
+
+  // One assortment batch and one listProducts for both, no detail per product
+  assert.equal(queries.length, 2);
+  assert.match(queries[0], /p0: productAssortment\(productId: 101.*p1: productAssortment\(productId: 202/);
+  assert.match(queries[1], /listProducts\(productIds: \[101,202\]\)/);
+  assert.deepEqual(products.map(p => [p.id, p.imageUrl]), [
+    ['dirk-101', 'https://web-fileserver.dirk.nl/artikelen%2F101%20cola.png'],
+    ['dirk-202', ''],
+  ]);
 });
