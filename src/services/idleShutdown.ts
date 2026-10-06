@@ -10,6 +10,8 @@
 // `node server.ts` by hand keeps the server up as before.
 
 import type { Express } from 'express';
+import { createIdleTracker } from './idleTracker.ts';
+import type { IdleTracker } from './idleTracker.ts';
 
 const GRACE_MS = 15_000;         // survive a page reload
 const STARTUP_GRACE_MS = 60_000; // in case the browser never connects
@@ -25,24 +27,21 @@ export interface IdleShutdownOptions {
   startupGraceMs?: number;
 }
 
+/** Does nothing: with idle shutdown off, no quit is ever scheduled. */
+const disabledTracker: IdleTracker = {
+  connected() {},
+  disconnected() {},
+  close() {},
+};
+
+// The SSE side only: headers and pings. The idle tracker does the counting.
 export function attachIdleShutdown(app: Express, {
   enabled,
   exit = () => process.exit(0),
   graceMs = GRACE_MS,
   startupGraceMs = STARTUP_GRACE_MS,
 }: IdleShutdownOptions): void {
-  let clients = 0;
-  let timer: NodeJS.Timeout | undefined;
-
-  const scheduleQuit = (ms: number) => {
-    clearTimeout(timer);
-    if (!enabled) return;
-    timer = setTimeout(() => {
-      if (clients > 0) return;
-      console.log('No open windows — shutting down.');
-      exit();
-    }, ms);
-  };
+  const tracker = enabled ? createIdleTracker({ graceMs, startupGraceMs, exit }) : disabledTracker;
 
   app.get('/api/session', (req, res) => {
     res.set({
@@ -52,17 +51,12 @@ export function attachIdleShutdown(app: Express, {
     });
     res.flushHeaders();
     res.write(': connected\n\n');
+    tracker.connected();
 
-    clients += 1;
-    clearTimeout(timer);
-
-    const ping = setInterval(() => res.write(': ping\n\n'), PING_MS);
+    const ping = setInterval(() => res.write(': ping\n\n'), PING_MS).unref();
     req.on('close', () => {
       clearInterval(ping);
-      clients -= 1;
-      if (clients <= 0) scheduleQuit(graceMs);
+      tracker.disconnected();
     });
   });
-
-  scheduleQuit(startupGraceMs);
 }
