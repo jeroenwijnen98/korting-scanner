@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSavedProductList } from '../public/js/savedProducts.js';
 import { saved } from './savedProduct.ts';
-import type { SavedProduct } from '../src/types.ts';
+import type { Product, SavedProduct } from '../src/types.ts';
 
 /**
  * A fake api.js over an in-memory server list; `fail` makes the edits throw,
@@ -14,6 +14,18 @@ function fakeApi(server: SavedProduct[], { fail = false, failIds = [] as string[
     calls,
     getProducts() {
       return Promise.resolve(server.map(p => ({ ...p })));
+    },
+    addProduct(product: Pick<SavedProduct, 'store' | 'storeProductId' | 'title'> & Partial<Omit<SavedProduct, 'imageUrl'>> & { imageUrl?: string | null }) {
+      const id = `${product.store}-${product.storeProductId}`;
+      calls.push(`POST ${id}`);
+      // Like POST /api/products: a product already saved is answered with 409
+      if (server.some(s => s.id === id)) return Promise.reject(new Error('Product already saved'));
+      const entry: SavedProduct = {
+        brand: '', salesUnitSize: '', mainCategory: '', subCategory: '', ...product,
+        imageUrl: product.imageUrl ?? '', id, addedAt: '2026-10-12T00:00:00.000Z', productGroup: null,
+      };
+      server.push(entry);
+      return Promise.resolve({ ...entry });
     },
     // oxlint-disable-next-line require-await -- a failed edit must reject, not throw: toggleGroupPause collects them with Promise.allSettled
     async updateProduct(id: string, data: { productGroup?: string | null, paused?: boolean }) {
@@ -103,6 +115,53 @@ test('a failed load leaves the list unchanged and throws the error', async () =>
   await assert.rejects(failing.load(), { message: 'Kon producten niet laden' });
   assert.deepEqual(failing.products(), []);
   assert.deepEqual(list.products().map(p => p.id), ['ah-1']);
+  assert.equal(changes(), 1);
+});
+
+/** A store product as search returns it. */
+function searchResult(store: Product['store'], productId: string): Product {
+  return {
+    productId, title: `Product ${productId}`, salesUnitSize: '500 g', bonusMechanism: '',
+    priceBeforeBonus: null, currentPrice: 1.99, bonusStartDate: '', bonusEndDate: '',
+    mainCategory: 'Koffie', subCategory: 'Bonen', brand: 'Merk', isBonus: false,
+    imageUrl: 'https://example.test/img.png', store,
+  };
+}
+
+test('add then has: an added store product is saved', async () => {
+  const { api, list } = await loaded([saved('ah-1', null)]);
+  assert.equal(list.has('dirk', '2'), false);
+  const entry = await list.add(searchResult('dirk', '2'));
+  assert.deepEqual(api.calls, ['POST dirk-2']);
+  assert.equal(entry.id, 'dirk-2');
+  assert.equal(list.has('dirk', '2'), true);
+  assert.equal(list.has('ah', '2'), false, 'the store is part of the identity');
+  assert.equal(list.has('ah', '1'), true);
+});
+
+test('add maps the store product to a saved product and keeps the server answer', async () => {
+  const { list } = await loaded([]);
+  await list.add(searchResult('kruidvat', '7'));
+  const entry = list.get('kruidvat-7');
+  assert.deepEqual(
+    entry && [entry.store, entry.storeProductId, entry.title, entry.brand, entry.salesUnitSize, entry.mainCategory, entry.subCategory, entry.imageUrl, entry.addedAt],
+    ['kruidvat', '7', 'Product 7', 'Merk', '500 g', 'Koffie', 'Bonen', 'https://example.test/img.png', '2026-10-12T00:00:00.000Z'],
+  );
+});
+
+test('an added product goes at the end of the list and notifies', async () => {
+  const { list, changes } = await loaded([saved('ah-1', null), saved('dirk-2', null)]);
+  await list.add(searchResult('ah', '3'));
+  assert.deepEqual(list.products().map(p => p.id), ['ah-1', 'dirk-2', 'ah-3']);
+  assert.equal(changes(), 2);
+});
+
+test('a duplicate add (409) leaves the list unchanged and throws the error', async () => {
+  const { list, changes } = await loaded([saved('ah-1', 'koffie')]);
+  const before = list.products();
+  await assert.rejects(list.add(searchResult('ah', '1')), { message: 'Product already saved' });
+  assert.equal(list.products(), before);
+  assert.equal(list.get('ah-1')?.productGroup, 'koffie');
   assert.equal(changes(), 1);
 });
 

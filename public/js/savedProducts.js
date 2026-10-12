@@ -2,12 +2,24 @@
 
 /**
  * @typedef {import('../../src/types.ts').SavedProduct} SavedProduct
+ * @typedef {import('../../src/types.ts').Product} Product
+ * @typedef {import('../../src/types.ts').StoreName} StoreName
+ */
+
+/**
+ * What `POST /api/products` takes: a saved product before the server gives it
+ * its id and addedAt. imageUrl may be null, as in a product from search.
+ * @typedef {Pick<SavedProduct, 'store' | 'storeProductId' | 'title'>
+ *   & Partial<Pick<SavedProduct,
+ *     'brand' | 'salesUnitSize' | 'mainCategory' | 'subCategory'>>
+ *   & { imageUrl?: string | null }} NewSavedProduct
  */
 
 /**
  * The `api.js` functions the list needs; passed in so tests can hand it fakes.
  * @typedef {object} SavedProductApi
  * @property {() => Promise<SavedProduct[]>} getProducts
+ * @property {(product: NewSavedProduct) => Promise<SavedProduct>} addProduct
  * @property {(id: string, data: { productGroup?: string | null, paused?: boolean }) => Promise<SavedProduct>} updateProduct
  * @property {(id: string) => Promise<unknown>} removeProduct
  */
@@ -27,6 +39,10 @@
  * @property {() => Promise<void>} load fetch the saved products from the server
  * @property {() => SavedProduct[]} products the current list
  * @property {(id: string) => SavedProduct | null} get
+ * @property {(store: StoreName, storeProductId: string) => boolean} has
+ *   whether that store product is saved
+ * @property {(product: Product) => Promise<SavedProduct>} add saves a store
+ *   product from search; the server's answer goes at the end
  * @property {() => string[]} productGroups the product groups in use, each
  *   once, in list order
  * @property {(id: string, paused: boolean) => Promise<SavedProduct>} setPaused
@@ -43,8 +59,7 @@
  * @property {() => string[]} unavailableIds as recorded by the last bonus check
  * @property {(id: string) => boolean} isUnavailable
  * @property {(products: SavedProduct[]) => void} merge puts server answers the
- *   list did not fetch itself (added products, images) in place by id, new
- *   ids at the end
+ *   list did not fetch itself (images) in place by id, new ids at the end
  * @property {(listener: () => void) => () => void} onChange returns a function
  *   that stops the listener
  */
@@ -99,6 +114,22 @@ export function createSavedProductList(api) {
     },
     products: () => list,
     get: (id) => list.find(s => s.id === id) || null,
+    has: (store, storeProductId) => list.some(s => s.store === store && s.storeProductId === storeProductId),
+    async add(product) {
+      const entry = await api.addProduct({
+        store: product.store,
+        storeProductId: product.productId,
+        title: product.title,
+        brand: product.brand,
+        salesUnitSize: product.salesUnitSize,
+        mainCategory: product.mainCategory,
+        subCategory: product.subCategory,
+        imageUrl: product.imageUrl,
+      });
+      putInPlace([entry]);
+      notify();
+      return entry;
+    },
     productGroups: () => [...new Set(list.flatMap(s => (s.productGroup ? [s.productGroup] : [])))],
     setPaused: (id, paused) => update(id, { paused }),
     setProductGroup: (id, productGroup) => update(id, { productGroup: productGroup || null }),
