@@ -13,8 +13,8 @@ import * as productStore from './productStore.ts';
  * it holds today's snapshot), its product group's history and its saved
  * fields. A failing part degrades on its own: a store that fails or does not
  * find the product gives `product: null`, a failing history gives [] (as
- * does a saved product without a product group). Null
- * only for an unknown saved id.
+ * does a saved product without a product group). Null only for an unknown
+ * saved id.
  */
 export async function getSavedProductDetail(
   stores: Partial<Record<StoreName, StoreAdapter>>,
@@ -27,7 +27,8 @@ export async function getSavedProductDetail(
   const product = observed[0] ? withoutSavedId(observed[0]) : null;
 
   const [stored, history, groupHistory] = await Promise.all([
-    // Removed meanwhile, or unreadable: the saved fields as first read
+    // Read again, so the saved fields hold the image the observation synced;
+    // removed meanwhile, or unreadable: the saved fields as first read
     productStore.getAll().then(all => all.find(p => p.id === id), () => undefined),
     priceHistory.getHistory(id).catch((err): PriceSnapshot[] => {
       console.error(`Error reading the history of ${id}:`, errorMessage(err));
