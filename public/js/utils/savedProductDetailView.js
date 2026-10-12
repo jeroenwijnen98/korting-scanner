@@ -11,8 +11,8 @@
 /**
  * What a saved product's detail shows.
  * @typedef {object} SavedProductDetailView
- * @property {Product | SavedProduct} product the product as the store has it now,
- *   or the saved fields when the store did not answer
+ * @property {Product | SavedProduct} product the product as the store has it
+ *   now, or the saved fields when the store did not answer
  * @property {boolean} showBonus whether the detail shows the bonus: only when
  *   the store says the product is on bonus now
  * @property {SavedProduct} saved
