@@ -1,8 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cheapestPerDate } from '../src/services/groupHistory.ts';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { cheapestPerDate, getGroupHistory } from '../src/services/groupHistory.ts';
+import * as productStore from '../src/services/productStore.ts';
+import { useTempDataDir } from './tempDataDir.ts';
 import { savedProductId } from '../public/js/utils/savedProductId.js';
 import type { PriceSnapshot, SavedProduct, StoreName } from '../src/types.ts';
+
+const dir = await useTempDataDir();
 
 function saved(store: StoreName, storeProductId: string, title: string, salesUnitSize: string): SavedProduct {
   return {
@@ -69,4 +75,26 @@ test('a product whose size has a zero number has no unit price and is skipped', 
     // A's €1 does not compete against B's €9 per kg
     ['2026-03-02', 'B', 9, 'kg'],
   ]);
+});
+
+test('a group\'s history joins its saved products with their price history', async () => {
+  await productStore.add({ store: 'ah', storeProductId: '1', title: 'A 500 g', salesUnitSize: '500 g' });
+  await productStore.add({ store: 'dirk', storeProductId: '2', title: 'B 1 kg', salesUnitSize: '1 kg' });
+  await productStore.add({ store: 'ah', storeProductId: '3', title: 'Elders', salesUnitSize: '1 kg' });
+  await productStore.update('ah-1', { productGroup: 'koffie' });
+  await productStore.update('dirk-2', { productGroup: 'koffie' });
+  await productStore.update('ah-3', { productGroup: 'thee' });
+  // price-history.json is oldest first
+  await writeFile(join(dir, 'price-history.json'), JSON.stringify({
+    'ah-1': [snap('2026-03-01', 4), snap('2026-03-10', 3)],
+    'dirk-2': [snap('2026-03-05', 7)],
+    'ah-3': [snap('2026-03-01', 1)], // another group
+  }));
+
+  assert.deepEqual((await getGroupHistory('koffie')).map(r => [r.date, r.title, r.unitPrice]), [
+    ['2026-03-10', 'A 500 g', 6],
+    ['2026-03-05', 'B 1 kg', 7],
+    ['2026-03-01', 'A 500 g', 8],
+  ]);
+  assert.deepEqual(await getGroupHistory('leeg'), []);
 });

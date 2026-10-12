@@ -19,6 +19,7 @@ const ah = new FakeStore('ah', [
   product('ah', '7', { title: 'Eieren', isBonus: true, bonusMechanism: '1+1 gratis', currentPrice: 2.5 }),
   product('ah', '8', { title: 'Boter', currentPrice: 2 }),
   product('ah', '9', { title: 'Jam', currentPrice: 2.2 }),
+  product('ah', '20', { title: 'Pasta 500 g', salesUnitSize: '500 g', currentPrice: 1, imageUrl: 'https://img/pasta.jpg' }),
 ]);
 const dirk = new BrokenStore('dirk');
 
@@ -299,4 +300,100 @@ test('group history: the cheapest per unit per date, across the group', async ()
     ['2026-03-01', 'Koffie bonen', 8],
   ]);
   assert.deepEqual((await api('GET', '/group-history/leeg')).json, []);
+});
+
+const snap = (date: string, currentPrice: number) =>
+  ({ date, currentPrice, priceBeforeBonus: null, isBonus: false, bonusMechanism: '' });
+const today = () => new Date().toISOString().slice(0, 10);
+
+test('saved product detail: the observed product, its history, its group history and saved fields', async () => {
+  await api('POST', '/products', { store: 'ah', storeProductId: '20', title: 'Pasta 500 g', salesUnitSize: '500 g' });
+  await api('POST', '/products', { store: 'ah', storeProductId: '21', title: 'Pasta 1 kg', salesUnitSize: '1 kg' });
+  await api('PATCH', '/products/ah-20', { productGroup: 'pasta', paused: true });
+  await api('PATCH', '/products/ah-21', { productGroup: 'pasta' });
+  await writeFile(join(dir, 'price-history.json'), JSON.stringify({
+    'ah-20': [snap('2026-03-01', 1.2)], // €/kg 2.4
+    'ah-21': [snap('2026-03-05', 1.8)], // €/kg 1.8
+  }));
+
+  const { status, json } = await api('GET', '/products/ah-20/detail');
+  assert.equal(status, 200);
+  assert.equal(json.product.title, 'Pasta 500 g');
+  assert.equal(json.product.currentPrice, 1);
+  assert.equal(json.product.savedId, undefined);
+  // Observing recorded today's snapshot, so the history holds it
+  assert.deepEqual(json.history.map((s: any) => [s.date, s.currentPrice]), [[today(), 1], ['2026-03-01', 1.2]]);
+  // ...and the group history counts it too: €/kg 2 today, still above ah-21
+  assert.deepEqual(json.groupHistory.map((e: any) => [e.date, e.title, e.unitPrice]), [
+    [today(), 'Pasta 1 kg', 1.8],
+    ['2026-03-05', 'Pasta 1 kg', 1.8],
+    ['2026-03-01', 'Pasta 500 g', 2.4],
+  ]);
+  // The saved fields, with the image the observation synced
+  assert.equal(json.saved.id, 'ah-20');
+  assert.equal(json.saved.productGroup, 'pasta');
+  assert.equal(json.saved.paused, true);
+  assert.equal(json.saved.imageUrl, 'https://img/pasta.jpg');
+
+  for (const id of ['ah-20', 'ah-21']) await api('DELETE', `/products/${id}`);
+});
+
+test('saved product detail: an unknown saved id is a 404', async () => {
+  const { status, json } = await api('GET', '/products/ah-404/detail');
+  assert.equal(status, 404);
+  assert.equal(json.error, 'Product not found');
+});
+
+test('saved product detail: without a product group the group history is empty', async () => {
+  await api('POST', '/products', { store: 'ah', storeProductId: '20', title: 'Pasta 500 g', salesUnitSize: '500 g' });
+
+  const { status, json } = await api('GET', '/products/ah-20/detail');
+  assert.equal(status, 200);
+  assert.equal(json.saved.productGroup, undefined);
+  assert.deepEqual(json.groupHistory, []);
+  assert.equal(json.product.currentPrice, 1);
+
+  await api('DELETE', '/products/ah-20');
+});
+
+test('saved product detail: a failing group history keeps the product and its own history', async () => {
+  await api('POST', '/products', { store: 'ah', storeProductId: '20', title: 'Pasta 500 g', salesUnitSize: '500 g' });
+  await api('POST', '/products', { store: 'ah', storeProductId: '21', title: 'Pasta 1 kg', salesUnitSize: '1 kg' });
+  await api('PATCH', '/products/ah-20', { productGroup: 'pasta' });
+  await api('PATCH', '/products/ah-21', { productGroup: 'pasta' });
+  // ah-21's history is corrupt, so reading the group's history throws
+  await writeFile(join(dir, 'price-history.json'), JSON.stringify({ 'ah-20': [snap('2026-03-01', 1.2)], 'ah-21': 5 }));
+
+  const { status, json } = await api('GET', '/products/ah-20/detail');
+  assert.equal(status, 200);
+  assert.deepEqual(json.groupHistory, []);
+  assert.equal(json.product.currentPrice, 1);
+  assert.deepEqual(json.history.map((s: any) => s.currentPrice), [1, 1.2]);
+  assert.equal(json.saved.productGroup, 'pasta');
+
+  for (const id of ['ah-20', 'ah-21']) await api('DELETE', `/products/${id}`);
+});
+
+test('saved product detail: a failing store call keeps the histories and saved fields', async () => {
+  await api('POST', '/products', { store: 'dirk', storeProductId: '5', title: 'Dirk pasta', salesUnitSize: '500 g' });
+  await api('POST', '/products', { store: 'ah', storeProductId: '21', title: 'Pasta 1 kg', salesUnitSize: '1 kg' });
+  await api('PATCH', '/products/dirk-5', { productGroup: 'pasta' });
+  await api('PATCH', '/products/ah-21', { productGroup: 'pasta' });
+  await writeFile(join(dir, 'price-history.json'), JSON.stringify({
+    'dirk-5': [snap('2026-03-01', 1.2)],
+    'ah-21': [snap('2026-03-05', 1.8)],
+  }));
+
+  // dirk is the BrokenStore: its every call throws
+  const { status, json } = await api('GET', '/products/dirk-5/detail');
+  assert.equal(status, 200);
+  assert.equal(json.product, null);
+  assert.deepEqual(json.history.map((s: any) => [s.date, s.currentPrice]), [['2026-03-01', 1.2]]);
+  assert.deepEqual(json.groupHistory.map((e: any) => [e.date, e.title]), [
+    ['2026-03-05', 'Pasta 1 kg'],
+    ['2026-03-01', 'Dirk pasta'],
+  ]);
+  assert.equal(json.saved.title, 'Dirk pasta');
+
+  for (const id of ['dirk-5', 'ah-21']) await api('DELETE', `/products/${id}`);
 });

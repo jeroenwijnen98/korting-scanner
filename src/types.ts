@@ -143,3 +143,19 @@ export interface GroupHistoryEntry {
   unitPrice: number;
   standardUnit: StandardUnit;
 }
+
+/**
+ * What `GET /api/products/:id/detail` returns for a saved product. A part
+ * that fails degrades on its own: `product` to null (the store failed or did
+ * not find it), a history to [].
+ */
+export interface SavedProductDetail {
+  /** The saved fields, as stored after observing (so with a synced image). */
+  saved: SavedProduct;
+  /** The product as the store has it now, without the saved id. */
+  product: Product | null;
+  /** Newest first. */
+  history: PriceSnapshot[];
+  /** The product group's cheapest per date, newest first; [] without a group. */
+  groupHistory: GroupHistoryEntry[];
+}

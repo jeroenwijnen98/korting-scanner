@@ -3,10 +3,11 @@ import type { ErrorRequestHandler } from 'express';
 import * as productStore from '../services/productStore.ts';
 import * as priceHistory from '../services/priceHistory.ts';
 import { checkSavedProducts } from '../services/priceCheck.ts';
-import { observeSavedProducts } from '../services/priceObservation.ts';
-import { cheapestPerDate } from '../services/groupHistory.ts';
+import { observeSavedProducts, withoutSavedId } from '../services/priceObservation.ts';
+import { getGroupHistory } from '../services/groupHistory.ts';
+import { getSavedProductDetail } from '../services/savedProductDetail.ts';
 import type { StoreAdapter } from '../stores/base.ts';
-import type { BonusAnswer, BonusProduct, Product, StoreName } from '../types.ts';
+import type { BonusAnswer, Product, StoreName } from '../types.ts';
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
 
 /** The store adapter per store name; tests pass fakes. */
@@ -87,6 +88,16 @@ export function createApiRouter(
     res.json(detail);
   });
 
+  // A saved product's detail in one answer: the product as observed now, its
+  // price history, its product group's history and its saved fields
+  router.get('/products/:id/detail', async (req, res) => {
+    const detail = await getSavedProductDetail(stores, req.params.id);
+    if (!detail) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(detail);
+  });
+
   // Backfill imageUrl for saved products that are missing it: they are
   // observed, so each also gets a price snapshot and Dirk batches
   router.post('/products/sync-images', async (req, res) => {
@@ -120,21 +131,10 @@ export function createApiRouter(
 
   // Get cheapest-per-unit history for a product group
   router.get('/group-history/:groupName', async (req, res) => {
-    const { groupName } = req.params;
-    const all = await productStore.getAll();
-    const entries = await Promise.all(
-      all
-        .filter(p => p.productGroup === groupName)
-        .map(async saved => ({ saved, history: await priceHistory.getHistory(saved.id) })),
-    );
-    res.json(cheapestPerDate(entries));
+    res.json(await getGroupHistory(req.params.groupName));
   });
 
   return router;
-}
-
-function withoutSavedId({ savedId: _, ...product }: BonusProduct): Product {
-  return product;
 }
 
 /**

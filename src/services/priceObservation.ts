@@ -1,5 +1,5 @@
 import type { StoreAdapter } from '../stores/base.ts';
-import type { BonusProduct, ObservationResult, SavedProduct, StoreName } from '../types.ts';
+import type { BonusProduct, ObservationResult, Product, SavedProduct, StoreName } from '../types.ts';
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
 import * as priceHistory from './priceHistory.ts';
 import * as productStore from './productStore.ts';
@@ -53,4 +53,9 @@ async function syncImages(observed: BonusProduct[], saved: SavedProduct[]): Prom
     .filter(p => p.imageUrl && p.imageUrl !== savedImages.get(p.savedId))
     .map(p => ({ id: p.savedId, fields: { imageUrl: p.imageUrl! } }));
   if (updates.length > 0) await productStore.bulkUpdate(updates);
+}
+
+/** An observed product as the store has it, without the saved id. */
+export function withoutSavedId({ savedId: _, ...product }: BonusProduct): Product {
+  return product;
 }

@@ -1,5 +1,20 @@
 import type { GroupHistoryEntry, PriceSnapshot, SavedProduct } from '../types.ts';
 import { unitPriceOf } from '../../public/js/utils/unitPrice.js';
+import * as priceHistory from './priceHistory.ts';
+import * as productStore from './productStore.ts';
+
+/**
+ * The cheapest-per-date history of a product group: its saved products joined
+ * with their price history (see cheapestPerDate). Newest first; empty for a
+ * group with no saved products.
+ */
+export async function getGroupHistory(groupName: string): Promise<GroupHistoryEntry[]> {
+  const members = (await productStore.getAll()).filter(p => p.productGroup === groupName);
+  const entries = await Promise.all(
+    members.map(async saved => ({ saved, history: await priceHistory.getHistory(saved.id) })),
+  );
+  return cheapestPerDate(entries);
+}
 
 /**
  * For each date in the combined price history of a product group, the saved
