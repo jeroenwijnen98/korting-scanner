@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSavedProductList } from '../public/js/savedProducts.js';
+import type { NewSavedProduct } from '../public/js/savedProducts.js';
 import { saved } from './savedProduct.ts';
 import type { Product, SavedProduct } from '../src/types.ts';
 
@@ -15,7 +16,7 @@ function fakeApi(server: SavedProduct[], { fail = false, failIds = [] as string[
     getProducts() {
       return Promise.resolve(server.map(p => ({ ...p })));
     },
-    addProduct(product: Pick<SavedProduct, 'store' | 'storeProductId' | 'title'> & Partial<Omit<SavedProduct, 'imageUrl'>> & { imageUrl?: string | null }) {
+    addProduct(product: NewSavedProduct) {
       const id = `${product.store}-${product.storeProductId}`;
       calls.push(`POST ${id}`);
       // Like POST /api/products: a product already saved is answered with 409
