@@ -7,15 +7,7 @@
  * @typedef {import('../../src/types.ts').PriceSnapshot} PriceSnapshot
  * @typedef {import('../../src/types.ts').BonusAnswer} BonusAnswer
  * @typedef {import('../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
- */
-
-/**
- * What `POST /api/products` takes: a saved product before the server gives it
- * its id and addedAt. imageUrl may be null, as in a product from search.
- * @typedef {Pick<SavedProduct, 'store' | 'storeProductId' | 'title'>
- *   & Partial<Pick<SavedProduct,
- *     'brand' | 'salesUnitSize' | 'mainCategory' | 'subCategory'>>
- *   & { imageUrl?: string | null }} NewSavedProduct
+ * @typedef {import('./savedProducts.js').NewSavedProduct} NewSavedProduct
  */
 
 const BASE = '/api';

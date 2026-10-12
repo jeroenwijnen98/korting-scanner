@@ -1,5 +1,5 @@
 // @ts-check
-import { addProduct, searchProducts, getProductDetail, getProductHistory, getGroupHistory, syncProductImages } from '../api.js';
+import { searchProducts, getProductDetail, getProductHistory, getGroupHistory, syncProductImages } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
 import { createProductDetail } from '../components/productDetail.js';
 import { createSearchResult } from '../components/searchResult.js';
@@ -336,26 +336,11 @@ function renderSearchResults(results, container) {
   }
 
   results.forEach(product => {
-    const savedIds = savedList.products().map(p => p.id);
-    const store = activeStore === 'alle' ? 'ah' : activeStore;
-    const productId = savedProductId(store, product.productId);
-    const isSaved = savedIds.includes(productId);
-
     const row = createSearchResult(product, {
-      isSaved,
+      isSaved: savedList.has(product.store, product.productId),
       onAdd: async (p) => {
         try {
-          const entry = await addProduct({
-            store,
-            storeProductId: p.productId,
-            title: p.title,
-            brand: p.brand,
-            salesUnitSize: p.salesUnitSize,
-            mainCategory: p.mainCategory,
-            subCategory: p.subCategory,
-            imageUrl: p.imageUrl,
-          });
-          savedList.merge([entry]);
+          await savedList.add(p);
           showToast('Product toegevoegd', 'success');
           // Re-render search results to show checkmark
           renderSearchResults(results, container);
