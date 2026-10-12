@@ -123,8 +123,9 @@ export interface BonusAnswer extends BonusOverview {
 export type StandardUnit = 'liter' | 'kg' | 'stuk' | 'rol';
 
 /**
- * One day of `GET /api/group-history/:groupName`: the product in the group with
- * the lowest unit price on that date, per its most recent price snapshot.
+ * One day of a product group's history (see getGroupHistory): the product in
+ * the group with the lowest unit price on that date, per its most recent price
+ * snapshot.
  */
 export interface GroupHistoryEntry {
   /** YYYY-MM-DD. */

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createApp } from '../src/app.ts';
+import { getHistory } from '../src/services/priceHistory.ts';
 import { useTempDataDir } from './tempDataDir.ts';
 import { BrokenStore, FakeStore, product } from './fakeStore.ts';
 
@@ -141,10 +142,10 @@ test('bonus: one throwing store does not sink the others', async () => {
   assert.deepEqual(json.notFound.sort(), ['ah-999', 'dirk-5']);
 
   // The bonus check recorded a snapshot for every observed product, on bonus or not
-  const history = await api('GET', '/history/ah-1');
-  assert.deepEqual(history.json.map((s: any) => [s.currentPrice, s.isBonus]), [[6, true]]);
-  const regular = await api('GET', '/history/ah-2');
-  assert.deepEqual(regular.json.map((s: any) => [s.currentPrice, s.isBonus]), [[1.5, false]]);
+  const history = await getHistory('ah-1');
+  assert.deepEqual(history.map(s => [s.currentPrice, s.isBonus]), [[6, true]]);
+  const regular = await getHistory('ah-2');
+  assert.deepEqual(regular.map(s => [s.currentPrice, s.isBonus]), [[1.5, false]]);
 
   for (const id of ['ah-1', 'ah-2', 'ah-999', 'dirk-5']) await api('DELETE', `/products/${id}`);
 });
@@ -207,7 +208,7 @@ test('product detail: an unknown store is a 400, an unknown product a 404', asyn
   // A saved product the store does not know is a 404 as well
   await api('POST', '/products', { store: 'ah', storeProductId: '404', title: 'Weg' });
   assert.equal((await api('GET', '/product/ah/404')).status, 404);
-  assert.deepEqual((await api('GET', '/history/ah-404')).json, []);
+  assert.deepEqual(await getHistory('ah-404'), []);
   await api('DELETE', '/products/ah-404');
 });
 
@@ -220,8 +221,8 @@ test('product detail: viewing a saved product snapshots it and syncs its image',
   assert.equal(detail.json.currentPrice, 4);
   assert.equal(detail.json.savedId, undefined);
 
-  const history = await api('GET', '/history/ah-4');
-  assert.deepEqual(history.json.map((s: any) => [s.currentPrice, s.isBonus]), [[4, false]]);
+  const history = await getHistory('ah-4');
+  assert.deepEqual(history.map(s => [s.currentPrice, s.isBonus]), [[4, false]]);
   const [kaas] = (await api('GET', '/products')).json;
   assert.equal(kaas.imageUrl, 'https://img/new.jpg');
 
@@ -235,7 +236,7 @@ test('product detail: viewing an unsaved product writes no history', async () =>
   assert.equal(detail.status, 200);
   assert.equal(detail.json.title, 'Brood');
 
-  assert.deepEqual((await api('GET', '/history/ah-6')).json, []);
+  assert.deepEqual(await getHistory('ah-6'), []);
   assert.equal(await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null), before);
 });
 
@@ -265,41 +266,16 @@ test('image backfill: each observed product gets a price snapshot', async () => 
 
   assert.equal((await api('POST', '/products/sync-images')).status, 200);
 
-  const eieren = await api('GET', '/history/ah-7');
-  assert.deepEqual(eieren.json.map((s: any) => [s.currentPrice, s.isBonus]), [[2.5, true]]);
-  const boter = await api('GET', '/history/ah-8');
-  assert.deepEqual(boter.json.map((s: any) => [s.currentPrice, s.isBonus]), [[2, false]]);
+  const eieren = await getHistory('ah-7');
+  assert.deepEqual(eieren.map(s => [s.currentPrice, s.isBonus]), [[2.5, true]]);
+  const boter = await getHistory('ah-8');
+  assert.deepEqual(boter.map(s => [s.currentPrice, s.isBonus]), [[2, false]]);
   // Not found at the store, so not observed
-  assert.deepEqual((await api('GET', '/history/ah-999')).json, []);
+  assert.deepEqual(await getHistory('ah-999'), []);
   // Jam has its image, so the backfill does not observe it
-  assert.deepEqual((await api('GET', '/history/ah-9')).json, []);
+  assert.deepEqual(await getHistory('ah-9'), []);
 
   for (const id of ['ah-7', 'ah-8', 'ah-999', 'ah-9']) await api('DELETE', `/products/${id}`);
-});
-
-test('group history: the cheapest per unit per date, across the group', async () => {
-  await api('POST', '/products', { ...koffie, storeProductId: '10' });
-  await api('POST', '/products', { store: 'ah', storeProductId: '11', title: 'Koffie 1 kg', salesUnitSize: '1 kg' });
-  await api('POST', '/products', { store: 'ah', storeProductId: '12', title: 'Ander', salesUnitSize: '1 kg' });
-  await api('PATCH', '/products/ah-10', { productGroup: 'koffie' });
-  await api('PATCH', '/products/ah-11', { productGroup: 'koffie' });
-
-  const snap = (date: string, currentPrice: number) =>
-    ({ date, currentPrice, priceBeforeBonus: null, isBonus: false, bonusMechanism: '' });
-  await writeFile(join(dir, 'price-history.json'), JSON.stringify({
-    'ah-10': [snap('2026-03-01', 4), snap('2026-03-08', 3)], // €/kg 8, then 6
-    'ah-11': [snap('2026-03-05', 7)],
-    'ah-12': [snap('2026-03-01', 0.5)], // not in the group
-  }));
-
-  const { status, json } = await api('GET', '/group-history/koffie');
-  assert.equal(status, 200);
-  assert.deepEqual(json.map((e: any) => [e.date, e.title, e.unitPrice]), [
-    ['2026-03-08', 'Koffie bonen', 6],
-    ['2026-03-05', 'Koffie 1 kg', 7],
-    ['2026-03-01', 'Koffie bonen', 8],
-  ]);
-  assert.deepEqual((await api('GET', '/group-history/leeg')).json, []);
 });
 
 const snap = (date: string, currentPrice: number) =>

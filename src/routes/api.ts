@@ -1,10 +1,8 @@
 import { Router } from 'express';
 import type { ErrorRequestHandler } from 'express';
 import * as productStore from '../services/productStore.ts';
-import * as priceHistory from '../services/priceHistory.ts';
 import { checkSavedProducts } from '../services/priceCheck.ts';
 import { observeSavedProducts, withoutSavedId } from '../services/priceObservation.ts';
-import { getGroupHistory } from '../services/groupHistory.ts';
 import { getSavedProductDetail } from '../services/savedProductDetail.ts';
 import type { StoreAdapter } from '../stores/base.ts';
 import type { BonusAnswer, Product, StoreName } from '../types.ts';
@@ -106,11 +104,6 @@ export function createApiRouter(
     res.json(await productStore.getAll());
   });
 
-  // Get price history for a product
-  router.get('/history/:productId', async (req, res) => {
-    res.json(await priceHistory.getHistory(req.params.productId));
-  });
-
   // Check bonus status for saved products; grocerUrl rides along for Toevoegen
   router.get('/bonus', async (req, res) => {
     const answer: BonusAnswer = { ...await checkSavedProducts(stores), grocerUrl };
@@ -127,11 +120,6 @@ export function createApiRouter(
       return res.status(404).json({ error: 'Product not found' });
     }
     res.json(updated);
-  });
-
-  // Get cheapest-per-unit history for a product group
-  router.get('/group-history/:groupName', async (req, res) => {
-    res.json(await getGroupHistory(req.params.groupName));
   });
 
   return router;

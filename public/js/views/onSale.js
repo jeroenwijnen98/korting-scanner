@@ -1,18 +1,16 @@
 // @ts-check
-import { getBonus, getProductHistory, getGroupHistory } from '../api.js';
+import { getBonus } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
-import { createProductDetail } from '../components/productDetail.js';
 import { createBonusAction } from '../components/bonusAction.js';
 import { showToast } from '../components/toast.js';
 import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
 import { escapeHtml } from '../utils/format.js';
 import { savedList } from '../savedList.js';
+import { openSavedProductDetail } from '../savedProductDetail.js';
 
 /**
  * @typedef {import('../../../src/types.ts').OverviewProduct} OverviewProduct
- * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
- * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
  */
 
 const panel = document.getElementById('panel-on-sale');
@@ -57,43 +55,6 @@ function withListGroup(product) {
 }
 
 /**
- * @param {OverviewProduct} bonusProduct
- * @param {OverviewProduct[]} bonusProducts
- * @param {string | null} [grocerUrl]
- */
-async function showDetail(bonusProduct, bonusProducts, grocerUrl = null) {
-  panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
-  const product = withListGroup(bonusProduct);
-
-  /** @type {PriceSnapshot[]} */
-  let history = [];
-  /** @type {GroupHistoryEntry[]} */
-  let groupHistory = [];
-  try {
-    [history, groupHistory] = await Promise.all([
-      getProductHistory(product.savedId),
-      product.productGroup ? getGroupHistory(product.productGroup) : Promise.resolve([]),
-    ]);
-  } catch { /* ignore */ }
-
-  panel.innerHTML = '';
-  const detail = createProductDetail(product, {
-    showBonus: true,
-    history,
-    groupHistory,
-    savedProduct: savedList.get(product.savedId),
-    existingGroups: savedList.productGroups(),
-    onProductGroupChange: async (id, productGroup) => {
-      await savedList.setProductGroup(id, productGroup);
-      // Re-open detail with the product group from the list
-      showDetail(bonusProduct, bonusProducts, grocerUrl);
-    },
-    onBack: () => render(bonusProducts, grocerUrl),
-  });
-  panel.appendChild(detail);
-}
-
-/**
  * @param {OverviewProduct[]} bonusProducts
  * @param {string | null} [grocerUrl] GROCER_URL; without it no Toevoegen
  */
@@ -128,7 +89,10 @@ function render(bonusProducts, grocerUrl = null) {
       showBonus: true,
       bonusAction: createBonusAction(product, grocerUrl),
     });
-    card.addEventListener('click', () => showDetail(product, bonusProducts, grocerUrl));
+    card.addEventListener('click', () => openSavedProductDetail(product.savedId, {
+      panel,
+      onBack: () => render(bonusProducts, grocerUrl),
+    }));
     return card;
   });
 }

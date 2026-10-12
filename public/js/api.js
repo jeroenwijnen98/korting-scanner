@@ -4,9 +4,8 @@
  * @typedef {import('../../src/types.ts').StoreName} StoreName
  * @typedef {import('../../src/types.ts').Product} Product
  * @typedef {import('../../src/types.ts').SavedProduct} SavedProduct
- * @typedef {import('../../src/types.ts').PriceSnapshot} PriceSnapshot
  * @typedef {import('../../src/types.ts').BonusAnswer} BonusAnswer
- * @typedef {import('../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
+ * @typedef {import('../../src/types.ts').SavedProductDetail} SavedProductDetail
  * @typedef {import('./savedProducts.js').NewSavedProduct} NewSavedProduct
  */
 
@@ -64,21 +63,14 @@ export function searchProducts(store, query) {
 }
 
 /**
- * @param {StoreName} store
- * @param {string} storeProductId
- * @returns {Promise<Product>}
+ * The saved product's detail in one answer: the product as the store has it
+ * now (null when the store did not answer), its history, its product group's
+ * history and its saved fields.
+ * @param {string} id saved product id, e.g. `ah-12345`
+ * @returns {Promise<SavedProductDetail>}
  */
-export function getProductDetail(store, storeProductId) {
-  return request(`/product/${encodeURIComponent(store)}/${encodeURIComponent(storeProductId)}`);
-}
-
-/**
- * Newest first.
- * @param {string} productId saved product id, e.g. `ah-12345`
- * @returns {Promise<PriceSnapshot[]>}
- */
-export function getProductHistory(productId) {
-  return request(`/history/${encodeURIComponent(productId)}`);
+export function getSavedProductDetail(id) {
+  return request(`/products/${encodeURIComponent(id)}/detail`);
 }
 
 /** @returns {Promise<BonusAnswer>} */
@@ -96,15 +88,6 @@ export function updateProduct(id, data) {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
-}
-
-/**
- * Newest first.
- * @param {string} groupName
- * @returns {Promise<GroupHistoryEntry[]>}
- */
-export function getGroupHistory(groupName) {
-  return request(`/group-history/${encodeURIComponent(groupName)}`);
 }
 
 /** @returns {Promise<SavedProduct[]>} */

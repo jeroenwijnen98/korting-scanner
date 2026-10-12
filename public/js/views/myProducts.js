@@ -1,23 +1,20 @@
 // @ts-check
-import { searchProducts, getProductDetail, getProductHistory, getGroupHistory, syncProductImages } from '../api.js';
+import { searchProducts, syncProductImages } from '../api.js';
 import { createProductCard } from '../components/productCard.js';
-import { createProductDetail } from '../components/productDetail.js';
 import { createSearchResult } from '../components/searchResult.js';
 import { showToast } from '../components/toast.js';
 import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
-import { savedProductId } from '../utils/savedProductId.js';
 import { splitPaused } from '../utils/pausedLayout.js';
 import { productCount } from '../utils/format.js';
 import { savedList } from '../savedList.js';
+import { openSavedProductDetail, togglePause } from '../savedProductDetail.js';
 
 /**
  * @typedef {import('../../../src/types.ts').StoreName} StoreName
  * @typedef {import('../../../src/types.ts').Product} Product
  * @typedef {import('../../../src/types.ts').SavedProduct} SavedProduct
- * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
- * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
  * @typedef {StoreName | 'alle'} StoreFilter
  */
 
@@ -226,25 +223,8 @@ function createSavedCard(product) {
       }
     },
   });
-  card.addEventListener('click', () => showProductDetail(product));
+  card.addEventListener('click', () => openSavedProductDetail(product.id, { panel, onBack: initMyProducts }));
   return card;
-}
-
-/**
- * Pauses or resumes a saved product, for the card and the detail.
- * @param {string} id
- * @returns {Promise<boolean>} whether it is paused afterwards, also when that
- *   failed
- */
-async function togglePause(id) {
-  const paused = !savedList.get(id)?.paused;
-  try {
-    await savedList.setPaused(id, paused);
-    showToast(paused ? 'Product gepauzeerd' : 'Product hervat', 'success');
-  } catch (err) {
-    showToast(errorMessage(err), 'error');
-  }
-  return Boolean(savedList.get(id)?.paused);
 }
 
 /**
@@ -271,51 +251,6 @@ function createGroupPauseButton(productGroup) {
     }
   });
   return btn;
-}
-
-/** @param {SavedProduct} product */
-async function showProductDetail(product) {
-  panel.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Laden...</p></div>';
-  const productId = product.id || savedProductId(product.store, product.storeProductId);
-
-  /** @type {PriceSnapshot[]} */
-  let history = [];
-  /** @type {GroupHistoryEntry[]} */
-  let groupHistory = [];
-  /** @type {Product | null} */
-  let detail = null;
-
-  try {
-    [history, groupHistory, detail] = await Promise.all([
-      getProductHistory(productId).catch(() => /** @type {PriceSnapshot[]} */ ([])),
-      product.productGroup ? getGroupHistory(product.productGroup) : Promise.resolve([]),
-      getProductDetail(product.store, product.storeProductId),
-    ]);
-  } catch { /* detail fetch failed, fall through */ }
-
-  // Merge saved product's id and productGroup into the live detail object
-  const enrichedDetail = detail
-    ? { ...detail, id: product.id, productGroup: product.productGroup || null }
-    : { ...product };
-
-  const savedProduct = savedList.get(productId);
-
-  panel.innerHTML = '';
-  const detailEl = createProductDetail(enrichedDetail, {
-    showBonus: detail?.isBonus || false,
-    history,
-    groupHistory,
-    savedProduct,
-    existingGroups: savedList.productGroups(),
-    onProductGroupChange: async (id, productGroup) => {
-      const updated = await savedList.setProductGroup(id, productGroup);
-      // Re-open detail with updated product
-      showProductDetail(updated);
-    },
-    onTogglePause: () => togglePause(productId),
-    onBack: () => initMyProducts(),
-  });
-  panel.appendChild(detailEl);
 }
 
 /**
