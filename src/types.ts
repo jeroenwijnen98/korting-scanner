@@ -48,11 +48,13 @@ export interface BonusProduct extends Product {
 
 /**
  * What a store adapter's `observe` returns: every saved product it found, on
- * bonus or not, and the ids of those it could not find.
+ * bonus or not, the ids of those the store does not know, and the ids of
+ * those it could not ask about because the store failed (down, blocked).
  */
 export interface ObservationResult {
   observed: BonusProduct[];
   notFound: string[];
+  unreachable: string[];
 }
 
 /**
@@ -109,6 +111,7 @@ export interface OverviewProduct extends BonusProduct, SavedProductView {}
 export interface BonusOverview {
   bonusProducts: OverviewProduct[];
   notFound: string[];
+  unreachable: string[];
 }
 
 /**

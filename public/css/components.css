@@ -596,6 +596,7 @@
 
 /* Unavailable warning banner */
 .unavailable-banner { background: var(--danger); color: white; border-radius: var(--radius-md); padding: 10px 16px; font-size: 0.875rem; margin-bottom: 16px; line-height: 1.4; }
+.unreachable-banner { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--warning); border-radius: var(--radius-md); padding: 10px 16px; font-size: 0.875rem; margin-bottom: 16px; line-height: 1.4; }
 
 /* Product detail group selector */
 .product-detail-group { background: var(--bg-card); border-radius: var(--radius-lg); padding: 16px; margin-top: 20px; }

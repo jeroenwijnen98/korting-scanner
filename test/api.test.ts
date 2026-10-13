@@ -139,7 +139,8 @@ test('bonus: one throwing store does not sink the others', async () => {
   const { status, json } = await api('GET', '/bonus');
   assert.equal(status, 200);
   assert.deepEqual(json.bonusProducts.map((p: any) => [p.savedId, p.currentPrice]), [['ah-1', 6]]);
-  assert.deepEqual(json.notFound.sort(), ['ah-999', 'dirk-5']);
+  assert.deepEqual(json.notFound, ['ah-999']);
+  assert.deepEqual(json.unreachable, ['dirk-5']);
 
   // The bonus check recorded a snapshot for every observed product, on bonus or not
   const history = await getHistory('ah-1');

@@ -14,8 +14,8 @@ export async function checkSavedProducts(
   stores: Partial<Record<StoreName, StoreAdapter>>,
 ): Promise<BonusOverview> {
   const saved = await productStore.getAll();
-  const { observed, notFound } = await observeSavedProducts(stores, saved);
+  const { observed, notFound, unreachable } = await observeSavedProducts(stores, saved);
   const pausedIds = new Set(saved.filter(p => p.paused).map(p => p.id));
   const bonusProducts = observed.filter(product => product.isBonus && !pausedIds.has(product.savedId));
-  return { bonusProducts: productStore.withSavedProductView(bonusProducts, saved), notFound };
+  return { bonusProducts: productStore.withSavedProductView(bonusProducts, saved), notFound, unreachable };
 }

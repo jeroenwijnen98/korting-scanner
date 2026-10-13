@@ -61,7 +61,7 @@ test('an online-only AH bonus is no bonus: left out of the overview, snapshotted
   assert.deepEqual((await priceHistory.getHistory('ah-588920')).map(s => [s.currentPrice, s.isBonus]), [[0.9, true]]);
 });
 
-test('a store that throws puts its saved products in notFound; the others still count', async () => {
+test('a store that throws puts its saved products in unreachable; the others still count', async () => {
   await save('ah', '21');
   await save('dirk', '22');
 
@@ -69,7 +69,8 @@ test('a store that throws puts its saved products in notFound; the others still 
     { ah: new FakeStore('ah', [product('ah', '21', onBonus())]), dirk: new BrokenStore('dirk') },
   );
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-21']);
-  assert.deepEqual(overview.notFound, ['dirk-22']);
+  assert.deepEqual(overview.unreachable, ['dirk-22']);
+  assert.deepEqual(overview.notFound, []);
 });
 
 test('bonus products carry their saved product\'s productGroup, joined on savedId', async () => {

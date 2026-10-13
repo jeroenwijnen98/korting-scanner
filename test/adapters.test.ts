@@ -200,7 +200,7 @@ test('Dirk observe: every found saved product, on offer or not; the rest in notF
 
 test('Dirk observe: no valid ids means no request', async (t) => {
   const fetch = t.mock.method(globalThis, 'fetch', () => Promise.reject(new Error('no request expected')));
-  assert.deepEqual(await dirk.observe([savedDirk('x')]), { observed: [], notFound: ['dirk-x'] });
+  assert.deepEqual(await dirk.observe([savedDirk('x')]), { observed: [], notFound: ['dirk-x'], unreachable: [] });
   assert.equal(fetch.mock.callCount(), 0);
 });
 

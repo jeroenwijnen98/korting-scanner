@@ -11,14 +11,14 @@ import * as productStore from './productStore.ts';
  * so a regular price shows up again once a bonus ends. A saved product whose
  * observed image is changed or missing takes the observed `imageUrl`: stores
  * replace images and the old URL stops working. A store whose observation
- * throws does not sink the others: only its saved products go to `notFound`.
+ * throws does not sink the others: only its saved products go to `unreachable`.
  * A failing snapshot or image sync is logged and keeps the observation.
  */
 export async function observeSavedProducts(
   stores: Partial<Record<StoreName, StoreAdapter>>,
   savedProducts: SavedProduct[],
 ): Promise<ObservationResult> {
-  const result: ObservationResult = { observed: [], notFound: [] };
+  const result: ObservationResult = { observed: [], notFound: [], unreachable: [] };
   for (const [storeName, adapter] of Object.entries(stores)) {
     const storeProducts = savedProducts.filter(p => p.store === storeName);
     if (!adapter || storeProducts.length === 0) continue;
@@ -27,10 +27,10 @@ export async function observeSavedProducts(
       observation = await adapter.observe(storeProducts);
     } catch (err) {
       console.error(`Error checking ${storeName}:`, errorMessage(err));
-      result.notFound.push(...storeProducts.map(p => p.id));
+      result.unreachable.push(...storeProducts.map(p => p.id));
       continue;
     }
-    const { observed, notFound } = observation;
+    const { observed, notFound, unreachable } = observation;
     await priceHistory.recordSnapshots(observed.map(product => ({
       productId: product.savedId,
       data: product,
@@ -42,6 +42,7 @@ export async function observeSavedProducts(
     });
     result.observed.push(...observed);
     result.notFound.push(...notFound);
+    result.unreachable.push(...unreachable);
   }
   return result;
 }

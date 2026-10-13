@@ -30,7 +30,7 @@ const cases: {
   { name: 'a missing saved image is filled in', savedImage: '', observed: { imageUrl: NEW }, snapshots: [[2, false]], image: NEW },
   { name: 'no observed image keeps the saved one', savedImage: OLD, observed: { imageUrl: null }, snapshots: [[2, false]], image: OLD },
   { name: 'an unknown product goes to notFound, unsnapshotted', savedImage: OLD, observed: null, snapshots: [], image: OLD },
-  { name: 'a throwing store sends only its products to notFound', savedImage: OLD, observed: 'throws', snapshots: [], image: OLD },
+  { name: 'a throwing store sends only its products to unreachable', savedImage: OLD, observed: 'throws', snapshots: [], image: OLD },
 ];
 
 for (const [i, c] of cases.entries()) {
@@ -49,7 +49,8 @@ for (const [i, c] of cases.entries()) {
 
     const found = c.observed !== null && c.observed !== 'throws';
     assert.deepEqual(result.observed.map(p => p.savedId), found ? [ahSaved.id, dirkSaved.id] : [dirkSaved.id]);
-    assert.deepEqual(result.notFound, found ? [] : [ahSaved.id]);
+    assert.deepEqual(result.notFound, c.observed === null ? [ahSaved.id] : []);
+    assert.deepEqual(result.unreachable, c.observed === 'throws' ? [ahSaved.id] : []);
     assert.deepEqual((await priceHistory.getHistory(ahSaved.id)).map(s => [s.currentPrice, s.isBonus]), c.snapshots);
     assert.deepEqual((await priceHistory.getHistory(dirkSaved.id)).map(s => [s.currentPrice, s.isBonus]), [[3, false]]);
     const images = new Map((await productStore.getAll()).map(p => [p.id, p.imageUrl]));
@@ -76,4 +77,21 @@ test('each store observes its own saved products in one call', async () => {
     dirk: new CountingStore('dirk', [product('dirk', '201'), product('dirk', '203')]),
   }, saved);
   assert.deepEqual(calls, [['ah-202'], ['dirk-201', 'dirk-203']]);
+});
+
+test('a detail that fails is unreachable, not notFound; the store\'s other products still count', async () => {
+  const saved = [
+    (await productStore.add({ store: 'ah', storeProductId: '301', title: 'A' }))!,
+    (await productStore.add({ store: 'ah', storeProductId: '302', title: 'B' }))!,
+    (await productStore.add({ store: 'ah', storeProductId: '303', title: 'C' }))!,
+  ];
+  const ah = new FakeStore('ah', [product('ah', '301')]);
+  const known = ah.getProductDetail.bind(ah);
+  ah.getProductDetail = id => (id === '302' ? Promise.reject(new Error('AH API error: 503')) : known(id));
+
+  const result = await observeSavedProducts({ ah }, saved);
+
+  assert.deepEqual(result.observed.map(p => p.savedId), ['ah-301']);
+  assert.deepEqual(result.unreachable, ['ah-302']);
+  assert.deepEqual(result.notFound, ['ah-303']);
 });

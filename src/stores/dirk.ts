@@ -168,7 +168,7 @@ class DirkAdapter extends StoreAdapter {
   async observe(savedProducts: SavedProduct[]): Promise<ObservationResult> {
     const validProducts = savedProducts.filter(p => !isNaN(parseInt(p.storeProductId, 10)));
     const notFound = savedProducts.filter(p => isNaN(parseInt(p.storeProductId, 10))).map(p => p.id);
-    if (validProducts.length === 0) return { observed: [], notFound };
+    if (validProducts.length === 0) return { observed: [], notFound, unreachable: [] };
 
     const ids = validProducts.map(p => parseInt(p.storeProductId, 10));
     const assortmentMap = await fetchAssortmentBatch(ids);
@@ -189,7 +189,7 @@ class DirkAdapter extends StoreAdapter {
         notFound.push(saved.id);
       }
     }
-    return { observed, notFound };
+    return { observed, notFound, unreachable: [] };
   }
 }
 

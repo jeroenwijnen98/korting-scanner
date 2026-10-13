@@ -5,7 +5,8 @@ import { createBonusAction } from '../components/bonusAction.js';
 import { showToast } from '../components/toast.js';
 import { renderGroupedSections } from '../components/groupedSections.js';
 import { errorMessage } from '../utils/errorMessage.js';
-import { escapeHtml } from '../utils/format.js';
+import { escapeHtml, productCount } from '../utils/format.js';
+import { STORES } from '../utils/stores.js';
 import { savedList } from '../savedList.js';
 import { openSavedProductDetail } from '../savedProductDetail.js';
 
@@ -26,10 +27,10 @@ export async function initOnSale() {
     const [bonusData] = await Promise.all([getBonus(), savedList.load()]);
     refreshBtn.classList.remove('refreshing');
 
-    const { bonusProducts, notFound, grocerUrl } = bonusData;
+    const { bonusProducts, notFound, unreachable, grocerUrl } = bonusData;
     savedList.setUnavailable(notFound);
 
-    render(bonusProducts, grocerUrl);
+    render(bonusProducts, grocerUrl, unreachable);
   } catch (err) {
     refreshBtn.classList.remove('refreshing');
     showToast('Kon bonus niet laden', 'error');
@@ -55,11 +56,31 @@ function withListGroup(product) {
 }
 
 /**
+ * A banner naming the stores the bonus check could not reach: their saved
+ * products may be on bonus, or gone, without the overview knowing.
+ * @param {string[]} unreachable saved product ids
+ * @returns {HTMLElement | null}
+ */
+function unreachableBanner(unreachable) {
+  const stores = new Set(unreachable.map(id => savedList.get(id)?.store).filter(store => store !== undefined));
+  if (stores.size === 0) return null;
+  const labels = [...stores].map(store => STORES[store].label);
+  const banner = document.createElement('div');
+  banner.className = 'unreachable-banner';
+  banner.innerHTML = `<strong>Niet bereikbaar:</strong> ${escapeHtml(labels.join(', '))}. Bonus van ${productCount(unreachable.length)} onbekend.`;
+  return banner;
+}
+
+/**
  * @param {OverviewProduct[]} bonusProducts
  * @param {string | null} [grocerUrl] GROCER_URL; without it no Toevoegen
+ * @param {string[]} [unreachable] saved product ids whose store failed
  */
-function render(bonusProducts, grocerUrl = null) {
+function render(bonusProducts, grocerUrl = null, unreachable = []) {
   panel.innerHTML = '';
+
+  const unreachableNotice = unreachableBanner(unreachable);
+  if (unreachableNotice) panel.appendChild(unreachableNotice);
 
   // Warning banner for unavailable products
   const notFound = savedList.unavailableIds();
@@ -74,13 +95,14 @@ function render(bonusProducts, grocerUrl = null) {
   }
 
   if (bonusProducts.length === 0) {
-    panel.innerHTML = `
+    // Appended, not set: the banners above stay
+    panel.insertAdjacentHTML('beforeend', `
       <div class="empty-state">
         <div class="empty-state-icon">%</div>
         <h3>Geen bonus producten</h3>
         <p>Voeg producten toe via "Mijn Producten" om te zien wanneer ze in de bonus zijn</p>
       </div>
-    `;
+    `);
     return;
   }
 
@@ -91,7 +113,7 @@ function render(bonusProducts, grocerUrl = null) {
     });
     card.addEventListener('click', () => openSavedProductDetail(product.savedId, {
       panel,
-      onBack: () => render(bonusProducts, grocerUrl),
+      onBack: () => render(bonusProducts, grocerUrl, unreachable),
     }));
     return card;
   });
