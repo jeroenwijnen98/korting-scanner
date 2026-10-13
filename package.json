@@ -9,7 +9,7 @@
     "start": "node server.ts",
     "sandcastle": "tsx .sandcastle/main.mts",
     "typecheck": "tsc -p . && tsc -p public",
-    "lint": "oxlint --deny-warnings",
+    "lint": "oxlint --deny-warnings && comment-width --one-line 100 --skip test/fixtures/",
     "test": "sh .githooks/checked-tree run npm run --silent check",
     "check": "npm run typecheck && npm run lint && node --test --test-timeout=300000 \"test/**/*.test.ts\"",
     "prepare": "git config core.hooksPath .githooks || true"
@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@ai-hero/sandcastle": "^0.12.0",
-    "@jeroenwijnen98/standards": "github:jeroenwijnen98/standards#v0.1.0",
+    "@jeroenwijnen98/standards": "github:jeroenwijnen98/standards#v0.2.0",
     "@oxlint/plugins": "1.86.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
