@@ -8,6 +8,7 @@ import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
 import { splitPaused } from '../utils/pausedLayout.js';
 import { productCount } from '../utils/format.js';
+import { latestRequest } from '../utils/latestRequest.js';
 import { savedList } from '../savedList.js';
 import { openSavedProductDetail, togglePause } from '../savedProductDetail.js';
 
@@ -24,6 +25,8 @@ savedList.onChange(renderSaved);
 let activeStore = 'ah';
 /** @type {number | undefined} */
 let searchTimeout;
+// Only the search for what is in the box now may show its results or error
+const searches = latestRequest();
 // What the user opened, kept while the page is open so it survives re-renders
 // (pausing, resuming), not stored: closed again after a reload.
 /** Whether the Gepauzeerd section is open */
@@ -47,12 +50,12 @@ export async function initMyProducts() {
     pill.addEventListener('click', () => {
       pills.querySelectorAll('.store-pill').forEach(p => p.classList.toggle('active', p === pill));
       activeStore = store;
-      renderSaved();
       // Clear search when switching store
+      clearTimeout(searchTimeout);
+      searches.cancel();
       searchInput.value = '';
       clearBtn.hidden = true;
-      resultsContainer.innerHTML = '';
-      resultsContainer.style.display = 'none';
+      resetSearch();
     });
     pills.appendChild(pill);
   });
@@ -98,6 +101,7 @@ export async function initMyProducts() {
 
   clearBtn.addEventListener('click', () => {
     clearTimeout(searchTimeout);
+    searches.cancel();
     searchInput.value = '';
     clearBtn.hidden = true;
     resetSearch();
@@ -107,6 +111,7 @@ export async function initMyProducts() {
   // Search input handler with debounce
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimeout);
+    const isCurrent = searches.start();
     const query = searchInput.value.trim();
     clearBtn.hidden = searchInput.value.length === 0;
     if (!query) {
@@ -120,8 +125,9 @@ export async function initMyProducts() {
         resultsContainer.style.display = '';
         resultsContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Zoeken...</p></div>';
         const results = await searchProducts(store, query);
-        renderSearchResults(results, resultsContainer);
+        if (isCurrent()) renderSearchResults(results, resultsContainer);
       } catch (err) {
+        if (!isCurrent()) return;
         showToast(errorMessage(err), 'error');
         resultsContainer.innerHTML = '';
       }
