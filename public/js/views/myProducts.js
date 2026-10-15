@@ -50,12 +50,7 @@ export async function initMyProducts() {
     pill.addEventListener('click', () => {
       pills.querySelectorAll('.store-pill').forEach(p => p.classList.toggle('active', p === pill));
       activeStore = store;
-      // Clear search when switching store
-      clearTimeout(searchTimeout);
-      searches.cancel();
-      searchInput.value = '';
-      clearBtn.hidden = true;
-      resetSearch();
+      clearSearch();
     });
     pills.appendChild(pill);
   });
@@ -99,12 +94,17 @@ export async function initMyProducts() {
     renderSaved();
   };
 
-  clearBtn.addEventListener('click', () => {
+  // Empties the box and drops a search that is still waiting or in flight
+  const clearSearch = () => {
     clearTimeout(searchTimeout);
     searches.cancel();
     searchInput.value = '';
     clearBtn.hidden = true;
     resetSearch();
+  };
+
+  clearBtn.addEventListener('click', () => {
+    clearSearch();
     searchInput.focus();
   });
 
