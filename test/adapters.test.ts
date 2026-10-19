@@ -35,7 +35,7 @@ function stubStore(t: TestContext, host: string, answer: (url: string, init?: Re
   return urls;
 }
 
-const notFound = () => new Response(null, { status: 404 });
+const notFoundResponse = () => new Response(null, { status: 404 });
 
 /** AH: the anonymous token, the search fixture and details by webshopId. */
 function stubAH(t: TestContext, details: Record<string, unknown>): string[] {
@@ -43,7 +43,7 @@ function stubAH(t: TestContext, details: Record<string, unknown>): string[] {
     if (url.includes('/auth/token/')) return { access_token: 'token', expires_in: 3600 };
     if (url.includes('/product/search/')) return fixture('ah-search.json');
     const id = url.match(/\/product\/detail\/v4\/fir\/(.+)$/)?.[1] ?? '';
-    return id in details ? details[id] : notFound();
+    return id in details ? details[id] : notFoundResponse();
   });
 }
 
@@ -214,7 +214,7 @@ function stubSap(t: TestContext, siteId: string, search: string, details: Record
     assert.ok(url.startsWith(prefix), url);
     if (url.startsWith(`${prefix}search?`)) return fixture(search);
     const code = decodeURIComponent(url.match(/\/products\/([^?]+)\?fields=FULL&lang=nl$/)?.[1] ?? '');
-    return code in details ? details[code] : notFound();
+    return code in details ? details[code] : notFoundResponse();
   });
 }
 

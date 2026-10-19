@@ -61,10 +61,10 @@ export function createProductDetail(product, {
   el.appendChild(backBtn);
 
   // Title
-  const title = document.createElement('h2');
-  title.className = 'product-detail-title';
-  title.textContent = product.title;
-  el.appendChild(title);
+  const heading = document.createElement('h2');
+  heading.className = 'product-detail-title';
+  heading.textContent = product.title;
+  el.appendChild(heading);
 
   // Product image
   if (product.imageUrl) {

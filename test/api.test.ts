@@ -231,14 +231,14 @@ test('product detail: viewing a saved product snapshots it and syncs its image',
 });
 
 test('product detail: viewing an unsaved product writes no history', async () => {
-  const before = await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null);
+  const historyBefore = await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null);
 
   const detail = await api('GET', '/product/ah/6');
   assert.equal(detail.status, 200);
   assert.equal(detail.json.title, 'Brood');
 
   assert.deepEqual(await getHistory('ah-6'), []);
-  assert.equal(await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null), before);
+  assert.equal(await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null), historyBefore);
 });
 
 test('image backfill: a missing image is filled and the saved products returned', async () => {

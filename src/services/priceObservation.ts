@@ -50,9 +50,10 @@ export async function observeSavedProducts(
 /** Gives each saved product the observed image when its own differs or is ''. */
 async function syncImages(observed: BonusProduct[], saved: SavedProduct[]): Promise<void> {
   const savedImages = new Map(saved.map(p => [p.id, p.imageUrl]));
-  const updates = observed
-    .filter(p => p.imageUrl && p.imageUrl !== savedImages.get(p.savedId))
-    .map(p => ({ id: p.savedId, fields: { imageUrl: p.imageUrl! } }));
+  const updates = observed.flatMap(p =>
+    p.imageUrl && p.imageUrl !== savedImages.get(p.savedId)
+      ? [{ id: p.savedId, fields: { imageUrl: p.imageUrl } }]
+      : []);
   if (updates.length > 0) await productStore.bulkUpdate(updates);
 }
 
