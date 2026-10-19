@@ -46,8 +46,7 @@ export async function initMyProducts() {
     pill.addEventListener('click', () => {
       pills.querySelectorAll('.store-pill').forEach(p => p.classList.toggle('active', p === pill));
       activeStore = store;
-      searchInput.value = '';
-      clearBtn.hidden = true;
+      emptySearchBox();
       productSearch.setStore(store);
     });
     pills.appendChild(pill);
@@ -114,9 +113,13 @@ export async function initMyProducts() {
   const productSearch = createProductSearch({ search: searchProducts, debounceMs: 300, onState: drawSearch });
   productSearch.setStore(activeStore);
 
-  clearBtn.addEventListener('click', () => {
+  const emptySearchBox = () => {
     searchInput.value = '';
     clearBtn.hidden = true;
+  };
+
+  clearBtn.addEventListener('click', () => {
+    emptySearchBox();
     productSearch.clear();
     searchInput.focus();
   });
