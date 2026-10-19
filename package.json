@@ -7,7 +7,7 @@
   },
   "scripts": {
     "start": "node server.ts",
-    "sandcastle": "tsx .sandcastle/main.mts",
+    "sandcastle": "npx tsx .sandcastle/main.mts",
     "typecheck": "tsc -p . && tsc -p public",
     "lint": "oxlint --deny-warnings && comment-width --one-line 100 --skip test/fixtures/",
     "test": "checked-tree run npm run --silent check",
@@ -15,20 +15,20 @@
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
+    "@ai-hero/sandcastle": "^0.12.0",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
-    "nodemailer": "^8.0.1"
+    "nodemailer": "^8.0.1",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@ai-hero/sandcastle": "^0.12.0",
-    "@jeroenwijnen98/standards": "github:jeroenwijnen98/standards#v0.3.1",
+    "@jeroenwijnen98/standards": "github:jeroenwijnen98/standards#v0.4.0",
     "@oxlint/plugins": "1.86.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "@types/nodemailer": "^8.0.2",
     "oxlint": "1.86.0",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "zod": "^4.6.5"
+    "typescript": "^7.0.2"
   }
 }
