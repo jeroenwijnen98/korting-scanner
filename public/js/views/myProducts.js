@@ -8,8 +8,8 @@ import { errorMessage } from '../utils/errorMessage.js';
 import { STORES } from '../utils/stores.js';
 import { splitPaused } from '../utils/pausedLayout.js';
 import { productCount } from '../utils/format.js';
-import { latestRequest } from '../utils/latestRequest.js';
 import { savedList } from '../savedList.js';
+import { createProductSearch } from '../productSearch.js';
 import { openSavedProductDetail, togglePause } from '../savedProductDetail.js';
 
 /**
@@ -23,10 +23,6 @@ const panel = document.getElementById('panel-my-products');
 savedList.onChange(renderSaved);
 /** @type {StoreFilter} */
 let activeStore = 'ah';
-/** @type {number | undefined} */
-let searchTimeout;
-// Only the search for what is in the box now may show its results or error
-const searches = latestRequest();
 // What the user opened, kept while the page is open so it survives re-renders
 // (pausing, resuming), not stored: closed again after a reload.
 /** Whether the Gepauzeerd section is open */
@@ -50,7 +46,8 @@ export async function initMyProducts() {
     pill.addEventListener('click', () => {
       pills.querySelectorAll('.store-pill').forEach(p => p.classList.toggle('active', p === pill));
       activeStore = store;
-      clearSearch();
+      emptySearchBox();
+      productSearch.setStore(store);
     });
     pills.appendChild(pill);
   });
@@ -87,51 +84,49 @@ export async function initMyProducts() {
   savedContainer.id = 'saved-products';
   panel.appendChild(savedContainer);
 
-  const resetSearch = () => {
+  // Draws the search state: saved products while idle, the results otherwise
+  /** @param {import('../productSearch.js').SearchState} state */
+  const drawSearch = state => {
+    const searching = state.kind !== 'idle';
+    savedContainer.style.display = searching ? 'none' : '';
+    resultsContainer.style.display = searching ? '' : 'none';
     resultsContainer.innerHTML = '';
-    resultsContainer.style.display = 'none';
-    savedContainer.style.display = '';
-    renderSaved();
+    switch (state.kind) {
+      case 'idle':
+        renderSaved();
+        break;
+      case 'loading':
+        resultsContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Zoeken...</p></div>';
+        break;
+      case 'results':
+        renderSearchResults(state.products, resultsContainer);
+        break;
+      case 'empty':
+        renderSearchResults([], resultsContainer);
+        break;
+      case 'error':
+        showToast(errorMessage(state.error), 'error');
+        break;
+    }
   };
 
-  // Empties the box and drops a search that is still waiting or in flight
-  const clearSearch = () => {
-    clearTimeout(searchTimeout);
-    searches.cancel();
+  const productSearch = createProductSearch({ search: searchProducts, debounceMs: 300, onState: drawSearch });
+  productSearch.setStore(activeStore);
+
+  const emptySearchBox = () => {
     searchInput.value = '';
     clearBtn.hidden = true;
-    resetSearch();
   };
 
   clearBtn.addEventListener('click', () => {
-    clearSearch();
+    emptySearchBox();
+    productSearch.clear();
     searchInput.focus();
   });
 
-  // Search input handler with debounce
   searchInput.addEventListener('input', () => {
-    clearTimeout(searchTimeout);
-    const isCurrent = searches.start();
-    const query = searchInput.value.trim();
     clearBtn.hidden = searchInput.value.length === 0;
-    if (!query) {
-      resetSearch();
-      return;
-    }
-    searchTimeout = setTimeout(async () => {
-      const store = activeStore === 'alle' ? 'ah' : activeStore;
-      try {
-        savedContainer.style.display = 'none';
-        resultsContainer.style.display = '';
-        resultsContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Zoeken...</p></div>';
-        const results = await searchProducts(store, query);
-        if (isCurrent()) renderSearchResults(results, resultsContainer);
-      } catch (err) {
-        if (!isCurrent()) return;
-        showToast(errorMessage(err), 'error');
-        resultsContainer.innerHTML = '';
-      }
-    }, 300);
+    productSearch.setQuery(searchInput.value);
   });
 
   await loadSaved();
