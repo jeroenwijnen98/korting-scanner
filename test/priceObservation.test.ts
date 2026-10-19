@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { observeSavedProducts, summarize } from '../src/services/priceObservation.ts';
 import * as priceHistory from '../src/services/priceHistory.ts';
 import * as productStore from '../src/services/productStore.ts';
-import type { CheckStatus, Product, SavedProduct } from '../src/types.ts';
+import type { CheckStatus, CheckSummary, Product, SavedProduct } from '../src/types.ts';
 import { useTempDataDir } from './tempDataDir.ts';
-import { BrokenStore, FakeStore, product } from './fakeStore.ts';
+import { BrokenStore, FakeStore, product, statusesOf } from './fakeStore.ts';
 
 await useTempDataDir();
 
@@ -59,11 +59,6 @@ for (const [i, c] of cases.entries()) {
   });
 }
 
-/** Each status as [savedId, status]. */
-function statusesOf(statuses: CheckStatus[]): [string, string][] {
-  return statuses.map(s => [s.savedId, s.status]);
-}
-
 test('every saved product comes back with one status, in the order asked, an observed one with its product', async () => {
   const saved = [
     (await productStore.add({ store: 'dirk', storeProductId: '401', title: 'A' }))!,
@@ -89,7 +84,7 @@ const observed = (savedId: string): CheckStatus =>
   ({ status: 'observed', savedId, product: { ...product('ah', savedId), savedId } });
 
 /** What each mix of check statuses tells the user. */
-const summaries: { name: string; statuses: CheckStatus[]; summary: ReturnType<typeof summarize> }[] = [
+const summaries: { name: string; statuses: CheckStatus[]; summary: CheckSummary }[] = [
   {
     name: 'all fine',
     statuses: [observed('ah-1'), observed('dirk-2')],

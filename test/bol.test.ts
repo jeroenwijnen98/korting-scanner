@@ -7,6 +7,7 @@ import type { AddressInfo } from 'node:net';
 import { bol, pageData, type BolRawProduct } from '../src/stores/bol.ts';
 import { createApp } from '../src/app.ts';
 import { useTempDataDir } from './tempDataDir.ts';
+import { statusesOf } from './fakeStore.ts';
 import type { SavedProduct } from '../src/types.ts';
 
 // bol pages; see fixtures/README.md.
@@ -194,7 +195,7 @@ test('bol observe: no buy box or an unknown id makes the saved product gone', as
   const statuses = await bol.observe(
     [savedBol('9300000238030673'), savedBol('9200000104617870'), savedBol('9300000000000001')],
   );
-  assert.deepEqual(statuses.map(s => [s.savedId, s.status]), [
+  assert.deepEqual(statusesOf(statuses), [
     ['bol-9300000238030673', 'observed'], ['bol-9200000104617870', 'gone'], ['bol-9300000000000001', 'gone'],
   ]);
   const [deal] = statuses;

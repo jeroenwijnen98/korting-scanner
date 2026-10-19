@@ -8,8 +8,10 @@ import { dirk } from '../src/stores/dirk.ts';
 import { kruidvat } from '../src/stores/kruidvat.ts';
 import { trekpleister } from '../src/stores/trekpleister.ts';
 import { createApp } from '../src/app.ts';
+import { observedProducts } from '../src/services/priceObservation.ts';
 import { useTempDataDir } from './tempDataDir.ts';
-import type { CheckStatus, SavedProduct } from '../src/types.ts';
+import { statusesOf } from './fakeStore.ts';
+import type { SavedProduct } from '../src/types.ts';
 
 // Raw responses; see fixtures/README.md. `any`, as the adapters' own
 // `res.json()` is before its cast.
@@ -167,11 +169,6 @@ function savedDirk(storeProductId: string): SavedProduct {
   };
 }
 
-/** Each check status as [savedId, status]. */
-function statusesOf(statuses: CheckStatus[]): [string, string][] {
-  return statuses.map(s => [s.savedId, s.status]);
-}
-
 test('Dirk observe: every found saved product observed, on offer or not; the rest gone', async (t) => {
   // The fixtures answer the batch queries: assortment for 101 and 202 only
   // (none for 303), then the details of the products that have one.
@@ -184,8 +181,7 @@ test('Dirk observe: every found saved product observed, on offer or not; the res
   assert.deepEqual(statusesOf(statuses), [
     ['dirk-101', 'observed'], ['dirk-202', 'observed'], ['dirk-303', 'gone'], ['dirk-geen-id', 'gone'],
   ]);
-  const observed = statuses.flatMap(s => (s.status === 'observed' ? [s.product] : []));
-  assert.deepEqual(observed.map(p => [p.savedId, p.productId, p.isBonus, p.currentPrice]), [
+  assert.deepEqual(observedProducts(statuses).map(p => [p.savedId, p.productId, p.isBonus, p.currentPrice]), [
     ['dirk-101', '101', true, 1.79],
     ['dirk-202', '202', false, 1.99],
   ]);

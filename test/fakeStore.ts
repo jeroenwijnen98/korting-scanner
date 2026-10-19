@@ -1,5 +1,5 @@
 import { StoreAdapter } from '../src/stores/base.ts';
-import type { Product, StoreName } from '../src/types.ts';
+import type { CheckStatus, Product, StoreName } from '../src/types.ts';
 
 /** A product in the common product schema, with overrides. */
 export function product(store: StoreName, productId: string, fields: Partial<Product> = {}): Product {
@@ -9,6 +9,11 @@ export function product(store: StoreName, productId: string, fields: Partial<Pro
     mainCategory: '', subCategory: '', brand: '', isBonus: false, imageUrl: null, store,
     ...fields,
   };
+}
+
+/** Each check status as [savedId, status]. */
+export function statusesOf(statuses: CheckStatus[]): [string, string][] {
+  return statuses.map(s => [s.savedId, s.status]);
 }
 
 /** A store adapter over a fixed list of products; no network. */
