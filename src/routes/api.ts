@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { ErrorRequestHandler } from 'express';
 import * as productStore from '../services/productStore.ts';
 import { checkSavedProducts } from '../services/priceCheck.ts';
-import { observeSavedProducts, withoutSavedId } from '../services/priceObservation.ts';
+import { observedProducts, observeSavedProducts, withoutSavedId } from '../services/priceObservation.ts';
 import { getSavedProductDetail } from '../services/savedProductDetail.ts';
 import type { StoreAdapter } from '../stores/base.ts';
 import type { BonusAnswer, Product, StoreName } from '../types.ts';
@@ -74,9 +74,9 @@ export function createApiRouter(
       .find(p => p.store === store && p.storeProductId === storeProductId);
     let detail: Product | null;
     if (saved) {
-      const { observed } = await observeSavedProducts({ [saved.store]: adapter }, [saved]);
+      const [observed] = observedProducts(await observeSavedProducts({ [saved.store]: adapter }, [saved]));
       // The client gets the product as the store has it, without the saved id
-      detail = observed[0] ? withoutSavedId(observed[0]) : null;
+      detail = observed ? withoutSavedId(observed) : null;
     } else {
       detail = await adapter.getProductDetail(storeProductId);
     }

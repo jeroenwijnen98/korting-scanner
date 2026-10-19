@@ -23,9 +23,12 @@ async function main(): Promise<void> {
   }
 
   console.log('Checking saved products...');
-  const { bonusProducts } = await checkSavedProducts(stores);
+  const overview = await checkSavedProducts(stores);
 
-  console.log(`Found ${bonusProducts.length} bonus products.`);
+  console.log(`Found ${overview.bonusProducts.length} bonus products.`);
+  if (overview.summary.storesDown.length > 0) {
+    console.log(`Stores down: ${overview.summary.storesDown.join(', ')}.`);
+  }
 
   // Build email
   const today = new Date().toLocaleDateString('nl-NL', {
@@ -34,7 +37,7 @@ async function main(): Promise<void> {
     year: 'numeric',
   });
 
-  const html = buildHtml(bonusProducts, { appUrl, today, grocerUrl, at: Date.now() });
+  const html = buildHtml(overview, { appUrl, today, grocerUrl, at: Date.now() });
 
   // Send via Gmail SMTP
   const transporter = createTransport({

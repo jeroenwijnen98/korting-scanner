@@ -1,6 +1,6 @@
 import type { StoreAdapter } from '../stores/base.ts';
 import type { BonusOverview, StoreName } from '../types.ts';
-import { observeSavedProducts } from './priceObservation.ts';
+import { observedProducts, observeSavedProducts, summarize } from './priceObservation.ts';
 import * as productStore from './productStore.ts';
 
 /**
@@ -8,14 +8,16 @@ import * as productStore from './productStore.ts';
  * snapshots and image sync that come with it). The overview lists only those
  * on bonus (`isBonus`, the store adapter's verdict), each with its saved
  * product's view (`productGroup`); a paused saved product is observed like
- * any other but left out of the overview.
+ * any other but left out of the overview. The summary says which stores were
+ * down and which saved products are gone.
  */
 export async function checkSavedProducts(
   stores: Partial<Record<StoreName, StoreAdapter>>,
 ): Promise<BonusOverview> {
   const saved = await productStore.getAll();
-  const { observed, notFound, unreachable } = await observeSavedProducts(stores, saved);
+  const statuses = await observeSavedProducts(stores, saved);
   const pausedIds = new Set(saved.filter(p => p.paused).map(p => p.id));
-  const bonusProducts = observed.filter(product => product.isBonus && !pausedIds.has(product.savedId));
-  return { bonusProducts: productStore.withSavedProductView(bonusProducts, saved), notFound, unreachable };
+  const bonusProducts = observedProducts(statuses)
+    .filter(product => product.isBonus && !pausedIds.has(product.savedId));
+  return { bonusProducts: productStore.withSavedProductView(bonusProducts, saved), summary: summarize(statuses) };
 }

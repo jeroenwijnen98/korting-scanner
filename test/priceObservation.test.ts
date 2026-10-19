@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { observeSavedProducts } from '../src/services/priceObservation.ts';
+import { observeSavedProducts, summarize } from '../src/services/priceObservation.ts';
 import * as priceHistory from '../src/services/priceHistory.ts';
 import * as productStore from '../src/services/productStore.ts';
-import type { Product, SavedProduct } from '../src/types.ts';
+import type { CheckStatus, Product, SavedProduct } from '../src/types.ts';
 import { useTempDataDir } from './tempDataDir.ts';
 import { BrokenStore, FakeStore, product } from './fakeStore.ts';
 
@@ -29,8 +29,8 @@ const cases: {
   { name: 'a changed image replaces the saved one', savedImage: OLD, observed: { imageUrl: NEW }, snapshots: [[2, false]], image: NEW },
   { name: 'a missing saved image is filled in', savedImage: '', observed: { imageUrl: NEW }, snapshots: [[2, false]], image: NEW },
   { name: 'no observed image keeps the saved one', savedImage: OLD, observed: { imageUrl: null }, snapshots: [[2, false]], image: OLD },
-  { name: 'an unknown product goes to notFound, unsnapshotted', savedImage: OLD, observed: null, snapshots: [], image: OLD },
-  { name: 'a throwing store sends only its products to unreachable', savedImage: OLD, observed: 'throws', snapshots: [], image: OLD },
+  { name: 'an unknown product is gone, unsnapshotted', savedImage: OLD, observed: null, snapshots: [], image: OLD },
+  { name: 'a throwing store marks only its products store down', savedImage: OLD, observed: 'throws', snapshots: [], image: OLD },
 ];
 
 for (const [i, c] of cases.entries()) {
@@ -47,15 +47,83 @@ for (const [i, c] of cases.entries()) {
 
     const result = await observeSavedProducts({ ah, dirk }, [ahSaved, dirkSaved]);
 
-    const found = c.observed !== null && c.observed !== 'throws';
-    assert.deepEqual(result.observed.map(p => p.savedId), found ? [ahSaved.id, dirkSaved.id] : [dirkSaved.id]);
-    assert.deepEqual(result.notFound, c.observed === null ? [ahSaved.id] : []);
-    assert.deepEqual(result.unreachable, c.observed === 'throws' ? [ahSaved.id] : []);
+    let ahStatus = 'observed';
+    if (c.observed === null) ahStatus = 'gone';
+    if (c.observed === 'throws') ahStatus = 'storeDown';
+    assert.deepEqual(statusesOf(result), [[ahSaved.id, ahStatus], [dirkSaved.id, 'observed']]);
     assert.deepEqual((await priceHistory.getHistory(ahSaved.id)).map(s => [s.currentPrice, s.isBonus]), c.snapshots);
     assert.deepEqual((await priceHistory.getHistory(dirkSaved.id)).map(s => [s.currentPrice, s.isBonus]), [[3, false]]);
     const images = new Map((await productStore.getAll()).map(p => [p.id, p.imageUrl]));
     assert.equal(images.get(ahSaved.id), c.image);
     assert.equal(images.get(dirkSaved.id), OLD);
+  });
+}
+
+/** Each status as [savedId, status]. */
+function statusesOf(statuses: CheckStatus[]): [string, string][] {
+  return statuses.map(s => [s.savedId, s.status]);
+}
+
+test('every saved product comes back with one status, in the order asked, an observed one with its product', async () => {
+  const saved = [
+    (await productStore.add({ store: 'dirk', storeProductId: '401', title: 'A' }))!,
+    (await productStore.add({ store: 'ah', storeProductId: '402', title: 'B' }))!,
+    (await productStore.add({ store: 'kruidvat', storeProductId: '403', title: 'C' }))!,
+    (await productStore.add({ store: 'dirk', storeProductId: '404', title: 'D' }))!,
+  ];
+  // Kruidvat has no store adapter here: its saved product could not be checked
+  const statuses = await observeSavedProducts({
+    ah: new BrokenStore('ah'),
+    dirk: new FakeStore('dirk', [product('dirk', '401', { currentPrice: 4 })]),
+  }, saved);
+
+  assert.deepEqual(statuses, [
+    { status: 'observed', savedId: 'dirk-401', product: { ...product('dirk', '401', { currentPrice: 4 }), savedId: 'dirk-401' } },
+    { status: 'storeDown', savedId: 'ah-402', store: 'ah' },
+    { status: 'storeDown', savedId: 'kruidvat-403', store: 'kruidvat' },
+    { status: 'gone', savedId: 'dirk-404' },
+  ]);
+});
+
+const observed = (savedId: string): CheckStatus =>
+  ({ status: 'observed', savedId, product: { ...product('ah', savedId), savedId } });
+
+/** What each mix of check statuses tells the user. */
+const summaries: { name: string; statuses: CheckStatus[]; summary: ReturnType<typeof summarize> }[] = [
+  {
+    name: 'all fine',
+    statuses: [observed('ah-1'), observed('dirk-2')],
+    summary: { storesDown: [], unchecked: [], gone: [] },
+  },
+  {
+    name: 'store down',
+    statuses: [
+      { status: 'storeDown', savedId: 'ah-1', store: 'ah' },
+      { status: 'storeDown', savedId: 'ah-2', store: 'ah' },
+    ],
+    summary: { storesDown: ['ah'], unchecked: ['ah-1', 'ah-2'], gone: [] },
+  },
+  {
+    name: 'product gone',
+    statuses: [observed('ah-1'), { status: 'gone', savedId: 'ah-2' }],
+    summary: { storesDown: [], unchecked: [], gone: ['ah-2'] },
+  },
+  {
+    name: 'mixed',
+    statuses: [
+      { status: 'storeDown', savedId: 'dirk-1', store: 'dirk' },
+      observed('ah-2'),
+      { status: 'gone', savedId: 'ah-3' },
+      { status: 'storeDown', savedId: 'bol-4', store: 'bol' },
+      { status: 'storeDown', savedId: 'dirk-5', store: 'dirk' },
+    ],
+    summary: { storesDown: ['dirk', 'bol'], unchecked: ['dirk-1', 'bol-4', 'dirk-5'], gone: ['ah-3'] },
+  },
+];
+
+for (const c of summaries) {
+  test(`summarizing a check: ${c.name}`, () => {
+    assert.deepEqual(summarize(c.statuses), c.summary);
   });
 }
 
@@ -79,7 +147,7 @@ test('each store observes its own saved products in one call', async () => {
   assert.deepEqual(calls, [['ah-202'], ['dirk-201', 'dirk-203']]);
 });
 
-test('a detail that fails is unreachable, not notFound; the store\'s other products still count', async () => {
+test('a detail that fails is store down, not gone; the store\'s other products still count', async () => {
   const saved = [
     (await productStore.add({ store: 'ah', storeProductId: '301', title: 'A' }))!,
     (await productStore.add({ store: 'ah', storeProductId: '302', title: 'B' }))!,
@@ -91,7 +159,5 @@ test('a detail that fails is unreachable, not notFound; the store\'s other produ
 
   const result = await observeSavedProducts({ ah }, saved);
 
-  assert.deepEqual(result.observed.map(p => p.savedId), ['ah-301']);
-  assert.deepEqual(result.unreachable, ['ah-302']);
-  assert.deepEqual(result.notFound, ['ah-303']);
+  assert.deepEqual(statusesOf(result), [['ah-301', 'observed'], ['ah-302', 'storeDown'], ['ah-303', 'gone']]);
 });

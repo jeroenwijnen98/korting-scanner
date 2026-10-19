@@ -9,7 +9,7 @@ import { kruidvat } from '../src/stores/kruidvat.ts';
 import { trekpleister } from '../src/stores/trekpleister.ts';
 import { createApp } from '../src/app.ts';
 import { useTempDataDir } from './tempDataDir.ts';
-import type { SavedProduct } from '../src/types.ts';
+import type { CheckStatus, SavedProduct } from '../src/types.ts';
 
 // Raw responses; see fixtures/README.md. `any`, as the adapters' own
 // `res.json()` is before its cast.
@@ -160,17 +160,6 @@ test('Dirk search: offerPrice is the bonus price; no offer means the normal pric
   assert.equal(brood.imageUrl, null);
 });
 
-test('Dirk detail: a product without assortment has no price; an unknown product is null', async (t) => {
-  stubDirk(t, { data: { p0: null } });
-  const product = await dirk.getProductDetail('101');
-  assert.equal(product?.title, 'Coca-Cola Regular');
-  assert.equal(product?.currentPrice, null);
-  assert.equal(product?.isBonus, false);
-
-  assert.equal(await dirk.getProductDetail('999'), null);
-  assert.equal(await dirk.getProductDetail('geen-id'), null);
-});
-
 function savedDirk(storeProductId: string): SavedProduct {
   return {
     id: `dirk-${storeProductId}`, store: 'dirk', storeProductId, title: '', brand: '', salesUnitSize: '',
@@ -178,29 +167,59 @@ function savedDirk(storeProductId: string): SavedProduct {
   };
 }
 
-test('Dirk observe: every found saved product, on offer or not; the rest in notFound', async (t) => {
+/** Each check status as [savedId, status]. */
+function statusesOf(statuses: CheckStatus[]): [string, string][] {
+  return statuses.map(s => [s.savedId, s.status]);
+}
+
+test('Dirk observe: every found saved product observed, on offer or not; the rest gone', async (t) => {
   // The fixtures answer the batch queries: assortment for 101 and 202 only
   // (none for 303), then the details of the products that have one.
   const queries = stubDirk(t);
 
-  const { observed, notFound } = await dirk.observe(
+  const statuses = await dirk.observe(
     [savedDirk('101'), savedDirk('202'), savedDirk('303'), savedDirk('geen-id')],
   );
 
+  assert.deepEqual(statusesOf(statuses), [
+    ['dirk-101', 'observed'], ['dirk-202', 'observed'], ['dirk-303', 'gone'], ['dirk-geen-id', 'gone'],
+  ]);
+  const observed = statuses.flatMap(s => (s.status === 'observed' ? [s.product] : []));
   assert.deepEqual(observed.map(p => [p.savedId, p.productId, p.isBonus, p.currentPrice]), [
     ['dirk-101', '101', true, 1.79],
     ['dirk-202', '202', false, 1.99],
   ]);
-  assert.deepEqual(notFound.sort(), ['dirk-303', 'dirk-geen-id']);
   assert.equal(queries.length, 2);
   assert.match(queries[0], /productAssortment\(productId: 303/);
   assert.match(queries[1], /listProducts\(productIds: \[101,202\]\)/);
-  assert.deepEqual(observed.filter(p => p.isBonus).map(p => p.savedId), ['dirk-101']);
+});
+
+test('Dirk: a product without assortment is gone in observe and null in getProductDetail alike', async (t) => {
+  // 101 is in listProducts, but has no assortment in the store
+  stubDirk(t, { data: { p0: null } });
+  assert.equal(await dirk.getProductDetail('101'), null);
+  assert.deepEqual(await dirk.observe([savedDirk('101')]), [{ status: 'gone', savedId: 'dirk-101' }]);
+
+  assert.equal(await dirk.getProductDetail('geen-id'), null);
+});
+
+test('Dirk detail: a product with assortment has its price; an unknown product is null', async (t) => {
+  stubDirk(t);
+  const product = await dirk.getProductDetail('101');
+  assert.equal(product?.title, 'Coca-Cola Regular');
+  assert.equal(product?.currentPrice, 1.79);
+  assert.equal(product?.isBonus, true);
+  assert.equal(await dirk.getProductDetail('999'), null);
+});
+
+test('Dirk observe: a failing gateway throws, so the observation marks the store down', async (t) => {
+  t.mock.method(globalThis, 'fetch', () => Promise.resolve(new Response(null, { status: 503 })));
+  await assert.rejects(dirk.observe([savedDirk('101')]), /Dirk GraphQL error: 503/);
 });
 
 test('Dirk observe: no valid ids means no request', async (t) => {
   const fetch = t.mock.method(globalThis, 'fetch', () => Promise.reject(new Error('no request expected')));
-  assert.deepEqual(await dirk.observe([savedDirk('x')]), { observed: [], notFound: ['dirk-x'], unreachable: [] });
+  assert.deepEqual(await dirk.observe([savedDirk('x')]), [{ status: 'gone', savedId: 'dirk-x' }]);
   assert.equal(fetch.mock.callCount(), 0);
 });
 

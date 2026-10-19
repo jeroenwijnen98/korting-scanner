@@ -1,4 +1,4 @@
-import type { BonusProduct, ObservationResult, Product, SavedProduct } from '../types.ts';
+import type { CheckStatus, Product, SavedProduct } from '../types.ts';
 import { StoreAdapter } from './base.ts';
 import { buildProduct } from './product.ts';
 
@@ -145,51 +145,44 @@ class DirkAdapter extends StoreAdapter {
     return products.map(p => normalize(p, assortmentMap.get(p.productId)));
   }
 
+  /** Null for an id that does not parse, or without an assortment or product entry. */
   async getProductDetail(storeProductId: string): Promise<Product | null> {
     const id = parseInt(storeProductId, 10);
     if (isNaN(id)) return null;
 
+    const assortment = (await fetchAssortmentBatch([id])).get(id);
+    if (!assortment) return null;
     const data = await graphqlQuery<DirkProductData>(`{
       product(productId: ${id}) {
         ${PRODUCT_FIELDS}
       }
     }`);
-    if (!data.product) return null;
-
-    const assortmentMap = await fetchAssortmentBatch([id]);
-    return normalize(data.product, assortmentMap.get(id));
+    return data.product ? normalize(data.product, assortment) : null;
   }
 
   /**
    * Batch-fetches the assortment and details of every saved product and
-   * reports each one found, on offer or not. An id that does not parse, or has
-   * no assortment or product entry, goes to `notFound`.
+   * answers one check status per saved product. Gone means what it means in
+   * getProductDetail: an id that does not parse, or has no assortment or
+   * product entry.
    */
-  async observe(savedProducts: SavedProduct[]): Promise<ObservationResult> {
-    const validProducts = savedProducts.filter(p => !isNaN(parseInt(p.storeProductId, 10)));
-    const notFound = savedProducts.filter(p => isNaN(parseInt(p.storeProductId, 10))).map(p => p.id);
-    if (validProducts.length === 0) return { observed: [], notFound, unreachable: [] };
-
-    const ids = validProducts.map(p => parseInt(p.storeProductId, 10));
+  async observe(savedProducts: SavedProduct[]): Promise<CheckStatus[]> {
+    const ids = savedProducts.map(p => parseInt(p.storeProductId, 10)).filter(id => !isNaN(id));
     const assortmentMap = await fetchAssortmentBatch(ids);
 
-    // Products with no assortment entry at all are not found; skip their details
+    // Products with no assortment entry at all are gone; skip their details
     const foundIds = ids.filter(id => assortmentMap.has(id));
     const products = foundIds.length === 0 ? [] : await fetchProducts(foundIds);
     const productMap = new Map(products.map(p => [p.productId, p]));
 
-    const observed: BonusProduct[] = [];
-    for (const saved of validProducts) {
+    return savedProducts.map((saved): CheckStatus => {
       const id = parseInt(saved.storeProductId, 10);
       const product = productMap.get(id);
       const assortment = assortmentMap.get(id);
-      if (product && assortment) {
-        observed.push({ ...normalize(product, assortment), savedId: saved.id });
-      } else {
-        notFound.push(saved.id);
-      }
-    }
-    return { observed, notFound, unreachable: [] };
+      return product && assortment
+        ? { status: 'observed', savedId: saved.id, product: { ...normalize(product, assortment), savedId: saved.id } }
+        : { status: 'gone', savedId: saved.id };
+    });
   }
 }
 

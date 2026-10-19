@@ -189,13 +189,17 @@ test('bol: the real page gives the same product as its trimmed fixture', async (
   assert.deepEqual(real, await bol.getProductDetail('9300000238030673'));
 });
 
-test('bol observe: no buy box or an unknown id puts the saved product in notFound', async (t) => {
+test('bol observe: no buy box or an unknown id makes the saved product gone', async (t) => {
   t.mock.method(globalThis, 'fetch', bolFetch);
-  const { observed, notFound } = await bol.observe(
+  const statuses = await bol.observe(
     [savedBol('9300000238030673'), savedBol('9200000104617870'), savedBol('9300000000000001')],
   );
-  assert.deepEqual(observed.map(p => [p.savedId, p.isBonus, p.currentPrice]), [['bol-9300000238030673', true, 64.95]]);
-  assert.deepEqual(notFound, ['bol-9200000104617870', 'bol-9300000000000001']);
+  assert.deepEqual(statuses.map(s => [s.savedId, s.status]), [
+    ['bol-9300000238030673', 'observed'], ['bol-9200000104617870', 'gone'], ['bol-9300000000000001', 'gone'],
+  ]);
+  const [deal] = statuses;
+  assert.ok(deal.status === 'observed');
+  assert.deepEqual([deal.product.isBonus, deal.product.currentPrice], [true, 64.95]);
 });
 
 test('bol search: only a deal label is a bonus, whatever the reference price', async (t) => {
@@ -243,5 +247,5 @@ test('bonus: a saved bol product on deal is in the bonus overview', async (t) =>
   assert.deepEqual(json.bonusProducts.map((p: any) => [p.savedId, p.bonusMechanism, p.currentPrice, p.priceBeforeBonus]), [
     ['bol-9300000238030673', 'deal', 64.95, 69.99],
   ]);
-  assert.deepEqual(json.notFound, []);
+  assert.deepEqual(json.summary, { storesDown: [], unchecked: [], gone: [] });
 });

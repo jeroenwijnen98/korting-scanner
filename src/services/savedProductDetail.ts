@@ -3,7 +3,7 @@ import type { GroupHistoryEntry, PriceSnapshot, SavedProductDetail, StoreName } 
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
 import { getGroupHistory } from './groupHistory.ts';
 import * as priceHistory from './priceHistory.ts';
-import { observeSavedProducts, withoutSavedId } from './priceObservation.ts';
+import { observedProducts, observeSavedProducts, withoutSavedId } from './priceObservation.ts';
 import * as productStore from './productStore.ts';
 
 /**
@@ -23,8 +23,8 @@ export async function getSavedProductDetail(
   const saved = (await productStore.getAll()).find(p => p.id === id);
   if (!saved) return null;
 
-  const { observed } = await observeSavedProducts({ [saved.store]: stores[saved.store] }, [saved]);
-  const product = observed[0] ? withoutSavedId(observed[0]) : null;
+  const [observed] = observedProducts(await observeSavedProducts({ [saved.store]: stores[saved.store] }, [saved]));
+  const product = observed ? withoutSavedId(observed) : null;
 
   const [stored, history, groupHistory] = await Promise.all([
     // Read again, so the saved fields hold the image the observation synced;

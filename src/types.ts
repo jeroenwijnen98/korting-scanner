@@ -47,14 +47,27 @@ export interface BonusProduct extends Product {
 }
 
 /**
- * What a store adapter's `observe` returns: every saved product it found, on
- * bonus or not, the ids of those the store does not know, and the ids of
- * those it could not ask about because the store failed (down, blocked).
+ * What one check said about one saved product: observed (with the product, on
+ * bonus or not), gone (the store no longer knows it, or has no price for it)
+ * or store down (the store failed: down, blocked). A store adapter's
+ * `observe` and the price observation answer exactly one per saved product.
  */
-export interface ObservationResult {
-  observed: BonusProduct[];
-  notFound: string[];
-  unreachable: string[];
+export type CheckStatus =
+  | { status: 'observed'; savedId: string; product: BonusProduct }
+  | { status: 'gone'; savedId: string }
+  | { status: 'storeDown'; savedId: string; store: StoreName };
+
+/**
+ * What a check tells the user, from its check statuses (see `summarize`):
+ * the stores that were down, the saved products they could not check, and
+ * the saved products that are gone.
+ */
+export interface CheckSummary {
+  storesDown: StoreName[];
+  /** Saved product ids whose store was down. */
+  unchecked: string[];
+  /** Saved product ids the store no longer knows. */
+  gone: string[];
 }
 
 /**
@@ -107,11 +120,10 @@ export interface SavedProductView {
 /** A bonus product in the bonus overview, with its saved product's view. */
 export interface OverviewProduct extends BonusProduct, SavedProductView {}
 
-/** Every saved product on bonus, across stores. */
+/** Every saved product on bonus, across stores, and the check's summary. */
 export interface BonusOverview {
   bonusProducts: OverviewProduct[];
-  notFound: string[];
-  unreachable: string[];
+  summary: CheckSummary;
 }
 
 /**

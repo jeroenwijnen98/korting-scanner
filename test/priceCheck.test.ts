@@ -27,7 +27,7 @@ async function save(store: StoreName, storeProductId: string, title = `Product $
 const onBonus = (fields: Partial<Product> = {}) =>
   ({ isBonus: true, bonusMechanism: '25%', priceBeforeBonus: 8, currentPrice: 6, ...fields });
 
-test('only products on bonus make the overview; unknown ones are notFound', async () => {
+test('only products on bonus make the overview; unknown ones are gone', async () => {
   const store = new FakeStore('ah', [
     product('ah', '1', onBonus()),
     product('ah', '2', { currentPrice: 1.5 }),
@@ -38,7 +38,7 @@ test('only products on bonus make the overview; unknown ones are notFound', asyn
   const overview = await checkSavedProducts({ ah: store });
 
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-1']);
-  assert.deepEqual(overview.notFound, ['ah-404']);
+  assert.deepEqual(overview.summary, { storesDown: [], unchecked: [], gone: ['ah-404'] });
 });
 
 test('an online-only AH bonus is no bonus: left out of the overview, snapshotted without a bonus', async (t) => {
@@ -55,13 +55,13 @@ test('an online-only AH bonus is no bonus: left out of the overview, snapshotted
 
   const overview = await checkSavedProducts({ ah });
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-588920']);
-  assert.deepEqual(overview.notFound, []);
+  assert.deepEqual(overview.summary.gone, []);
   // Observed all the same, at its regular price
   assert.deepEqual((await priceHistory.getHistory('ah-777')).map(s => [s.currentPrice, s.priceBeforeBonus, s.isBonus]), [[10, null, false]]);
   assert.deepEqual((await priceHistory.getHistory('ah-588920')).map(s => [s.currentPrice, s.isBonus]), [[0.9, true]]);
 });
 
-test('a store that throws puts its saved products in unreachable; the others still count', async () => {
+test('a store that throws is down, with its saved products unchecked; the others still count', async () => {
   await save('ah', '21');
   await save('dirk', '22');
 
@@ -69,8 +69,7 @@ test('a store that throws puts its saved products in unreachable; the others sti
     { ah: new FakeStore('ah', [product('ah', '21', onBonus())]), dirk: new BrokenStore('dirk') },
   );
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-21']);
-  assert.deepEqual(overview.unreachable, ['dirk-22']);
-  assert.deepEqual(overview.notFound, []);
+  assert.deepEqual(overview.summary, { storesDown: ['dirk'], unchecked: ['dirk-22'], gone: [] });
 });
 
 test('bonus products carry their saved product\'s productGroup, joined on savedId', async () => {
@@ -98,7 +97,7 @@ test('a paused product is observed and snapshotted but left out of the bonus ove
 
   const overview = await checkSavedProducts({ ah: store });
   assert.deepEqual(overview.bonusProducts.map(p => p.savedId), ['ah-51']);
-  assert.deepEqual(overview.notFound, []);
+  assert.deepEqual(overview.summary.gone, []);
   assert.deepEqual((await priceHistory.getHistory('ah-52')).map(s => [s.currentPrice, s.isBonus]), [[5, true]]);
 });
 

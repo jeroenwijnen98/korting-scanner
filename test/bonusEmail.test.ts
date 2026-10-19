@@ -2,14 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { buildHtml } from '../src/services/bonusEmail.ts';
-import type { OverviewProduct } from '../src/types.ts';
+import type { CheckSummary, OverviewProduct } from '../src/types.ts';
 
 const fixture: OverviewProduct[] = JSON.parse(
   await readFile(new URL('./fixtures/bonus-overview.json', import.meta.url), 'utf-8'));
 const AT = 1_790_000_000_000;
 
-function render(grocerUrl: string | null): string {
-  return buildHtml(fixture, { appUrl: 'http://localhost:3001', today: '2 oktober 2026', grocerUrl, at: AT });
+const ALL_FINE: CheckSummary = { storesDown: [], unchecked: [], gone: [] };
+
+function render(grocerUrl: string | null, bonusProducts = fixture, summary = ALL_FINE): string {
+  return buildHtml({ bonusProducts, summary }, { appUrl: 'http://localhost:3001', today: '2 oktober 2026', grocerUrl, at: AT });
 }
 
 /** The [href, label] of every link in the bonus rows (not Open Dashboard). */
@@ -50,4 +52,20 @@ test('each row shows its unit price and normal unit price as € 1,23 / kg', () 
     '€\u00a099,99 / stuk', '€\u00a0129,99 / stuk']) {
     assert.ok(cells.includes(text), text);
   }
+});
+
+test('no bonus with every store reached says so', () => {
+  assert.match(render(null, []), /Geen opgeslagen producten zijn momenteel in de bonus\./);
+});
+
+test('a store that was down is named, and never renders as no bonus', () => {
+  const summary: CheckSummary = { storesDown: ['ah', 'dirk'], unchecked: ['ah-1', 'ah-2', 'dirk-3'], gone: [] };
+
+  for (const bonusProducts of [[], fixture]) {
+    const html = render(null, bonusProducts, summary);
+    assert.match(html, /<strong>Niet bereikbaar:<\/strong> AH, Dirk\. Bonus van 3 producten onbekend\./);
+    assert.doesNotMatch(html, /Geen opgeslagen producten/);
+  }
+  // The stores that were reached still list their bonus
+  assert.equal(rowLinks(render(null, fixture, summary)).length, 1);
 });

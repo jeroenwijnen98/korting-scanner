@@ -139,8 +139,7 @@ test('bonus: one throwing store does not sink the others', async () => {
   const { status, json } = await api('GET', '/bonus');
   assert.equal(status, 200);
   assert.deepEqual(json.bonusProducts.map((p: any) => [p.savedId, p.currentPrice]), [['ah-1', 6]]);
-  assert.deepEqual(json.notFound, ['ah-999']);
-  assert.deepEqual(json.unreachable, ['dirk-5']);
+  assert.deepEqual(json.summary, { storesDown: ['dirk'], unchecked: ['dirk-5'], gone: ['ah-999'] });
 
   // The bonus check recorded a snapshot for every observed product, on bonus or not
   const history = await getHistory('ah-1');
@@ -173,7 +172,7 @@ test('bonus: a paused product on bonus is left out, and back once resumed', asyn
 
   const paused = await api('GET', '/bonus');
   assert.deepEqual(paused.json.bonusProducts.map((p: any) => p.savedId), ['ah-3']);
-  assert.deepEqual(paused.json.notFound, []);
+  assert.deepEqual(paused.json.summary.gone, []);
 
   await api('PATCH', '/products/ah-1', { paused: false });
   const resumed = await api('GET', '/bonus');

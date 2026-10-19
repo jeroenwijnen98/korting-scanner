@@ -4,7 +4,8 @@ import { unitPriceOf, formatUnitPrice } from '../../public/js/utils/unitPrice.js
 import { formatPrice, formatDate, escapeHtml } from '../../public/js/utils/format.js';
 import { STORES } from '../../public/js/utils/stores.js';
 import { bonusLink, type BonusLink } from '../../public/js/utils/bonusLink.js';
-import type { OverviewProduct, StoreName } from '../types.ts';
+import { storesDownNotice } from '../../public/js/utils/checkSummary.js';
+import type { BonusOverview, OverviewProduct, StoreName } from '../types.ts';
 
 const LINK_LABELS = { add: 'Toevoegen', order: 'Bestel' };
 
@@ -29,11 +30,13 @@ export interface BonusEmailOptions {
 }
 
 /**
- * The bonus email's HTML: the bonus products per store, each row with its
- * Toevoegen or Bestel link when it has one.
+ * The bonus email's HTML: the stores that were down, then the bonus products
+ * per store, each row with its Toevoegen or Bestel link when it has one. "No
+ * bonus" only when every store was reached: a store that was down may well
+ * have one.
  */
 export function buildHtml(
-  bonusProducts: OverviewProduct[],
+  { bonusProducts, summary }: BonusOverview,
   { appUrl, today, grocerUrl, at }: BonusEmailOptions,
 ): string {
   const grouped = new Map<StoreName, OverviewProduct[]>();
@@ -57,8 +60,14 @@ export function buildHtml(
       </a>
     </p>`;
 
+  const storesDown = storesDownNotice(summary);
+  if (storesDown) {
+    html += `
+    <p style="padding: 12px; background: #FFF4E5; border-radius: 6px; margin: 0 0 16px 0;"><strong>Niet bereikbaar:</strong> ${escapeHtml(storesDown)}</p>`;
+  }
+
   if (bonusProducts.length === 0) {
-    html += `<p style="color: #999; font-style: italic;">Geen opgeslagen producten zijn momenteel in de bonus.</p>`;
+    if (!storesDown) html += `<p style="color: #999; font-style: italic;">Geen opgeslagen producten zijn momenteel in de bonus.</p>`;
   } else {
     for (const [store, products] of grouped) {
       html += `
