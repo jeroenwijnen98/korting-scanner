@@ -114,3 +114,19 @@ export function createProductSearch({ search, debounceMs, onState }) {
     },
   };
 }
+
+/**
+ * Draws the results again each time the saved-product list changes while
+ * results are showing, so their checkmarks follow the list, wherever it was
+ * changed. Without results it draws nothing.
+ * @param {{ state: () => SearchState }} productSearch
+ * @param {{ onChange: (listener: () => void) => () => void }} savedList
+ * @param {(state: Extract<SearchState, { kind: 'results' }>) => void} drawResults
+ * @returns {() => void} stops following the list
+ */
+export function followSavedList(productSearch, savedList, drawResults) {
+  return savedList.onChange(() => {
+    const state = productSearch.state();
+    if (state.kind === 'results') drawResults(state);
+  });
+}

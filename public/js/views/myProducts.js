@@ -9,7 +9,7 @@ import { STORES } from '../utils/stores.js';
 import { splitPaused } from '../utils/pausedLayout.js';
 import { productCount } from '../utils/format.js';
 import { savedList } from '../savedList.js';
-import { createProductSearch } from '../productSearch.js';
+import { createProductSearch, followSavedList } from '../productSearch.js';
 import { openSavedProductDetail, togglePause } from '../savedProductDetail.js';
 
 /**
@@ -29,6 +29,9 @@ let activeStore = 'ah';
 let pausedSectionOpen = false;
 /** @type {Set<string | null>} product groups whose "N gepauzeerd" row is open */
 const expandedPausedRows = new Set();
+// Stops the last render's search results following the saved-product list
+/** @type {(() => void) | undefined} */
+let stopFollowingSavedList;
 
 export async function initMyProducts() {
   panel.innerHTML = '';
@@ -112,6 +115,9 @@ export async function initMyProducts() {
 
   const productSearch = createProductSearch({ search: searchProducts, debounceMs: 300, onState: drawSearch });
   productSearch.setStore(activeStore);
+  // This render's results follow the list from now on, not the last one's
+  stopFollowingSavedList?.();
+  stopFollowingSavedList = followSavedList(productSearch, savedList, state => renderSearchResults(state.products, resultsContainer));
 
   const emptySearchBox = () => {
     searchInput.value = '';
@@ -276,10 +282,9 @@ function renderSearchResults(results, container) {
       isSaved: savedList.has(product.store, product.productId),
       onAdd: async (p) => {
         try {
+          // The list's change notification draws the checkmark
           await savedList.add(p);
           showToast('Product toegevoegd', 'success');
-          // Re-render search results to show checkmark
-          renderSearchResults(results, container);
         } catch (err) {
           showToast(errorMessage(err), 'error');
         }
