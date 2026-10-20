@@ -66,6 +66,7 @@ export async function openSavedProductDetail(savedId, { panel, onBack }) {
       openSavedProductDetail(savedId, { panel, onBack });
     },
     onTogglePause: () => togglePause(savedId),
+    notice: view.notice,
     onBack,
   }));
 }

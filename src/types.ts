@@ -161,14 +161,25 @@ export interface GroupHistoryEntry {
 }
 
 /**
+ * What viewing a saved product's detail said about it: its check status,
+ * without the saved id and the product (the detail carries those itself).
+ */
+export type DetailCheck =
+  | { status: 'observed' }
+  | { status: 'gone' }
+  | { status: 'storeDown'; store: StoreName };
+
+/**
  * What `GET /api/products/:id/detail` returns for a saved product. A part
- * that fails degrades on its own: `product` to null (the store failed or did
- * not find it), a history to [].
+ * that fails degrades on its own: a store that is down or a product that is
+ * gone leaves `product` null and says which in `check`, a history becomes [].
  */
 export interface SavedProductDetail {
   /** The saved fields, as stored after observing (so with a synced image). */
   saved: SavedProduct;
-  /** The product as the store has it now, without the saved id. */
+  /** The saved product's check status, observed when viewing the detail. */
+  check: DetailCheck;
+  /** The product as the store has it now, without the saved id; null unless observed. */
   product: Product | null;
   /** Newest first. */
   history: PriceSnapshot[];

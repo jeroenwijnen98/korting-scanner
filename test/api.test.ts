@@ -294,6 +294,7 @@ test('saved product detail: the observed product, its history, its group history
 
   const { status, json } = await api('GET', '/products/ah-20/detail');
   assert.equal(status, 200);
+  assert.deepEqual(json.check, { status: 'observed' });
   assert.equal(json.product.title, 'Pasta 500 g');
   assert.equal(json.product.currentPrice, 1);
   assert.equal(json.product.savedId, undefined);
@@ -363,6 +364,7 @@ test('saved product detail: a failing store call keeps the histories and saved f
   // dirk is the BrokenStore: its every call throws
   const { status, json } = await api('GET', '/products/dirk-5/detail');
   assert.equal(status, 200);
+  assert.deepEqual(json.check, { status: 'storeDown', store: 'dirk' });
   assert.equal(json.product, null);
   assert.deepEqual(json.history.map((s: any) => [s.date, s.currentPrice]), [['2026-03-01', 1.2]]);
   assert.deepEqual(json.groupHistory.map((e: any) => [e.date, e.title]), [

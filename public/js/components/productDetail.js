@@ -10,6 +10,7 @@ import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
  * @typedef {import('../../../src/types.ts').SavedProduct} SavedProduct
  * @typedef {import('../../../src/types.ts').PriceSnapshot} PriceSnapshot
  * @typedef {import('../../../src/types.ts').GroupHistoryEntry} GroupHistoryEntry
+ * @typedef {import('../utils/savedProductDetailView.js').DetailNotice} DetailNotice
  */
 
 /**
@@ -27,6 +28,8 @@ import { formatPrice, formatDate, escapeHtml } from '../utils/format.js';
  * @property {(() => Promise<boolean>) | null} [onTogglePause] set to show the
  *   pause control for the saved product; asks to pause or resume it and
  *   resolves with whether it is paused afterwards
+ * @property {DetailNotice | null} [notice] set to say why the saved fields
+ *   stand in for the store's product
  */
 
 /**
@@ -43,6 +46,7 @@ export function createProductDetail(product, {
   onProductGroupChange = null,
   groupHistory = [],
   onTogglePause = null,
+  notice = null,
 }) {
   const el = document.createElement('div');
   el.className = 'product-detail';
@@ -82,6 +86,14 @@ export function createProductDetail(product, {
   const parts = [product.brand, product.salesUnitSize].filter(Boolean);
   meta.innerHTML = `${storeBadge(product.store)} ${parts.map(escapeHtml).join(' &middot; ')}`;
   el.appendChild(meta);
+
+  // Why the saved fields stand in: the store was down or the product is gone
+  if (notice) {
+    const banner = document.createElement('div');
+    banner.className = notice.kind === 'storeDown' ? 'unreachable-banner' : 'unavailable-banner';
+    banner.textContent = notice.text;
+    el.appendChild(banner);
+  }
 
   // Pause control (only when viewing a saved product)
   if (savedProduct?.id && onTogglePause) {
