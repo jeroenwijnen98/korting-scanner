@@ -23,8 +23,8 @@ export async function getSavedProductDetail(
   const saved = (await productStore.getAll()).find(p => p.id === id);
   if (!saved) return null;
 
-  const [status] = await observeSavedProducts({ [saved.store]: stores[saved.store] }, [saved]);
-  const product = status.status === 'observed' ? withoutSavedId(status.product) : null;
+  const [checkStatus] = await observeSavedProducts({ [saved.store]: stores[saved.store] }, [saved]);
+  const product = checkStatus.status === 'observed' ? withoutSavedId(checkStatus.product) : null;
 
   const [stored, history, groupHistory] = await Promise.all([
     // Read again, so the saved fields hold the image the observation synced;
@@ -42,11 +42,11 @@ export async function getSavedProductDetail(
       : [],
   ]);
 
-  return { saved: stored ?? saved, check: detailCheck(status), product, history, groupHistory };
+  return { saved: stored ?? saved, check: detailCheck(checkStatus), product, history, groupHistory };
 }
 
 /** The check status as the detail carries it. */
-function detailCheck(status: CheckStatus): DetailCheck {
-  if (status.status === 'storeDown') return { status: 'storeDown', store: status.store };
-  return { status: status.status };
+function detailCheck(checkStatus: CheckStatus): DetailCheck {
+  if (checkStatus.status === 'storeDown') return { status: 'storeDown', store: checkStatus.store };
+  return { status: checkStatus.status };
 }
