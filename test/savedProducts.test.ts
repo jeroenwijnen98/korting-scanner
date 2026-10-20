@@ -213,26 +213,29 @@ test('a product group set by one view is seen by a second listener (the other vi
   assert.deepEqual(list.productGroups(), ['koffie']);
 });
 
-test('unavailable ids are none before a bonus check and reported after being set', async () => {
-  const { list, changes } = await loaded([saved('ah-1', null), saved('dirk-2', null)]);
-  assert.deepEqual(list.unavailableIds(), []);
-  assert.equal(list.isUnavailable('dirk-2'), false);
+test('the last check status: gone, store down, and a later check clearing both', async () => {
+  const { list, changes } = await loaded([saved('ah-1', null), saved('dirk-2', null), saved('bol-3', null)]);
+  assert.deepEqual(list.checkSummary(), { storesDown: [], unchecked: [], gone: [] }, 'nothing down or gone before a check');
+  assert.equal(list.checkStatus('dirk-2'), null);
 
-  list.setUnavailable(['dirk-2']);
-  assert.deepEqual(list.unavailableIds(), ['dirk-2']);
-  assert.equal(list.isUnavailable('dirk-2'), true);
-  assert.equal(list.isUnavailable('ah-1'), false);
-  assert.equal(changes(), 2, 'listeners re-render the unavailable indicators');
+  list.setCheckSummary({ storesDown: ['bol'], unchecked: ['bol-3'], gone: ['dirk-2'] });
+  assert.equal(list.checkStatus('ah-1'), null, 'observed');
+  assert.equal(list.checkStatus('dirk-2'), 'gone');
+  assert.equal(list.checkStatus('bol-3'), 'storeDown');
+  assert.deepEqual(list.checkSummary(), { storesDown: ['bol'], unchecked: ['bol-3'], gone: ['dirk-2'] });
+  assert.equal(changes(), 2, 'listeners re-render the check status');
 
-  list.setUnavailable([]);
-  assert.equal(list.isUnavailable('dirk-2'), false, 'the next bonus check replaces them');
+  list.setCheckSummary({ storesDown: [], unchecked: [], gone: [] });
+  assert.equal(list.checkStatus('dirk-2'), null, 'the next check replaces the last');
+  assert.equal(list.checkStatus('bol-3'), null);
+  assert.equal(changes(), 3);
 });
 
-test('unavailable ids survive a reload of the list', async () => {
+test('the last check status survives a reload of the list', async () => {
   const { list } = await loaded([saved('ah-1', null)]);
-  list.setUnavailable(['ah-1']);
+  list.setCheckSummary({ storesDown: ['ah'], unchecked: ['ah-1'], gone: [] });
   await list.load();
-  assert.equal(list.isUnavailable('ah-1'), true);
+  assert.equal(list.checkStatus('ah-1'), 'storeDown');
 });
 
 test('product groups are the ones in use, each once, in list order', async () => {
