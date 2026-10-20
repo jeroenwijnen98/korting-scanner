@@ -201,45 +201,6 @@ test('bonus: the answer carries GROCER_URL, or null without it', async () => {
   await api('DELETE', '/products/ah-1');
 });
 
-test('product detail: an unknown store is a 400, an unknown product a 404', async () => {
-  assert.equal((await api('GET', '/product/jumbo/1')).status, 400);
-  assert.equal((await api('GET', '/product/ah/404')).status, 404);
-
-  // A saved product the store does not know is a 404 as well
-  await api('POST', '/products', { store: 'ah', storeProductId: '404', title: 'Weg' });
-  assert.equal((await api('GET', '/product/ah/404')).status, 404);
-  assert.deepEqual(await getHistory('ah-404'), []);
-  await api('DELETE', '/products/ah-404');
-});
-
-test('product detail: viewing a saved product snapshots it and syncs its image', async () => {
-  await api('POST', '/products', { store: 'ah', storeProductId: '4', title: 'Kaas', imageUrl: 'https://img/old.jpg' });
-
-  const detail = await api('GET', '/product/ah/4');
-  assert.equal(detail.status, 200);
-  assert.equal(detail.json.title, 'Kaas');
-  assert.equal(detail.json.currentPrice, 4);
-  assert.equal(detail.json.savedId, undefined);
-
-  const history = await getHistory('ah-4');
-  assert.deepEqual(history.map(s => [s.currentPrice, s.isBonus]), [[4, false]]);
-  const [kaas] = (await api('GET', '/products')).json;
-  assert.equal(kaas.imageUrl, 'https://img/new.jpg');
-
-  await api('DELETE', '/products/ah-4');
-});
-
-test('product detail: viewing an unsaved product writes no history', async () => {
-  const historyBefore = await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null);
-
-  const detail = await api('GET', '/product/ah/6');
-  assert.equal(detail.status, 200);
-  assert.equal(detail.json.title, 'Brood');
-
-  assert.deepEqual(await getHistory('ah-6'), []);
-  assert.equal(await readFile(join(dir, 'price-history.json'), 'utf8').catch(() => null), historyBefore);
-});
-
 test('image backfill: a missing image is filled and the saved products returned', async () => {
   await api('POST', '/products', { store: 'ah', storeProductId: '4', title: 'Kaas' });
   await api('POST', '/products', { store: 'ah', storeProductId: '2', title: 'Thee', imageUrl: 'https://img/thee.jpg' });

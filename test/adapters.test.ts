@@ -376,34 +376,18 @@ test('Trekpleister search: results carry a promotion stub, so none is a bonus', 
   assert.deepEqual(urls, ['https://app.kruidvat.nl/api/v2/kvtp/search?fields=FULL&lang=nl&query=tand%20pasta']);
 });
 
-// The routes over the real adapters: GET /api/product/:store/:id with the
-// stores answering 404, and the image backfill over Dirk's fixtures.
+// The image backfill route over Dirk's real adapter and fixtures.
 await useTempDataDir();
 let server: Server;
 let base: string;
 
 before(async () => {
-  server = createApp({ stores: { ah, dirk, kruidvat, trekpleister }, idleShutdown: { enabled: false }, grocerUrl: null }).app.listen(0);
+  server = createApp({ stores: { dirk }, idleShutdown: { enabled: false }, grocerUrl: null }).app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   base = `http://localhost:${(server.address() as AddressInfo).port}/api`;
 });
 
 after(() => new Promise(resolve => server.close(resolve)));
-
-test('route: an unknown product answers 404 in AH, Kruidvat and Trekpleister', async (t) => {
-  stubAH(t, {});
-  const res = await realFetch(`${base}/product/ah/404404`);
-  assert.equal(res.status, 404);
-  assert.deepEqual(await res.json(), { error: 'Product not found' });
-
-  t.mock.restoreAll();
-  stubSap(t, 'kvn-spa', 'kruidvat-search.json', {});
-  assert.equal((await realFetch(`${base}/product/kruidvat/0000000`)).status, 404);
-
-  t.mock.restoreAll();
-  stubSap(t, 'kvtp', 'trekpleister-search.json', {});
-  assert.equal((await realFetch(`${base}/product/trekpleister/0000000`)).status, 404);
-});
 
 test('route: a Dirk backfill of several products makes one batched request', async (t) => {
   const post = (body: unknown) => realFetch(`${base}/products`, {

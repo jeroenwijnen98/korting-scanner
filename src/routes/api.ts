@@ -2,10 +2,10 @@ import { Router } from 'express';
 import type { ErrorRequestHandler } from 'express';
 import * as productStore from '../services/productStore.ts';
 import { checkSavedProducts } from '../services/priceCheck.ts';
-import { observedProducts, observeSavedProducts, withoutSavedId } from '../services/priceObservation.ts';
+import { observeSavedProducts } from '../services/priceObservation.ts';
 import { getSavedProductDetail } from '../services/savedProductDetail.ts';
 import type { StoreAdapter } from '../stores/base.ts';
-import type { BonusAnswer, Product, StoreName } from '../types.ts';
+import type { BonusAnswer, StoreName } from '../types.ts';
 import { errorMessage } from '../../public/js/utils/errorMessage.js';
 
 /** The store adapter per store name; tests pass fakes. */
@@ -60,30 +60,6 @@ export function createApiRouter(
       return res.status(400).json({ error: `Unknown store: ${store}` });
     }
     res.json(await adapter.searchProducts(q));
-  });
-
-  // Get product detail from store; a saved product is observed (snapshot and
-  // image sync), any other product is only fetched
-  router.get('/product/:store/:storeProductId', async (req, res) => {
-    const { store, storeProductId } = req.params;
-    const adapter = adapterFor(store);
-    if (!adapter) {
-      return res.status(400).json({ error: `Unknown store: ${store}` });
-    }
-    const saved = (await productStore.getAll())
-      .find(p => p.store === store && p.storeProductId === storeProductId);
-    let detail: Product | null;
-    if (saved) {
-      const [observed] = observedProducts(await observeSavedProducts({ [saved.store]: adapter }, [saved]));
-      // The client gets the product as the store has it, without the saved id
-      detail = observed ? withoutSavedId(observed) : null;
-    } else {
-      detail = await adapter.getProductDetail(storeProductId);
-    }
-    if (!detail) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-    res.json(detail);
   });
 
   // A saved product's detail in one answer: the product as observed now, its
