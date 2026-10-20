@@ -218,7 +218,7 @@ function createPausedSection(paused) {
  */
 function createSavedCard(product) {
   const card = createProductCard(product, {
-    isUnavailable: savedList.isUnavailable(product.id),
+    checkStatus: savedList.checkStatus(product.id),
     isPaused: Boolean(product.paused),
     onTogglePause: (p) => { togglePause(p.id); },
     onRemove: async (p) => {

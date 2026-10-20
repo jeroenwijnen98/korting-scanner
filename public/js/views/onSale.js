@@ -12,7 +12,6 @@ import { openSavedProductDetail } from '../savedProductDetail.js';
 
 /**
  * @typedef {import('../../../src/types.ts').OverviewProduct} OverviewProduct
- * @typedef {import('../../../src/types.ts').CheckSummary} CheckSummary
  */
 
 const panel = document.getElementById('panel-on-sale');
@@ -29,9 +28,9 @@ export async function initOnSale() {
     refreshBtn.classList.remove('refreshing');
 
     const { bonusProducts, summary, grocerUrl } = bonusData;
-    savedList.setUnavailable(summary.gone);
+    savedList.setCheckSummary(summary);
 
-    render(bonusProducts, grocerUrl, summary);
+    render(bonusProducts, grocerUrl);
   } catch (err) {
     refreshBtn.classList.remove('refreshing');
     showToast('Kon bonus niet laden', 'error');
@@ -57,13 +56,12 @@ function withListGroup(product) {
 }
 
 /**
- * A banner naming the stores the bonus check could not reach: their saved
- * products may be on bonus, or gone, without the overview knowing.
- * @param {CheckSummary | null} summary
+ * A banner naming the stores the last bonus check could not reach: their
+ * saved products may be on bonus, or gone, without the overview knowing.
  * @returns {HTMLElement | null}
  */
-function storesDownBanner(summary) {
-  const notice = summary && storesDownNotice(summary);
+function storesDownBanner() {
+  const notice = storesDownNotice(savedList.checkSummary());
   if (!notice) return null;
   const banner = document.createElement('div');
   banner.className = 'unreachable-banner';
@@ -74,16 +72,15 @@ function storesDownBanner(summary) {
 /**
  * @param {OverviewProduct[]} bonusProducts
  * @param {string | null} [grocerUrl] GROCER_URL; without it no Toevoegen
- * @param {CheckSummary | null} [summary] the bonus check's summary
  */
-function render(bonusProducts, grocerUrl = null, summary = null) {
+function render(bonusProducts, grocerUrl = null) {
   panel.innerHTML = '';
 
-  const downBanner = storesDownBanner(summary);
+  const downBanner = storesDownBanner();
   if (downBanner) panel.appendChild(downBanner);
 
   // Warning banner for unavailable products
-  const notFound = savedList.unavailableIds();
+  const notFound = savedList.checkSummary().gone;
   if (notFound.length > 0) {
     const unavailableNames = notFound
       .map(id => savedList.get(id)?.title || id)
@@ -113,7 +110,7 @@ function render(bonusProducts, grocerUrl = null, summary = null) {
     });
     card.addEventListener('click', () => openSavedProductDetail(product.savedId, {
       panel,
-      onBack: () => render(bonusProducts, grocerUrl, summary),
+      onBack: () => render(bonusProducts, grocerUrl),
     }));
     return card;
   });

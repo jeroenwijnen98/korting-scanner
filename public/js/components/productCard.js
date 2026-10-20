@@ -18,14 +18,21 @@ import { pauseControlText } from '../utils/pauseControl.js';
  *     | 'bonusEndDate'>>} DisplayedProduct
  */
 
+/** The badge next to the title of a saved product the last bonus check did not observe. */
+const CHECK_STATUS_BADGES = {
+  gone: { className: 'badge-unavailable', text: '!', title: 'Niet meer beschikbaar' },
+  storeDown: { className: 'badge-unavailable badge-unreachable', text: '?', title: 'Niet bereikbaar' },
+};
+
 /**
  * @template {DisplayedProduct} P
  * @param {P} product
- * @param {{ onRemove?: (product: P) => void, onTogglePause?: (product: P) => void, isPaused?: boolean, showBonus?: boolean, isUnavailable?: boolean, bonusAction?: HTMLElement | null }} options
+ * @param {{ onRemove?: (product: P) => void, onTogglePause?: (product: P) => void, isPaused?: boolean, showBonus?: boolean, checkStatus?: 'gone' | 'storeDown' | null, bonusAction?: HTMLElement | null }} options
+ *   `checkStatus`: what the last bonus check said about a saved product
  *   `bonusAction`: a button at the end of the bonus row (Toevoegen or Bestel)
  * @returns {HTMLDivElement}
  */
-export function createProductCard(product, { onRemove, onTogglePause, isPaused = false, showBonus = false, isUnavailable = false, bonusAction = null }) {
+export function createProductCard(product, { onRemove, onTogglePause, isPaused = false, showBonus = false, checkStatus = null, bonusAction = null }) {
   const el = document.createElement('div');
   el.className = `product-card${isPaused ? ' is-paused' : ''}`;
 
@@ -56,11 +63,12 @@ export function createProductCard(product, { onRemove, onTogglePause, isPaused =
   titleEl.textContent = product.title;
   header.appendChild(titleEl);
 
-  if (isUnavailable) {
+  if (checkStatus) {
+    const { className, text, title } = CHECK_STATUS_BADGES[checkStatus];
     const badge = document.createElement('span');
-    badge.className = 'badge-unavailable';
-    badge.textContent = '!';
-    badge.title = 'Niet meer beschikbaar';
+    badge.className = className;
+    badge.textContent = text;
+    badge.title = title;
     header.appendChild(badge);
   }
 

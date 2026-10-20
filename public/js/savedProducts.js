@@ -4,6 +4,7 @@
  * @typedef {import('../../src/types.ts').SavedProduct} SavedProduct
  * @typedef {import('../../src/types.ts').Product} Product
  * @typedef {import('../../src/types.ts').StoreName} StoreName
+ * @typedef {import('../../src/types.ts').CheckSummary} CheckSummary
  */
 
 /**
@@ -54,10 +55,13 @@
  *   pauses every member while any is unpaused, else resumes them all; does
  *   not throw, failures are in the result
  * @property {(id: string) => Promise<void>} remove
- * @property {(ids: string[]) => void} setUnavailable records the saved products
- *   the last bonus check could not find
- * @property {() => string[]} unavailableIds as recorded by the last bonus check
- * @property {(id: string) => boolean} isUnavailable
+ * @property {(summary: CheckSummary) => void} setCheckSummary records what the
+ *   last bonus check said, replacing the check before it
+ * @property {() => CheckSummary} checkSummary as recorded by the last bonus
+ *   check; nothing down or gone before one
+ * @property {(id: string) => 'gone' | 'storeDown' | null} checkStatus what the
+ *   last bonus check said about that saved product; null when it was observed,
+ *   or not checked
  * @property {(products: SavedProduct[]) => void} merge puts server answers the
  *   list did not fetch itself (images) in place by id, new ids at the end
  * @property {(listener: () => void) => () => void} onChange returns a function
@@ -74,8 +78,8 @@
 export function createSavedProductList(api) {
   /** @type {SavedProduct[]} */
   let list = [];
-  /** @type {string[]} */
-  let unavailable = [];
+  /** @type {CheckSummary} */
+  let lastCheck = { storesDown: [], unchecked: [], gone: [] };
   /** @type {Set<() => void>} */
   const listeners = new Set();
 
@@ -156,12 +160,16 @@ export function createSavedProductList(api) {
       list = list.filter(s => s.id !== id);
       notify();
     },
-    setUnavailable(ids) {
-      unavailable = [...ids];
+    setCheckSummary(summary) {
+      lastCheck = summary;
       notify();
     },
-    unavailableIds: () => unavailable,
-    isUnavailable: (id) => unavailable.includes(id),
+    checkSummary: () => lastCheck,
+    checkStatus(id) {
+      if (lastCheck.gone.includes(id)) return 'gone';
+      if (lastCheck.unchecked.includes(id)) return 'storeDown';
+      return null;
+    },
     merge(products) {
       putInPlace(products);
       notify();
