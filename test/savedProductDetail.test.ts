@@ -45,11 +45,11 @@ test('the saved-product detail: viewing snapshots the product and syncs a change
 
   assert.equal(detail?.product?.currentPrice, 4);
   // The product as the store has it, without the saved id
-  assert.equal((detail?.product as { savedId?: string } | null)?.savedId, undefined);
+  assert.ok(detail?.product && !('savedId' in detail.product));
   assert.deepEqual(detail?.history.map(s => [s.currentPrice, s.isBonus]), [[4, false]]);
   assert.equal(detail?.saved.imageUrl, 'https://img/new.jpg');
-  const [kaas] = (await productStore.getAll()).filter(p => p.id === added.id);
-  assert.equal(kaas.imageUrl, 'https://img/new.jpg');
+  const kaas = (await productStore.getAll()).find(p => p.id === added.id);
+  assert.equal(kaas?.imageUrl, 'https://img/new.jpg');
 });
 
 test('the saved-product detail: an unknown saved id has none', async () => {
