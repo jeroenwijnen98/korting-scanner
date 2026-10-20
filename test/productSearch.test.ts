@@ -1,6 +1,6 @@
 import { afterEach, mock, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createProductSearch } from '../public/js/productSearch.js';
+import { createProductSearch, followSavedList } from '../public/js/productSearch.js';
 import type { Product } from '../src/types.ts';
 
 const DEBOUNCE_MS = 300;
@@ -185,4 +185,57 @@ test('state() is the search state last emitted', async () => {
   mock.timers.tick(DEBOUNCE_MS);
   await calls[0].answer([product('Melk')]);
   assert.deepEqual(search.state(), last());
+});
+
+/** A saved-product list reduced to its change notification, changed by hand. */
+function fakeSavedList() {
+  const listeners = new Set<() => void>();
+  return {
+    onChange(listener: () => void) {
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
+    },
+    change() {
+      listeners.forEach(listener => listener());
+    },
+    listening: () => listeners.size,
+  };
+}
+
+/** Shows results for "koffie", then follows a fake list, recording each redraw. */
+async function showingResults() {
+  const { search, calls } = start();
+  search.setQuery('koffie');
+  mock.timers.tick(DEBOUNCE_MS);
+  const koffie = [product('Koffie')];
+  await calls[0].answer(koffie);
+  const list = fakeSavedList();
+  const drawn: unknown[] = [];
+  const stop = followSavedList(search, list, state => { drawn.push(state); });
+  return { search, list, drawn, stop, koffie };
+}
+
+test('a saved-list change while results show draws those results again', async () => {
+  const { list, drawn, koffie } = await showingResults();
+  list.change();
+  assert.deepEqual(drawn, [{ kind: 'results', store: 'ah', products: koffie }]);
+});
+
+test('without results a saved-list change draws nothing', async () => {
+  const { search, list, drawn } = await showingResults();
+  search.clear();
+  list.change();
+  search.setQuery('thee');
+  list.change();
+  mock.timers.tick(DEBOUNCE_MS);
+  list.change();
+  assert.deepEqual(drawn, [], 'idle, waiting for the debounce and loading draw nothing');
+});
+
+test('stopped following, a saved-list change draws nothing and the listener is gone', async () => {
+  const { list, drawn, stop } = await showingResults();
+  stop();
+  list.change();
+  assert.deepEqual(drawn, []);
+  assert.equal(list.listening(), 0);
 });
