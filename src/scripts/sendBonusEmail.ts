@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
-import { createTransport } from 'nodemailer';
 import { join } from 'node:path';
 import { checkSavedProducts } from '../services/priceCheck.ts';
 import { stores } from '../stores/index.ts';
 import { buildHtml } from '../services/bonusEmail.ts';
+import { sendToMe } from '../services/emailMe.ts';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 
@@ -11,16 +11,8 @@ const ROOT = join(import.meta.dirname, '..', '..');
 dotenv.config({ path: join(ROOT, '.env'), quiet: true });
 
 async function main(): Promise<void> {
-  const sender = process.env.EMAIL_SENDER;
-  const password = process.env.EMAIL_PASSWORD;
-  const recipient = process.env.EMAIL_RECIPIENT;
   const appUrl = process.env.APP_URL || 'http://localhost:3001';
   const grocerUrl = process.env.GROCER_URL || null;
-
-  if (!sender || !password || !recipient) {
-    console.error('Missing email config. Set EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECIPIENT in .env');
-    process.exit(1);
-  }
 
   console.log('Checking saved products...');
   const overview = await checkSavedProducts(stores);
@@ -39,23 +31,10 @@ async function main(): Promise<void> {
 
   const html = buildHtml(overview, { appUrl, today, grocerUrl, at: Date.now() });
 
-  // Send via Gmail SMTP
-  const transporter = createTransport({
-    service: 'gmail',
-    auth: {
-      user: sender,
-      pass: password,
-    },
-  });
+  // email-me fixes the recipient and holds the credentials.
+  sendToMe({ subject: `Korting Scanner Update - ${today}`, html });
 
-  await transporter.sendMail({
-    from: sender,
-    to: recipient,
-    subject: `Korting Scanner Update - ${today}`,
-    html,
-  });
-
-  console.log(`Email sent to ${recipient}`);
+  console.log('Email sent.');
 }
 
 main().catch(err => {
